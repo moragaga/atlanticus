@@ -8,15 +8,16 @@ from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
+    DatasetValidationError,
     MaterializationDefinition,
     SingleArtifactLayout,
 )
+from atlanticus.datasets.core.validation import validate_identity_segment
 
 HISTORY_MATERIALIZATION = 'daily'
 HISTORY_KEY_COLUMNS = ('historian_fact_id',)
 HISTORY_ORDER_COLUMNS = ('event_at_utc', 'historian_fact_id')
 HISTORY_PARTITION_DIMENSIONS = ('year', 'month', 'day')
-_EVIDENCE_SEGMENT = re.compile(r'[A-Za-z0-9_]{1,120}')
 
 
 class AlarmHistoryContractError(ValueError):
@@ -107,10 +108,11 @@ def _evidence_identity(alarm_key: str) -> tuple[str, str]:
     if not isinstance(alarm_key, str):
         raise AlarmHistoryContractError('Evidence requires a canonical alarm key')
     family, separator, rule = alarm_key.partition('/')
-    if (
-        separator != '/'
-        or _EVIDENCE_SEGMENT.fullmatch(family) is None
-        or _EVIDENCE_SEGMENT.fullmatch(rule) is None
-    ):
+    if separator != '/':
         raise AlarmHistoryContractError('Evidence key must be family/rule with safe segments')
+    try:
+        validate_identity_segment(family, field='evidence family')
+        validate_identity_segment(rule, field='evidence rule')
+    except DatasetValidationError as error:
+        raise AlarmHistoryContractError('Evidence key must be family/rule with safe segments') from error
     return family, rule

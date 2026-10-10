@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.decoder import (
+    decode_transporte_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.transporte_global_turno import (
     TRANSPORTE_GLOBAL_TURNO_KPI_KEY,
     build_transporte_global_turno,
-    map_transporte_global_turno_store,
+    map_transporte_global_turno_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     DashboardValueStatus,
@@ -40,13 +43,11 @@ def _json(value: object) -> dict[str, object]:
 
 
 def _store(value: object) -> dict[str, object]:
-    return {
-        'latest': {
-            'values': {
-                TRANSPORTE_GLOBAL_TURNO_KPI_KEY: _json(value),
-            }
-        }
-    }
+    return {'latest': {'values': {TRANSPORTE_GLOBAL_TURNO_KPI_KEY: _json(value)}}}
+
+
+def _map(store: object):
+    return map_transporte_global_turno_readings(decode_transporte_store(store))
 
 
 def _props(component):
@@ -78,22 +79,16 @@ def _payload() -> dict[str, object]:
 
 
 def test_transporte_global_turno_uses_canonical_frontend_order() -> None:
-    state, status = map_transporte_global_turno_store(_store(_payload()))
-
+    state, status = _map(_store(_payload()))
     assert status is DisplayStatus.OK
     assert state is not None
     assert [row.key for row in state.rows] == [
-        'rendimiento',
-        'uebd',
-        'ciclo',
-        'velocidad_media',
-        'distancia_media',
+        'rendimiento', 'uebd', 'ciclo', 'velocidad_media', 'distancia_media',
     ]
 
 
 def test_transporte_global_turno_preserves_independent_real_plan_statuses() -> None:
-    state, status = map_transporte_global_turno_store(_store(_payload()))
-
+    state, status = _map(_store(_payload()))
     assert status is DisplayStatus.OK
     assert state is not None
     values = {row.key: row for row in state.rows}
@@ -106,43 +101,31 @@ def test_transporte_global_turno_preserves_independent_real_plan_statuses() -> N
 
 
 def test_transporte_global_turno_supports_unshift() -> None:
-    state, status = map_transporte_global_turno_store(_store({'data_state': 'unshift', 'rows': []}))
-
+    state, status = _map(_store({'data_state': 'unshift', 'rows': []}))
     assert status is DisplayStatus.OK
     assert state is not None
     assert state.rows == ()
 
 
 def test_transporte_global_turno_source_semantics() -> None:
-    state, status = map_transporte_global_turno_store({'latest': None})
+    state, status = _map({'latest': None})
     assert state is None
     assert status is DisplayStatus.NOT_MAPPED
-
-    state, status = map_transporte_global_turno_store(
-        {
-            'latest': {
-                'values': {
-                    TRANSPORTE_GLOBAL_TURNO_KPI_KEY: {
-                        'status': 'missing',
-                        'value_kind': None,
-                        'value': None,
-                        'value_type': None,
-                        'parsed_value': None,
-                    }
-                }
-            }
+    state, status = _map({'latest': {'values': {
+        TRANSPORTE_GLOBAL_TURNO_KPI_KEY: {
+            'status': 'missing', 'value_kind': None, 'value': None,
+            'value_type': None, 'parsed_value': None,
         }
-    )
+    }}})
     assert state is None
     assert status is DisplayStatus.EMPTY
 
 
 def test_transporte_global_turno_inspects_complete_surface() -> None:
-    state, status = map_transporte_global_turno_store(_store(_payload()))
+    state, status = _map(_store(_payload()))
     component = build_transporte_global_turno(state, status)
     inspection_nodes = [
         node for node in _walk(component) if _props(node).get('data-kpi-inspection-key') is not None
     ]
-
     assert len(inspection_nodes) == 1
     assert _props(inspection_nodes[0])['data-kpi-inspection-key'] == TRANSPORTE_GLOBAL_TURNO_KPI_KEY

@@ -8,18 +8,19 @@ from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
+    DatasetValidationError,
     MaterializationDefinition,
     SingleArtifactLayout,
 )
+from atlanticus.datasets.core.validation import validate_identity_segment
 
 HISTORY_MATERIALIZATION = 'daily'
 HISTORY_KEY_COLUMNS = ('historian_fact_id',)
 HISTORY_ORDER_COLUMNS = ('event_at_utc', 'historian_fact_id')
 HISTORY_PARTITION_DIMENSIONS = ('year', 'month', 'day')
-_EVIDENCE_SEGMENT = re.compile(r'[A-Za-z0-9_]{1,120}')
 
 
-# Error de contrato: nunca se corrige silenciosamente una identidad histórica defectuosa.
+# Error de contrato: no se transforma una identidad histórica defectuosa.
 class AlarmHistoryContractError(ValueError):
     pass
 
@@ -42,14 +43,14 @@ _HISTORY_DEFINITIONS = {
 }
 
 
-# Identifica un dataset diario compartido por todas las Rules del dominio.
+# Dataset diario por dominio no-Evidence.
 def history_definition(domain: AlarmHistoryDomain) -> DatasetDefinition:
     if not isinstance(domain, AlarmHistoryDomain) or domain is AlarmHistoryDomain.EVIDENCE:
         raise AlarmHistoryContractError('History domain must be a non-evidence domain')
     return _HISTORY_DEFINITIONS[domain]
 
 
-# Construye la ruta por familia y Rule sin modificar sus claves técnicas.
+# Dataset Evidence por familia y regla, conservando ambas identidades.
 def evidence_definition(alarm_key: str) -> DatasetDefinition:
     family, rule = _evidence_identity(alarm_key)
     return DatasetDefinition(
@@ -66,7 +67,7 @@ def evidence_definition(alarm_key: str) -> DatasetDefinition:
     )
 
 
-# Verifica identidad, día UTC y checksum antes de seleccionar una partición.
+# Comprueba procedencia UTC e identidad antes de resolver la partición.
 def history_destination(
     fact: ProjectedAlarmHistoryFact,
 ) -> tuple[DatasetDefinition, DatasetTarget]:
@@ -99,7 +100,7 @@ def history_destination(
     )
 
 
-# Representación canónica de la fecha UTC para los directorios físicos.
+# Conserva la partición física de la fecha de evento UTC.
 def _daily_partition(day: date) -> dict[str, str]:
     return {
         'year': f'{day.year:04d}',
@@ -108,15 +109,17 @@ def _daily_partition(day: date) -> dict[str, str]:
     }
 
 
-# Rechaza identidades ambiguas o inseguras para un directorio de Evidence.
+# Reutiliza el validador de rutas del Dataset sin normalizaciones con pérdida.
+# El contrato no acepta segmentos vacíos, barras adicionales ni rutas relativas.
 def _evidence_identity(alarm_key: str) -> tuple[str, str]:
     if not isinstance(alarm_key, str):
         raise AlarmHistoryContractError('Evidence requires a canonical alarm key')
     family, separator, rule = alarm_key.partition('/')
-    if (
-        separator != '/'
-        or _EVIDENCE_SEGMENT.fullmatch(family) is None
-        or _EVIDENCE_SEGMENT.fullmatch(rule) is None
-    ):
+    if separator != '/':
         raise AlarmHistoryContractError('Evidence key must be family/rule with safe segments')
+    try:
+        validate_identity_segment(family, field='evidence family')
+        validate_identity_segment(rule, field='evidence rule')
+    except DatasetValidationError as error:
+        raise AlarmHistoryContractError('Evidence key must be family/rule with safe segments') from error
     return family, rule

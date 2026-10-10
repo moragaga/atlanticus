@@ -8,6 +8,7 @@ import pytest
 
 from ada.alarms.history import (
     AlarmHistoryContractError,
+    AlarmHistoryMaterializer,
     evidence_definition,
     history_definition,
     history_destination,
@@ -16,6 +17,8 @@ from ada.alarms.history import (
 )
 from ada.contracts.alarms.history_projection import AlarmHistoryDomain, ProjectedAlarmHistoryFact
 from atlanticus.datasets.core import DatasetDefinition
+from atlanticus.datasets.parquet import ParquetDatasetStore
+from atlanticus.datasets.runtime import DatasetRuntime
 
 
 @pytest.fixture
@@ -73,6 +76,34 @@ def test_evidence_partition_uses_separate_family_and_rule(make_fact):
     )
 
 
+@pytest.mark.parametrize('key', [
+    'CHANCADOR/alarm-6823abff9769',
+    'molienda/regla-roja',
+    'family.name/rule-1_2',
+])
+def test_evidence_preserves_valid_dataset_identity_segments(make_fact, key):
+    definition, target = history_destination(make_fact(alarm_key=key))
+    family, rule = key.split('/')
+    assert definition.resolve_route_segments(target) == (
+        'evidence', family, rule, 'year=2026', 'month=10', 'day=10'
+    )
+
+
+def test_evidence_with_real_hyphenated_identity_publishes_and_replays(make_fact, tmp_path):
+    fact = make_fact(alarm_key='CHANCADOR/alarm-6823abff9769')
+    definition, target = history_destination(fact)
+    runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path))
+    materializer = AlarmHistoryMaterializer(runtime=runtime)
+    initial = materializer.materialize(facts=[fact])
+    assert initial.targets_committed == 1
+    replay = materializer.materialize(facts=[fact])
+    assert replay.targets_unchanged == 1
+    rows = runtime.read_table(definition=definition, target=target).table.to_pylist()
+    assert len(rows) == 1
+    assert rows[0]['alarm_key'] == 'CHANCADOR/alarm-6823abff9769'
+    assert rows[0]['historian_fact_id'] == fact.historian_fact_id
+
+
 def test_midnight_event_moves_to_next_partition(make_fact):
     start = make_fact(event_at=datetime(2026, 10, 10, 23, 59, tzinfo=UTC))
     end = make_fact(2, event_at=start.event_at_utc + timedelta(minutes=1))
@@ -82,8 +113,9 @@ def test_midnight_event_moves_to_next_partition(make_fact):
 @pytest.mark.parametrize('key', [
     None, '', 'molienda', '/presion', 'molienda/',
     'molienda/presion/alta', 'molienda/../presion',
-    'molienda/regla-roja', 'molienda/regla roja',
-    'molienda/área', 'molienda\\otra',
+    'molienda/regla roja', 'molienda/área', 'molienda\\otra',
+    'molienda/.', 'molienda/..', '-family/regla',
+    'molienda/-regla', '_family/regla',
 ])
 def test_evidence_rejects_unsafe_or_ambiguous_ids(make_fact, key):
     with pytest.raises(AlarmHistoryContractError):
