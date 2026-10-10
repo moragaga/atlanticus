@@ -1,3 +1,4 @@
+# Espejo pedagógico en español. Misma ejecución y contratos del archivo productivo.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -21,6 +22,7 @@ from ada.processes.alarm_runtime.publication import (
     AlarmDurableCurrentPublisher,
 )
 from ada.processes.alarm_runtime.publication.operational import AlarmDurablePublications
+from ada.processes.alarm_runtime.publication.output_resolved import AlarmResolvedCurrentPublisher
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -40,6 +42,7 @@ from atlanticus.runtime import (
 
 
 @dataclass(slots=True)
+# Orquesta la evaluación, publicación de estado y mantenimiento durable sin mezclar responsabilidades.
 class AlarmRuntimeComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -51,19 +54,16 @@ class AlarmRuntimeComposition:
     _last_maintenance_segment: str | None = field(default=None, init=False, repr=False)
     _last_facts_publication_at: float | None = field(default=None, init=False, repr=False)
 
-    # Al recuperar, se reconcilia toda publicación durable pendiente desde WAL.
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
         authority = self.job.recover(context)
         self.publications.reconcile(context, force=True)
         self._last_facts_publication_at = monotonic()
         return authority
 
-    # Se preserva el ritmo de evaluación y se limita únicamente la frecuencia de FACTS.
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
         self.publications.reconcile(context, publish_facts=False)
         result = self.job.run_iteration(context)
         now = monotonic()
-        # El reloj monotónico evita acoplar el intervalo de publicación al tiempo del ciclo.
         publish_facts = (
             self._last_facts_publication_at is None
             or now - self._last_facts_publication_at >= self.settings.facts_publish_interval_seconds
@@ -71,6 +71,19 @@ class AlarmRuntimeComposition:
         self.publications.reconcile(context, publish_facts=publish_facts)
         if publish_facts:
             self._last_facts_publication_at = now
+        if (
+            isinstance(result, AlarmRuntimeIterationResult)
+            and result.cycle is not None
+            and result.lifecycle is not None
+        ):
+            AlarmResolvedCurrentPublisher(
+                root=self.publications.current.root,
+                source_key=self.publications.current.source_key,
+            ).publish(
+                context=context,
+                persistence=self.publications.persistence,
+                result=result,
+            )
         head = self.publications.persistence.read_head()
         segment = None if head.durable is None else head.durable.segment_id
         if (
@@ -89,7 +102,6 @@ class AlarmRuntimeComposition:
             context.request_iteration_summary()
         return result
 
-    # Antes de compactar WAL se fuerza la publicación pendiente de FACTS.
     def checkpoint(self, context: JobRuntimeContext) -> None:
         self.publications.reconcile(context)
         self._last_facts_publication_at = monotonic()
@@ -114,6 +126,7 @@ class AlarmRuntimeComposition:
         )
 
 
+# Conecta las dependencias del motor y su lector de configuración efectiva.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
@@ -203,6 +216,7 @@ def build_composition(
     )
 
 
+# Solicita un resumen adicional ante una transición significativa del motor.
 def _notable_iteration(result: AlarmRuntimeIterationResult) -> bool:
     if result.outcome.value != 'UNCHANGED':
         return True

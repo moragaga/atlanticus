@@ -21,6 +21,7 @@ from ada.processes.alarm_runtime.publication import (
     AlarmDurableCurrentPublisher,
 )
 from ada.processes.alarm_runtime.publication.operational import AlarmDurablePublications
+from ada.processes.alarm_runtime.publication.output_resolved import AlarmResolvedCurrentPublisher
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -68,6 +69,19 @@ class AlarmRuntimeComposition:
         self.publications.reconcile(context, publish_facts=publish_facts)
         if publish_facts:
             self._last_facts_publication_at = now
+        if (
+            isinstance(result, AlarmRuntimeIterationResult)
+            and result.cycle is not None
+            and result.lifecycle is not None
+        ):
+            AlarmResolvedCurrentPublisher(
+                root=self.publications.current.root,
+                source_key=self.publications.current.source_key,
+            ).publish(
+                context=context,
+                persistence=self.publications.persistence,
+                result=result,
+            )
         head = self.publications.persistence.read_head()
         segment = None if head.durable is None else head.durable.segment_id
         if (

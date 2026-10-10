@@ -1,3 +1,4 @@
+# Espejo pedagógico en español. Misma ejecución y contratos del archivo productivo.
 from __future__ import annotations
 
 import math
@@ -18,11 +19,11 @@ METEODATA_APPLICATION_VARIABLE = 'METEODATA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'ALARM_RUNTIME_POLL_SECONDS'
 WAL_SEGMENT_BYTES_VARIABLE = 'ALARM_RUNTIME_WAL_SEGMENT_BYTES'
 CHECKPOINT_SECONDS_VARIABLE = 'ALARM_RUNTIME_CHECKPOINT_SECONDS'
-# Parámetro independiente del intervalo de evaluación y del checkpoint de WAL.
 FACTS_PUBLISH_SECONDS_VARIABLE = 'ALARM_RUNTIME_FACTS_PUBLISH_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
+# Configuración validada del proceso, con polling operacional independiente de otras cadencias.
 class AlarmRuntimeSettings:
     pi_source: PiSourceProvider
     pi_application: str
@@ -35,7 +36,6 @@ class AlarmRuntimeSettings:
     poll_interval_seconds: float
     max_wal_segment_bytes: int = 262144
     checkpoint_interval_seconds: float = 60.0
-    # El valor por defecto permite agrupar commits entre varias iteraciones.
     facts_publish_interval_seconds: float = 10.0
 
     @classmethod
@@ -54,7 +54,8 @@ class AlarmRuntimeSettings:
                 configuration.get(BLOCKGRADE_APPLICATION_VARIABLE), BLOCKGRADE_APPLICATION_VARIABLE
             ),
             remanentes_application=_optional_application(
-                configuration.get(REMANENTES_APPLICATION_VARIABLE), REMANENTES_APPLICATION_VARIABLE
+                configuration.get(REMANENTES_APPLICATION_VARIABLE),
+                REMANENTES_APPLICATION_VARIABLE,
             ),
             fabrica_planes_application=_optional_application(
                 configuration.get(FABRICA_PLANES_APPLICATION_VARIABLE),
@@ -65,8 +66,7 @@ class AlarmRuntimeSettings:
                 FABRICA_KPIS_APPLICATION_VARIABLE,
             ),
             meteodata_application=_optional_application(
-                configuration.get(METEODATA_APPLICATION_VARIABLE),
-                METEODATA_APPLICATION_VARIABLE,
+                configuration.get(METEODATA_APPLICATION_VARIABLE), METEODATA_APPLICATION_VARIABLE
             ),
             poll_interval_seconds=_positive_float(
                 configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE
@@ -86,6 +86,7 @@ class AlarmRuntimeSettings:
         )
 
 
+# Declara las variables de configuración y el polling por defecto de un segundo.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
@@ -99,7 +100,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=FABRICA_PLANES_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=FABRICA_KPIS_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=METEODATA_APPLICATION_VARIABLE, required=False),
-        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='5'),
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=WAL_SEGMENT_BYTES_VARIABLE, default='262144'),
         ConfigurationVariableSpec(key=CHECKPOINT_SECONDS_VARIABLE, default='60'),
         ConfigurationVariableSpec(key=FACTS_PUBLISH_SECONDS_VARIABLE, default='10'),

@@ -12,7 +12,7 @@ from atlanticus.operational_data.sources import PiSourceProvider
 def test_configuration_specs_include_runtime_and_operational_data_routes() -> None:
     specs = {spec.key: spec for spec in configuration_specs()}
     assert specs['ATLANTICUS_JOB_EXECUTION_DISABLED'].default == 'false'
-    assert specs['ALARM_RUNTIME_POLL_SECONDS'].default == '5'
+    assert specs['ALARM_RUNTIME_POLL_SECONDS'].default == '1'
     assert specs['PI_SOURCE'].required is True
     assert specs['PI_APPLICATION'].required is True
     assert specs['DISPATCH_APPLICATION'].required is False
