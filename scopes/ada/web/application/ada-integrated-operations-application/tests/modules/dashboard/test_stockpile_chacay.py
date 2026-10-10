@@ -15,7 +15,8 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_ROWS,
     build_stockpile_chacay,
-    map_stockpile_chacay_store,
+    decode_stockpile_chacay_store,
+    map_stockpile_chacay_readings,
     register_stockpile_chacay_callback,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.feeders import (
@@ -24,6 +25,11 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus, resolve_status_visual
 from ada.web.ui.stockpile import StockpileVariant
+
+
+def _map_stockpile(store):
+    readings, _ = decode_stockpile_chacay_store(store)
+    return map_stockpile_chacay_readings(readings)
 
 
 def _entry(value: object) -> dict[str, object]:
@@ -86,7 +92,7 @@ def test_current_keys_for_four_piles_four_rows_and_position():
 
 @pytest.mark.parametrize(('raw', 'expected'), [(str(i), i) for i in range(1, 9)])
 def test_valid_positions_preserve_business_value_and_accessible_position(raw, expected):
-    state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
+    state = _map_stockpile(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.OK
     assert state.position.value == expected
     presentation = build_stockpile_chacay(state)
@@ -96,7 +102,7 @@ def test_valid_positions_preserve_business_value_and_accessible_position(raw, ex
 
 @pytest.mark.parametrize('raw', ['0', '9', 'P1', 'abc', '1.5', '', True])
 def test_invalid_positions_preserve_status_and_present_matching_indicator(raw):
-    state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
+    state = _map_stockpile(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.INVALID
     _assert_degraded_position(build_stockpile_chacay(state), DisplayStatus.INVALID)
 
@@ -111,7 +117,7 @@ def test_invalid_positions_preserve_status_and_present_matching_indicator(raw):
     ],
 )
 def test_unavailable_store_preserves_status_across_readings(payload, expected):
-    state = map_stockpile_chacay_store(payload)
+    state = _map_stockpile(payload)
     assert state.position.status is expected
     assert all(pile.percent.status is expected for pile in state.piles)
     assert all(row.value.status is expected for row in state.rows)
@@ -119,7 +125,7 @@ def test_unavailable_store_preserves_status_across_readings(payload, expected):
 
 
 def test_independent_kpi_values_and_statuses():
-    state = map_stockpile_chacay_store(
+    state = _map_stockpile(
         _store(
             {
                 STOCKPILE_CHACAY_POSITION_KEY: _entry('8'),
@@ -167,7 +173,7 @@ def test_all_25_kpis_are_individually_inspectable():
         {definition.kpi_key: _entry('1234567890123') for definition in STOCKPILE_CHACAY_ROWS}
     )
     values[STOCKPILE_CHACAY_POSITION_KEY] = _entry('4')
-    presentation = build_stockpile_chacay(map_stockpile_chacay_store(_store(values)))
+    presentation = build_stockpile_chacay(_map_stockpile(_store(values)))
     targets = [
         node for node in _components(presentation) if hasattr(node, 'data-kpi-inspection-key')
     ]
@@ -208,7 +214,7 @@ def test_all_25_kpis_are_individually_inspectable():
 )
 def test_degraded_position_presents_corresponding_status_without_changing_value(entry, expected):
     values = {} if entry is None else {STOCKPILE_CHACAY_POSITION_KEY: entry}
-    state = map_stockpile_chacay_store(_store(values))
+    state = _map_stockpile(_store(values))
     assert state.position.status is expected
     _assert_degraded_position(build_stockpile_chacay(state), expected)
 
@@ -232,9 +238,12 @@ def test_callback_consumes_existing_plant_store_and_renders_first_card():
     dash_app = DashStub()
     register_stockpile_chacay_callback(dash_app, tool_key='integrated_operations')
     assert dash_app.args[0].component_id == dashboard_card_content_id('stockpile_chacay')
-    assert dash_app.args[1].component_id == component_kpi_store_id(
+    assert dash_app.args[1].component_id == dashboard_card_content_id('tendencia_alimentado')
+    assert dash_app.args[2].component_id == component_kpi_store_id(
         'integrated_operations', STOCKPILE_CHACAY.tool_component_key
     )
     result = dash_app.render(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry('3')}))
-    assert isinstance(result, Component)
-    assert getattr(_position_presentation(result), 'aria-label') == 'Posición del carro: P3'
+    assert isinstance(result, tuple) and len(result) == 2
+    assert isinstance(result[0], Component)
+    assert isinstance(result[1], Component)
+    assert getattr(_position_presentation(result[0]), 'aria-label') == 'Posición del carro: P3'

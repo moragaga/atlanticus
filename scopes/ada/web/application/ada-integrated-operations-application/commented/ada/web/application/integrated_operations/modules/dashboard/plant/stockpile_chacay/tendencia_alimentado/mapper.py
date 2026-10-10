@@ -1,10 +1,9 @@
-# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
+# La tendencia utiliza el último valor ya decodificado y conserva la validación histórica por serie.
 from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
@@ -14,41 +13,17 @@ from .models import AlimentadoTrendReading
 _STEP_SECONDS = 120
 
 
-def map_tendencia_alimentado_store(store_data: object) -> tuple[AlimentadoTrendReading, ...]:
-    data = store_data if isinstance(store_data, Mapping) else None
-    latest = data.get('latest') if data is not None else None
-    timeseries = data.get('timeseries') if data is not None else None
+def map_tendencia_alimentado_readings(
+    readings: Mapping[str, DisplayValue], timeseries: object
+) -> tuple[AlimentadoTrendReading, ...]:
     return tuple(
         AlimentadoTrendReading(
             definition=definition,
-            current=_current(latest, definition.kpi_key),
+            current=readings[definition.kpi_key],
             history=_history(timeseries, definition.kpi_key),
         )
         for definition in ALIMENTADO_TRENDS
     )
-
-
-def _current(latest: object, key: str) -> DisplayValue:
-    if latest is None:
-        return DisplayValue.not_mapped()
-    if not isinstance(latest, Mapping) or not isinstance(latest.get('values'), Mapping):
-        return DisplayValue.invalid()
-    values = latest['values']
-    decoded = decode_kpi_latest_value(values.get(key), present=key in values)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.ERROR:
-        return DisplayValue.error()
-    if decoded.state is not KpiLatestValueState.OK:
-        return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
-        return DisplayValue.invalid()
-    if not isinstance(decoded.parsed_value, str | int | float):
-        return DisplayValue.invalid()
-    text = str(decoded.parsed_value).strip()
-    return DisplayValue.ok(text) if text else DisplayValue.invalid()
 
 
 def _utc(value: object) -> datetime:
@@ -96,6 +71,6 @@ def _history(timeseries: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), value)
             for index, value in enumerate(values)
         )
-    except KeyError, TypeError, ValueError, OverflowError:
+    except (KeyError, TypeError, ValueError, OverflowError):
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dash import html
 from dash.development.base_component import Component
 
@@ -15,6 +17,14 @@ from .stockpile.definitions import (
     STOCKPILE_CHACAY_ROWS,
 )
 from .stockpile.models import ChacayMetric, StockpileChacayState
+from .tendencia_alimentado.models import AlimentadoTrendReading
+from .tendencia_alimentado.presentation import build_tendencia_alimentado
+
+
+def build_stockpile_chacay_cards(
+    *, stockpile: StockpileChacayState, tendencia: Sequence[AlimentadoTrendReading]
+) -> tuple[Component, Component]:
+    return build_stockpile_chacay(stockpile), build_tendencia_alimentado(tendencia)
 
 
 def build_stockpile_chacay(state: StockpileChacayState) -> Component:
@@ -46,7 +56,9 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
 
 def _position(value: DisplayValue) -> Component:
     active = value.value if value.status is DisplayStatus.OK else 1
-    positions = [_position_item(value, active, number) for number in STOCKPILE_CHACAY_POSITIONS]
+    positions = [
+        _position_item(value, active, number) for number in STOCKPILE_CHACAY_POSITIONS
+    ]
     label = (
         f'Posición del carro: P{active}'
         if value.status is DisplayStatus.OK

@@ -8,16 +8,27 @@ from dash.development.base_component import Component
 
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay import (
     build_stockpile_chacay,
-    map_stockpile_chacay_store,
+    decode_stockpile_chacay_store,
+    map_stockpile_chacay_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.feeders import (
     STOCKPILE_CHACAY_FEEDER_GROUPS,
     ChacayFeederDefinition,
     build_chacay_feeders,
-    map_chacay_feeders_store,
+    map_chacay_feeders_readings,
 )
 from ada.web.ui.display_status import DisplayStatus, resolve_status_visual
 from ada.web.ui.feeder import FeederColor
+
+
+def _map_stockpile(store):
+    readings, _ = decode_stockpile_chacay_store(store)
+    return map_stockpile_chacay_readings(readings)
+
+
+def _map_feeders(store, definitions=STOCKPILE_CHACAY_FEEDER_GROUPS):
+    readings, _ = decode_stockpile_chacay_store(store, feeder_definitions=definitions)
+    return map_chacay_feeders_readings(readings, definitions)
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -66,7 +77,7 @@ def test_existing_four_lines_preserve_all_sixteen_reference_keys():
 )
 def test_numeric_values_are_preserved_and_zero_is_valid(raw, expected):
     key = STOCKPILE_CHACAY_FEEDER_GROUPS[0][0].value_kpi_key
-    result = map_chacay_feeders_store(_store({key: _ok(raw)}))
+    result = _map_feeders(_store({key: _ok(raw)}))
     assert result[0][0].value.status is DisplayStatus.OK
     assert result[0][0].value.value == expected
 
@@ -74,7 +85,7 @@ def test_numeric_values_are_preserved_and_zero_is_valid(raw, expected):
 @pytest.mark.parametrize('raw', [True, -1, 'abc', '', 'NaN', 'Infinity'])
 def test_invalid_numeric_readings_do_not_become_zero(raw):
     key = STOCKPILE_CHACAY_FEEDER_GROUPS[0][0].value_kpi_key
-    result = map_chacay_feeders_store(_store({key: _ok(raw)}))
+    result = _map_feeders(_store({key: _ok(raw)}))
     assert result[0][0].value.status is DisplayStatus.INVALID
 
 
@@ -98,7 +109,7 @@ def test_each_feeder_preserves_its_own_degraded_state():
         },
         keys[3]: _ok(''),
     }
-    groups = map_chacay_feeders_store(_store(values))
+    groups = _map_feeders(_store(values))
     statuses = [item.value.status for group in groups for item in group]
     assert statuses == [
         DisplayStatus.OK,
@@ -118,27 +129,27 @@ def test_each_feeder_preserves_its_own_degraded_state():
     ],
 )
 def test_unavailable_store_propagates_shared_status(source, status):
-    groups = map_chacay_feeders_store(source)
+    groups = _map_feeders(source)
     assert all(reading.value.status is status for group in groups for reading in group)
 
 
 def test_optional_color_is_separate_from_numeric_value():
     key = STOCKPILE_CHACAY_FEEDER_GROUPS[0][0].value_kpi_key
     definitions = ((ChacayFeederDefinition(key, color_kpi_key='feeder_color_example'),),)
-    result = map_chacay_feeders_store(
+    result = _map_feeders(
         _store({key: _ok('15.25'), 'feeder_color_example': _ok('2')}),
         definitions,
     )
     assert result[0][0].value.value == Decimal('15.25')
     assert result[0][0].color is FeederColor.WARNING
-    other = map_chacay_feeders_store(_store({key: _ok('15.25')}), definitions)
+    other = _map_feeders(_store({key: _ok('15.25')}), definitions)
     assert other[0][0].color is None
 
 
 def test_sixteen_feeder_kpis_remain_inspectable_in_the_card():
     keys = [item.value_kpi_key for group in STOCKPILE_CHACAY_FEEDER_GROUPS for item in group]
     values = {key: _ok(str(index * 6)) for index, key in enumerate(keys)}
-    root = build_stockpile_chacay(map_stockpile_chacay_store(_store(values)))
+    root = build_stockpile_chacay(_map_stockpile(_store(values)))
     targets = [
         item for item in _walk(root) if getattr(item, 'data-kpi-inspection-key', None) is not None
     ]
@@ -148,7 +159,7 @@ def test_sixteen_feeder_kpis_remain_inspectable_in_the_card():
 
 
 def test_degraded_feeders_use_the_shared_status_icons():
-    content = build_chacay_feeders(map_chacay_feeders_store(_store({})))
+    content = build_chacay_feeders(_map_feeders(_store({})))
     icons = [node for node in _walk(content) if isinstance(node, html.Img)]
     assert len(icons) == 16
     assert all(icon.alt == resolve_status_visual(DisplayStatus.NOT_MAPPED).alt for icon in icons)

@@ -1,4 +1,7 @@
+# Un único ensamblador compone Stockpile y Tendencia, sin modificar la presentación interna de las tarjetas.
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 from dash import html
 from dash.development.base_component import Component
@@ -15,9 +18,16 @@ from .stockpile.definitions import (
     STOCKPILE_CHACAY_ROWS,
 )
 from .stockpile.models import ChacayMetric, StockpileChacayState
+from .tendencia_alimentado.models import AlimentadoTrendReading
+from .tendencia_alimentado.presentation import build_tendencia_alimentado
 
 
-# Toda la composición HTML se mantiene fuera del callback.
+def build_stockpile_chacay_cards(
+    *, stockpile: StockpileChacayState, tendencia: Sequence[AlimentadoTrendReading]
+) -> tuple[Component, Component]:
+    return build_stockpile_chacay(stockpile), build_tendencia_alimentado(tendencia)
+
+
 def build_stockpile_chacay(state: StockpileChacayState) -> Component:
     if not isinstance(state, StockpileChacayState):
         raise TypeError('state must be StockpileChacayState')
@@ -45,18 +55,11 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
     )
 
 
-# La vía tiene ocho ejes fijos.
-# Las líneas de descarga solo se muestran en la posición par activa.
-# En posición impar, el carro vacío se muestra arriba; en posición par,
-# el carro cargado se dibuja invertido por debajo, simulando descarga.
-# Una lectura degradada usa P1 como referencia visual, mostrando el icono original de estado.
-# No se altera el estado persistido ni el resultado del mapper.
-# La posición es una lectura funcional; los estados degradados se muestran en P1.
-# La ubicación de cada carro y el conector condicional pertenecen al CSS.
-# El espejo preserva exactamente el contrato y los resultados del código productivo.
 def _position(value: DisplayValue) -> Component:
     active = value.value if value.status is DisplayStatus.OK else 1
-    positions = [_position_item(value, active, number) for number in STOCKPILE_CHACAY_POSITIONS]
+    positions = [
+        _position_item(value, active, number) for number in STOCKPILE_CHACAY_POSITIONS
+    ]
     label = (
         f'Posición del carro: P{active}'
         if value.status is DisplayStatus.OK
@@ -132,7 +135,6 @@ def _pile(definition, reading) -> Component:
     )
 
 
-# Cada lectura inferior se puede inspeccionar individualmente.
 def _row(metric: ChacayMetric) -> Component:
     return html.Div(
         [
@@ -156,7 +158,6 @@ def _display(value: DisplayValue) -> str | Component:
     return _status(value, 'value')
 
 
-# Los errores usan la iconografía compartida de ADA.
 def _status(value: DisplayValue, kind: str) -> Component:
     icon = build_display_status_icon(
         value.status,

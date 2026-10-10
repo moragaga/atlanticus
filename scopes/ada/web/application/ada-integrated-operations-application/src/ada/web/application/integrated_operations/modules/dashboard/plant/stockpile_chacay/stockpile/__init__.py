@@ -5,7 +5,7 @@ from .definitions import (
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
-from .mapper import map_stockpile_chacay_store
+from .mapper import map_stockpile_chacay_readings
 from .models import ChacayMetric, StockpileChacayState
 
 __all__ = [
@@ -16,5 +16,5 @@ __all__ = [
     'STOCKPILE_CHACAY_ROWS',
     'ChacayMetric',
     'StockpileChacayState',
-    'map_stockpile_chacay_store',
+    'map_stockpile_chacay_readings',
 ]

@@ -1,4 +1,5 @@
-# Superficie pública del componente genérico de series temporales.
-from .runtime import register_tendencia_alimentado_callback
+# Tendencia se presenta desde el callback único de Stockpile Chacay.
+from .mapper import map_tendencia_alimentado_readings
+from .presentation import build_tendencia_alimentado
 
-__all__ = ['register_tendencia_alimentado_callback']
+__all__ = ['build_tendencia_alimentado', 'map_tendencia_alimentado_readings']

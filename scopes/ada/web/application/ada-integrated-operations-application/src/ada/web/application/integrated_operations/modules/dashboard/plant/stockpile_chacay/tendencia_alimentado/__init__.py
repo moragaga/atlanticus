@@ -1,3 +1,4 @@
-from .runtime import register_tendencia_alimentado_callback
+from .mapper import map_tendencia_alimentado_readings
+from .presentation import build_tendencia_alimentado
 
-__all__ = ['register_tendencia_alimentado_callback']
+__all__ = ['build_tendencia_alimentado', 'map_tendencia_alimentado_readings']
