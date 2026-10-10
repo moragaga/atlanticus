@@ -1,6 +1,14 @@
-from .definitions import STC_INDICATORS, STC_LEVELS, STC_ESPESADOR
-from .mapper import map_stc_store
+# Versión pedagógica: STC mantiene los indicadores, espesador y niveles y elimina su callback independiente.
+from .definitions import STC_ESPESADOR, STC_INDICATORS, STC_LEVELS
+from .mapper import map_stc_readings
+from .models import StcReading
 from .presentation import build_stc
-from .runtime import register_stc_callback
 
-__all__ = ['STC_INDICATORS', 'STC_LEVELS', 'STC_ESPESADOR', 'build_stc', 'map_stc_store', 'register_stc_callback']
+__all__ = [
+    'STC_INDICATORS',
+    'STC_LEVELS',
+    'STC_ESPESADOR',
+    'StcReading',
+    'build_stc',
+    'map_stc_readings',
+]

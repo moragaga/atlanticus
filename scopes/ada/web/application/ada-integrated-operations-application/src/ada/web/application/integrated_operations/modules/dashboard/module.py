@@ -27,17 +27,8 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.molienda 
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
     register_stockpile_chacay_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.sta.runtime import (
-    register_sta_callback,
-)
-from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.stc.runtime import (
-    register_stc_callback,
-)
-from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.str import (
-    register_str_callback,
-)
-from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.tranque.runtime import (
-    register_tranque_callback,
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos import (
+    register_transporte_fluidos_callback,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
@@ -79,10 +70,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_flotacion_callback(dash_app, tool_key=tool_key)
-            register_str_callback(dash_app, tool_key=tool_key)
-            register_stc_callback(dash_app, tool_key=tool_key)
-            register_tranque_callback(dash_app, tool_key=tool_key)
-            register_sta_callback(dash_app, tool_key=tool_key)
+            register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

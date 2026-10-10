@@ -8,38 +8,36 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     TRANSPORTE_FLUIDOS,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos import (
+    register_transporte_fluidos_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.decoder import (
+    decode_transporte_fluidos_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.sta import (
     STA_INDICATORS,
     build_sta,
-    map_sta_store,
-    register_sta_callback,
+    map_sta_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.stc import (
     STC_ESPESADOR,
     STC_INDICATORS,
     STC_LEVELS,
     build_stc,
-    map_stc_store,
-    register_stc_callback,
+    map_stc_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.tranque import (
     TRANQUE_INDICATORS,
     build_tranque,
-    map_tranque_store,
-    register_tranque_callback,
+    map_tranque_readings,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
 
 
 def _entry(value):
-    return {
-        'status': 'ok',
-        'value_kind': 'value',
-        'value': str(value),
-        'value_type': 'text',
-        'parsed_value': str(value),
-    }
+    return {'status': 'ok', 'value_kind': 'value', 'value': str(value),
+            'value_type': 'text', 'parsed_value': str(value)}
 
 
 def _store():
@@ -91,7 +89,7 @@ def test_current_stc_thickener_and_level_keys():
     assert STC_ESPESADOR.label == 'TK-711'
     assert [item.label for item in STC_ESPESADOR.metrics] == ['Altura', 'Torque', 'Flujo', 'Sólido']
     assert [item.level_key for item in STC_LEVELS] == ['nivel_tk_020_inst', 'nivel_tk_021_inst']
-    data = map_stc_store(_store())
+    data = map_stc_readings(decode_transporte_fluidos_store(_store()))
     assert data.espesador.feed.value == 'operando'
     assert data.levels[0].level.value == '55'
     assert data.levels[0].tone == 'warning'
@@ -103,13 +101,10 @@ def test_unmapped_feed_and_levels_are_not_faked():
     del values[STC_ESPESADOR.feed_key]
     del values[STC_LEVELS[0].state_key]
     values[STC_LEVELS[1].level_key] = {
-        'status': 'error',
-        'value_kind': 'json',
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'error', 'value_kind': 'json', 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
-    result = map_stc_store(data)
+    result = map_stc_readings(decode_transporte_fluidos_store(data))
     assert result.espesador.feed.status is DisplayStatus.NOT_MAPPED
     assert result.levels[0].state.status is DisplayStatus.NOT_MAPPED
     assert result.levels[1].level.status is DisplayStatus.ERROR
@@ -118,22 +113,20 @@ def test_unmapped_feed_and_levels_are_not_faked():
 def test_invalid_feed_does_not_become_detenido():
     data = _store()
     data['latest']['values'][STC_ESPESADOR.feed_key] = _entry('unknown')
-    assert map_stc_store(data).espesador.feed.status is DisplayStatus.INVALID
+    assert map_stc_readings(decode_transporte_fluidos_store(data)).espesador.feed.status is DisplayStatus.INVALID
 
 
 def test_metric_status_independence():
     data = _store()
     del data['latest']['values'][STA_INDICATORS[0].kpi_key]
     data['latest']['values'][TRANQUE_INDICATORS[1].kpi_key] = {
-        'status': 'missing',
-        'value_kind': None,
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'missing', 'value_kind': None, 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
-    assert map_sta_store(data)[0].value.status is DisplayStatus.NOT_MAPPED
-    assert map_tranque_store(data)[1].value.status is DisplayStatus.EMPTY
-    assert map_stc_store(data).indicators[0].value.status is DisplayStatus.OK
+    readings = decode_transporte_fluidos_store(data)
+    assert map_sta_readings(readings)[0].value.status is DisplayStatus.NOT_MAPPED
+    assert map_tranque_readings(readings)[1].value.status is DisplayStatus.EMPTY
+    assert map_stc_readings(readings).indicators[0].value.status is DisplayStatus.OK
 
 
 def _inspection_keys(root):
@@ -145,18 +138,18 @@ def _inspection_keys(root):
 
 
 def test_inspection_of_all_current_keys():
-    data = _store()
-    keys = _inspection_keys(build_stc(map_stc_store(data)))
+    readings = decode_transporte_fluidos_store(_store())
+    keys = _inspection_keys(build_stc(map_stc_readings(readings)))
     expected = {item.kpi_key for item in (*STC_INDICATORS, *STC_ESPESADOR.metrics)}
     expected.update((STC_ESPESADOR.state_key, STC_ESPESADOR.feed_key))
     expected.update(item.level_key for item in STC_LEVELS)
     assert set(keys) == expected
     assert len(keys) == len(set(keys))
     for definitions, mapping, builder in (
-        (TRANQUE_INDICATORS, map_tranque_store, build_tranque),
-        (STA_INDICATORS, map_sta_store, build_sta),
+        (TRANQUE_INDICATORS, map_tranque_readings, build_tranque),
+        (STA_INDICATORS, map_sta_readings, build_sta),
     ):
-        keys = _inspection_keys(builder(mapping(data)))
+        keys = _inspection_keys(builder(mapping(readings)))
         assert keys == [item.kpi_key for item in definitions]
 
 
@@ -167,24 +160,19 @@ class DashStub:
 
     def callback(self, *args):
         self.args = args
-
         def register(fn):
             self.renderer = fn
             return fn
-
         return register
 
 
 def test_callbacks_read_shared_fluid_store_without_new_collector():
-    for key, registration in (
-        ('stc', register_stc_callback),
-        ('tranque', register_tranque_callback),
-        ('sta', register_sta_callback),
-    ):
-        app = DashStub()
-        registration(app, tool_key='operations')
-        assert app.args[0].component_id == dashboard_card_content_id(key)
-        assert app.args[1].component_id == component_kpi_store_id(
-            'operations', TRANSPORTE_FLUIDOS.tool_component_key
-        )
-        assert isinstance(app.renderer(_store()), Component)
+    app = DashStub()
+    register_transporte_fluidos_callback(app, tool_key='operations')
+    assert [item.component_id for item in app.args[:4]] == [
+        dashboard_card_content_id(key) for key in ('str', 'stc', 'tranque', 'sta')
+    ]
+    assert app.args[4].component_id == component_kpi_store_id(
+        'operations', TRANSPORTE_FLUIDOS.tool_component_key
+    )
+    assert len(app.renderer(_store())) == 4

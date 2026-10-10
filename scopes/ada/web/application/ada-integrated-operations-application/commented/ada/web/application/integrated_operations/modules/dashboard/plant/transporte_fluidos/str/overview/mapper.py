@@ -1,12 +1,10 @@
+# Versión pedagógica: Latest llega preparado; solamente STR interpreta Timeseries y valida intervalos de 120 segundos.
 from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
-from ada.web.kpis.readings import (
-    read_component_latest,
-)
-from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
 from .definitions import STR_TREND
@@ -15,11 +13,11 @@ from .models import StrOverviewReading
 _STEP_SECONDS = 120
 
 
-# El valor actual usa el lector común; la serie temporal mantiene su contrato propio.
-def map_str_overview_store(store_data: object) -> StrOverviewReading:
-    source = read_component_latest(store_data)
+def map_str_overview_readings(
+    readings: Mapping[str, DisplayValue], store_data: object
+) -> StrOverviewReading:
     return StrOverviewReading(
-        current=source.text(STR_TREND.kpi_key),
+        current=readings[STR_TREND.kpi_key],
         history=_history(store_data),
     )
 

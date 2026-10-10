@@ -1,7 +1,6 @@
-# Versión pedagógica: conserva literalmente la lógica y contratos del módulo productivo.
-
+# Versión pedagógica: Los espesadores de STR consumen el mapa común de lecturas.
 from .definitions import STR_ESPESADORES
-from .mapper import map_str_espesadores_store
+from .mapper import map_str_espesadores_readings
 from .models import StrEspesadorReading
 from .presentation import build_str_espesadores
 
@@ -9,5 +8,5 @@ __all__ = [
     'STR_ESPESADORES',
     'StrEspesadorReading',
     'build_str_espesadores',
-    'map_str_espesadores_store',
+    'map_str_espesadores_readings',
 ]

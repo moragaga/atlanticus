@@ -1,17 +1,15 @@
+# Versión pedagógica: El mapeo de indicadores usa las lecturas preparadas, sin acceder de nuevo al Store.
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
-from ada.web.kpis.readings import (
-    KpiLatestReadings,
-)
+from ada.web.ui.display_status import DisplayValue
 
 from .definitions import FluidMetricDefinition
 from .models import FluidMetricReading
 
 
-# Cada KPI se lee desde el contrato compartido; los estados degradados permanecen independientes.
 def map_metrics(
-    source: KpiLatestReadings, definitions: Sequence[FluidMetricDefinition]
+    readings: Mapping[str, DisplayValue], definitions: Sequence[FluidMetricDefinition]
 ) -> tuple[FluidMetricReading, ...]:
-    return tuple(FluidMetricReading(item, source.text(item.kpi_key)) for item in definitions)
+    return tuple(FluidMetricReading(item, readings[item.kpi_key]) for item in definitions)

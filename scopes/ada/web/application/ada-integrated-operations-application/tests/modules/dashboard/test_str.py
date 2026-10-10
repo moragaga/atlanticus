@@ -10,15 +10,20 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     TRANSPORTE_FLUIDOS,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos import (
+    register_transporte_fluidos_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.decoder import (
+    decode_transporte_fluidos_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.str import (
     DUCTOS,
     STR_ESPESADORES,
     STR_TREND,
     build_str,
-    map_str_ductos_store,
-    map_str_espesadores_store,
-    map_str_overview_store,
-    register_str_callback,
+    map_str_ductos_readings,
+    map_str_espesadores_readings,
+    map_str_overview_readings,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -68,6 +73,10 @@ def _store() -> dict[str, object]:
     }
 
 
+def _overview(store):
+    return map_str_overview_readings(decode_transporte_fluidos_store(store), store)
+
+
 def _walk(item):
     if isinstance(item, Component):
         yield item
@@ -101,10 +110,10 @@ def test_old_trend_and_current_equipment_contracts():
 
 
 def test_latest_mappings_preserve_independent_state_and_numbers():
-    overview = map_str_overview_store(_store())
-    tanks = map_str_espesadores_store(_store())
-    ducts = map_str_ductos_store(_store())
-    assert overview.current.value == '345.6'
+    readings = decode_transporte_fluidos_store(_store())
+    tanks = map_str_espesadores_readings(readings)
+    ducts = map_str_ductos_readings(readings)
+    assert readings[STR_TREND.kpi_key].value == '345.6'
     assert [item.feed.value for item in tanks] == ['operando', 'detenido', 'detenido']
     assert len(tanks) == 3
     assert [item.value.value for item in tanks[0].metrics] == ['50'] * 4
@@ -116,7 +125,7 @@ def test_latest_mappings_preserve_independent_state_and_numbers():
 
 
 def test_history_null_samples_and_utc_bounds():
-    history = map_str_overview_store(_store()).history
+    history = _overview(_store()).history
     assert history.status is DisplayStatus.OK
     assert len(history.points) == 30
     assert [point.value for point in history.points[:4]] == [None, 0.0, 9.5, None]
@@ -127,7 +136,7 @@ def test_history_null_samples_and_utc_bounds():
 def test_invalid_history_does_not_invalidate_latest():
     data = _store()
     data['timeseries']['series'][STR_TREND.kpi_key]['values'][1] = 'bad'
-    reading = map_str_overview_store(data)
+    reading = _overview(data)
     assert reading.history.status is DisplayStatus.INVALID
     assert reading.current.value == '345.6'
 
@@ -137,28 +146,21 @@ def test_missing_and_unknown_states_are_not_operando_or_detenido():
     values = data['latest']['values']
     values.pop(STR_ESPESADORES[0].feed_kpi_key)
     values[STR_ESPESADORES[1].feed_kpi_key] = {
-        'status': 'missing',
-        'value_kind': None,
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'missing', 'value_kind': None, 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
     values[STR_ESPESADORES[2].feed_kpi_key] = _entry('another state')
     values[DUCTOS[0].state_kpi_key] = _entry('unknown')
     values.pop(DUCTOS[1].state_kpi_key)
     values[DUCTOS[0].pumps[0].state_kpi_key] = {
-        'status': 'error',
-        'value_kind': 'json',
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'error', 'value_kind': 'json', 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
-    tanks = map_str_espesadores_store(data)
-    ducts = map_str_ductos_store(data)
+    readings = decode_transporte_fluidos_store(data)
+    tanks = map_str_espesadores_readings(readings)
+    ducts = map_str_ductos_readings(readings)
     assert [item.feed.status for item in tanks] == [
-        DisplayStatus.NOT_MAPPED,
-        DisplayStatus.EMPTY,
-        DisplayStatus.INVALID,
+        DisplayStatus.NOT_MAPPED, DisplayStatus.EMPTY, DisplayStatus.INVALID,
     ]
     assert ducts[0].state.value == 'unknown'
     assert ducts[1].state.status is DisplayStatus.NOT_MAPPED
@@ -170,25 +172,22 @@ def test_degraded_metric_and_missing_delivery_are_independent():
     data = _store()
     data['latest']['values'].pop(STR_ESPESADORES[1].metrics[0].kpi_key)
     data['latest']['values'][DUCTOS[0].solids_in_kpi_key] = {
-        'status': 'error',
-        'value_kind': 'json',
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'error', 'value_kind': 'json', 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
-    assert map_str_espesadores_store(data)[1].metrics[0].value.status is DisplayStatus.NOT_MAPPED
-    assert map_str_ductos_store(data)[0].solids_in.status is DisplayStatus.ERROR
-    assert (
-        map_str_overview_store({'latest': {'values': {}}}).history.status
-        is DisplayStatus.NOT_MAPPED
-    )
+    readings = decode_transporte_fluidos_store(data)
+    assert map_str_espesadores_readings(readings)[1].metrics[0].value.status is DisplayStatus.NOT_MAPPED
+    assert map_str_ductos_readings(readings)[0].solids_in.status is DisplayStatus.ERROR
+    assert _overview({'latest': {'values': {}}}).history.status is DisplayStatus.NOT_MAPPED
 
 
 def test_all_latest_keys_are_inspectable_once():
+    data = _store()
+    readings = decode_transporte_fluidos_store(data)
     root = build_str(
-        map_str_overview_store(_store()),
-        map_str_espesadores_store(_store()),
-        map_str_ductos_store(_store()),
+        map_str_overview_readings(readings, data),
+        map_str_espesadores_readings(readings),
+        map_str_ductos_readings(readings),
     )
     nodes = [node for node in _walk(root) if getattr(node, 'data-kpi-inspection-key', None)]
     keys = [getattr(node, 'data-kpi-inspection-key') for node in nodes]
@@ -211,19 +210,21 @@ class DashStub:
 
     def callback(self, *args):
         self.args = args
-
         def register(fn):
             self.render = fn
             return fn
-
         return register
 
 
 def test_callback_uses_transporte_fluidos_store():
     app = DashStub()
-    register_str_callback(app, tool_key='integrated_operations')
-    assert app.args[0].component_id == dashboard_card_content_id('str')
-    assert app.args[1].component_id == component_kpi_store_id(
+    register_transporte_fluidos_callback(app, tool_key='integrated_operations')
+    assert [arg.component_id for arg in app.args[:4]] == [
+        dashboard_card_content_id(key) for key in ('str', 'stc', 'tranque', 'sta')
+    ]
+    assert app.args[4].component_id == component_kpi_store_id(
         'integrated_operations', TRANSPORTE_FLUIDOS.tool_component_key
     )
-    assert isinstance(app.render(_store()), Component)
+    children = app.render(_store())
+    assert len(children) == 4
+    assert all(isinstance(child, Component) for child in children)
