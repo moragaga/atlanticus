@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from ada.alarms.core import (
     DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS,
     AlarmEvaluation,
+    CascadeSuppression,
     EvidenceContractRef,
     GroupLifecycleDecision,
     GroupLifecycleState,
@@ -73,6 +74,7 @@ def prepare_group_commit(
     evidence_sampling_interval_seconds: int = DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS,
     technical_evidence_contract: EvidenceContractRef | None = None,
     previous_priority_resolution: GroupPriorityResolution | None = None,
+    previous_cascade_suppressions: tuple[CascadeSuppression, ...] | None = None,
 ) -> PreparedGroupCommit | None:
     if not isinstance(previous_state, GroupLifecycleState):
         raise TypeError('previous_state must be GroupLifecycleState')
@@ -128,6 +130,7 @@ def prepare_group_commit(
         evidence_sampling_interval_seconds=evidence_sampling_interval_seconds,
         technical_evidence_contract=technical_evidence_contract,
         previous_priority_resolution=previous_priority_resolution,
+        previous_cascade_suppressions=previous_cascade_suppressions,
     )
     if materialized is None and not technical_incident_changes:
         return None

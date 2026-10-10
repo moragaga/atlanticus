@@ -21,6 +21,7 @@ from ada.alarms.core.models import (
     AlarmEvaluation,
     AssignmentChange,
     AssignmentChangeKind,
+    CascadeSuppression,
     DeactivationDecisionOutcome,
     DeactivationEffectChangeKind,
     DeactivationRequest,
@@ -534,6 +535,7 @@ def materialize_group_commit(
     evidence_sampling_interval_seconds: int = DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS,
     technical_evidence_contract: EvidenceContractRef | None = None,
     previous_priority_resolution: GroupPriorityResolution | None = None,
+    previous_cascade_suppressions: tuple[CascadeSuppression, ...] | None = None,
 ) -> GroupCommitMaterialization | None:
     if not isinstance(previous_state, GroupLifecycleState):
         raise TypeError('previous_state must be a GroupLifecycleState')
@@ -567,6 +569,7 @@ def materialize_group_commit(
         state=evidence.state,
         cycle_at=cycle_at,
         previous_priority_resolution=previous_priority_resolution,
+        previous_cascade_suppressions=previous_cascade_suppressions,
     )
     runtime_state_updates = _runtime_state_updates(previous_state, evidence.state)
     occurrence_changes = tuple(

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
-from ada.alarms.core import GroupLifecycleState
+from ada.alarms.core import GroupLifecycleState, resolve_management_cascades
 from ada.alarms.persistence.operational.core_commit_bridge import prepare_group_commit
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycleResult
 from ada.processes.alarm_runtime.durable_recovery import RecoveredAlarmAuthority
@@ -104,6 +104,20 @@ class AlarmDurableCycleCommitter:
                 item for item in cycle.evaluations
                 if known.get(item.alarm_identity) == group_key
             )
+            planned = tuple(
+                plan for plan in previous.configuration.planned_alarms
+                if plan.priority_group == group_key
+            )
+            previous_evaluations = (
+                alarm.last_evaluation.evaluated_at
+                for alarm in old.alarms if alarm.last_evaluation is not None
+            )
+            prior_at = max(previous_evaluations, default=cycle.cycle_at)
+            if prior_at > cycle.cycle_at:
+                raise AlarmRuntimeDurabilityError('Prior cascade state is ahead of cycle')
+            previous_cascades = resolve_management_cascades(
+                old, planned_alarms=planned, at=prior_at
+            )
             prepared = prepare_group_commit(
                 previous_snapshot=snapshot,
                 previous_state=old,
@@ -117,6 +131,7 @@ class AlarmDurableCycleCommitter:
                 tool_registry_revision=reference.confirmed_tool_catalog_revision,
                 runtime_artifact_version=RUNTIME_ARTIFACT_VERSION,
                 previous_priority_resolution=None,
+                previous_cascade_suppressions=previous_cascades,
             )
             if prepared is None:
                 if group.decision.state != old:

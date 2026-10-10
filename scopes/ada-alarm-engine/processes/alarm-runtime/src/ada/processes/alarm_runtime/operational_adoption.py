@@ -8,6 +8,7 @@ from ada.alarms.core import (
     OccurrenceClosureReason,
     reconcile_group_configuration,
     reduce_initial_technical_incidents,
+    resolve_management_cascades,
 )
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.alarms.persistence.operational import (
@@ -157,6 +158,18 @@ def prepare_operational_adoption(
             for incident in incident_reduction.open_incidents
             if incident.priority_group == group
         )
+        source_plans = tuple(
+            item for item in previous.configuration.planned_alarms
+            if item.priority_group == group
+        )
+        previous_evaluations = (
+            alarm.last_evaluation.evaluated_at
+            for alarm in prior.alarms if alarm.last_evaluation is not None
+        )
+        previous_cascades = resolve_management_cascades(
+            prior, planned_alarms=source_plans,
+            at=max(previous_evaluations, default=cycle_at),
+        )
         operational_change = bool(
             decision.state != prior
             or decision.occurrence_changes
@@ -166,6 +179,7 @@ def prepare_operational_adoption(
             or decision.deactivation_effect_changes
             or decision.reappearance_changes
             or decision.cascade_suppressions
+            or previous_cascades != decision.cascade_suppressions
             or decision.assignment_changes
             or group_changes
         )
@@ -182,6 +196,7 @@ def prepare_operational_adoption(
                 alarm_configuration_revision=target_ref.alarm_configuration_revision,
                 tool_registry_revision=target_ref.confirmed_tool_catalog_revision,
                 runtime_artifact_version=runtime_artifact_version,
+                previous_cascade_suppressions=previous_cascades,
             )
             if prepared is None:
                 raise ValueError('operational adoption could not materialize lifecycle changes')

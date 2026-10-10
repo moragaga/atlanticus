@@ -7,6 +7,7 @@ from ada.alarms.core.errors import AlarmContractError
 from ada.alarms.core.models import (
     AlarmPriorityDecision,
     AssignmentChangeKind,
+    CascadeSuppression,
     DeactivationEffectChangeKind,
     GroupLifecycleDecision,
     GroupLifecycleState,
@@ -30,6 +31,10 @@ class JourneyEvent:
     occurrence_id: str | None = None
     episode_id: str | None = None
     tool_key: str | None = None
+    cascade_source_alarm_key: str | None = None
+    cascade_source_occurrence_id: str | None = None
+    cascade_management_effect_id: str | None = None
+    cascade_deactivation_effect_id: str | None = None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.event_id, 'event_id')
@@ -37,10 +42,37 @@ class JourneyEvent:
         _require_utc_datetime(self.effective_at, 'effective_at')
         if not isinstance(self.alarm_identity, AlarmIdentity):
             raise TypeError('alarm_identity must be an AlarmIdentity')
-        for name in ('occurrence_id', 'episode_id', 'tool_key'):
+        for name in (
+            'occurrence_id',
+            'episode_id',
+            'tool_key',
+            'cascade_source_alarm_key',
+            'cascade_source_occurrence_id',
+            'cascade_management_effect_id',
+            'cascade_deactivation_effect_id',
+        ):
             value = getattr(self, name)
             if value is not None:
                 _require_non_empty_string(value, name)
+        causal = self.event_key in {'cascade_suppression_started', 'cascade_suppression_ended'}
+        source = (
+            self.cascade_source_alarm_key is not None
+            and self.cascade_source_occurrence_id is not None
+        )
+        effects = int(self.cascade_management_effect_id is not None) + int(
+            self.cascade_deactivation_effect_id is not None
+        )
+        metadata = any(
+            value is not None
+            for value in (
+                self.cascade_source_alarm_key,
+                self.cascade_source_occurrence_id,
+                self.cascade_management_effect_id,
+                self.cascade_deactivation_effect_id,
+            )
+        )
+        if (causal and not (source and effects == 1)) or (not causal and metadata):
+            raise ValueError('Cascade journey event requires exactly one attributed effect')
 
     def as_document(self) -> dict[str, str]:
         document = {
@@ -55,6 +87,15 @@ class JourneyEvent:
             document['episode_id'] = self.episode_id
         if self.tool_key is not None:
             document['tool_key'] = self.tool_key
+        for name in (
+            'cascade_source_alarm_key',
+            'cascade_source_occurrence_id',
+            'cascade_management_effect_id',
+            'cascade_deactivation_effect_id',
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                document[name] = value
         return document
 
 
@@ -65,6 +106,7 @@ def materialize_journey(
     state: GroupLifecycleState,
     cycle_at: datetime,
     previous_priority_resolution: GroupPriorityResolution | None = None,
+    previous_cascade_suppressions: tuple[CascadeSuppression, ...] | None = None,
 ) -> tuple[JourneyEvent, ...]:
     if not isinstance(previous_state, GroupLifecycleState):
         raise TypeError('previous_state must be a GroupLifecycleState')
@@ -73,6 +115,11 @@ def materialize_journey(
     if not isinstance(state, GroupLifecycleState):
         raise TypeError('state must be a GroupLifecycleState')
     _require_utc_datetime(cycle_at, 'cycle_at')
+    if previous_cascade_suppressions is not None and (
+        not isinstance(previous_cascade_suppressions, tuple)
+        or not all(isinstance(item, CascadeSuppression) for item in previous_cascade_suppressions)
+    ):
+        raise TypeError('previous_cascade_suppressions must be CascadeSuppression values')
     events: list[JourneyEvent] = []
     for change in decision.occurrence_changes:
         occurrence = change.occurrence
@@ -259,6 +306,16 @@ def materialize_journey(
                 discriminator=result.decision.decision_id,
             )
         )
+    if previous_cascade_suppressions is not None:
+        events.extend(
+            _cascade_journey_events(
+                previous_state=previous_state,
+                next_state=state,
+                previous=previous_cascade_suppressions,
+                current=decision.cascade_suppressions,
+                cycle_at=cycle_at,
+            )
+        )
     events.extend(
         _priority_journey_events(
             previous_priority_resolution,
@@ -269,6 +326,57 @@ def materialize_journey(
         )
     )
     return tuple(sorted(events, key=lambda item: (item.effective_at, item.event_id)))
+
+
+def _cascade_journey_events(
+    *,
+    previous_state: GroupLifecycleState,
+    next_state: GroupLifecycleState,
+    previous: tuple[CascadeSuppression, ...],
+    current: tuple[CascadeSuppression, ...],
+    cycle_at: datetime,
+) -> tuple[JourneyEvent, ...]:
+    before = set(previous)
+    after = set(current)
+    if len(before) != len(previous) or len(after) != len(current):
+        raise AlarmContractError('Cascade suppressions must not contain duplicates')
+    events: list[JourneyEvent] = []
+    for event_key, transitions, state in (
+        ('cascade_suppression_ended', before - after, previous_state),
+        ('cascade_suppression_started', after - before, next_state),
+    ):
+        for item in sorted(
+            transitions,
+            key=lambda value: (
+                value.target_alarm_identity,
+                value.source_alarm_identity,
+                value.source_occurrence_id,
+                value.management_effect_id or value.deactivation_effect_id or '',
+            ),
+        ):
+            target = state.get(item.target_alarm_identity)
+            if target is None or target.occurrence is None:
+                raise AlarmContractError('Cascade transition requires target occurrence')
+            discriminator = (
+                f'{item.source_alarm_identity.canonical_key}:'
+                f'{item.source_occurrence_id}:'
+                f'{item.management_effect_id or item.deactivation_effect_id}'
+            )
+            events.append(
+                _journey_event(
+                    event_key=event_key,
+                    effective_at=cycle_at,
+                    alarm_identity=item.target_alarm_identity,
+                    occurrence_id=target.occurrence.occurrence_id,
+                    episode_id=target.occurrence.episode_id,
+                    discriminator=discriminator,
+                    cascade_source_alarm_key=item.source_alarm_identity.canonical_key,
+                    cascade_source_occurrence_id=item.source_occurrence_id,
+                    cascade_management_effect_id=item.management_effect_id,
+                    cascade_deactivation_effect_id=item.deactivation_effect_id,
+                )
+            )
+    return tuple(events)
 
 
 def _priority_journey_events(
@@ -401,6 +509,10 @@ def _journey_event(
     episode_id: str | None = None,
     tool_key: str | None = None,
     discriminator: str | None = None,
+    cascade_source_alarm_key: str | None = None,
+    cascade_source_occurrence_id: str | None = None,
+    cascade_management_effect_id: str | None = None,
+    cascade_deactivation_effect_id: str | None = None,
 ) -> JourneyEvent:
     identity_parts = [
         'journey',
@@ -421,6 +533,10 @@ def _journey_event(
         occurrence_id=occurrence_id,
         episode_id=episode_id,
         tool_key=tool_key,
+        cascade_source_alarm_key=cascade_source_alarm_key,
+        cascade_source_occurrence_id=cascade_source_occurrence_id,
+        cascade_management_effect_id=cascade_management_effect_id,
+        cascade_deactivation_effect_id=cascade_deactivation_effect_id,
     )
 
 

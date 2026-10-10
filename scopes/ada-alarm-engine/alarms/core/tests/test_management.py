@@ -13,7 +13,9 @@ from ada.alarms.core import (
     is_directly_managed,
     reconcile_group_configuration,
     reduce_group_cycle,
+    resolve_management_cascades,
 )
+from ada.alarms.core.journey import materialize_journey
 from ada.contracts.alarms import AlarmKind
 
 from .support import (
@@ -932,3 +934,61 @@ def test_overdue_reconciled_deadline_inactive_normalizes_without_reappearance() 
     assert decision.reappearance_changes == ()
     assert decision.state.episode is None
     assert decision.state.alarms == ()
+
+
+def test_cascade_history_records_start_once_and_release_with_cause() -> None:
+    started, ids, plans = _start_impact_and_risk()
+    managed_at = NOW + timedelta(minutes=1)
+    managed = _manage_impact(started, ids, plans, at=managed_at)
+    beginning = materialize_journey(
+        started.state, managed, state=managed.state, cycle_at=managed_at,
+        previous_cascade_suppressions=(),
+    )
+    started_events = [
+        event for event in beginning if event.event_key == 'cascade_suppression_started'
+    ]
+    assert len(started_events) == 1
+    first = started_events[0].as_document()
+    assert first['alarm_key'] == identity('risk').canonical_key
+    assert first['cascade_source_alarm_key'] == identity('impact').canonical_key
+    assert first['cascade_source_occurrence_id'] == 'O1'
+    assert first['cascade_management_effect_id']
+    assert 'cascade_deactivation_effect_id' not in first
+
+    unchanged_at = managed_at + timedelta(minutes=1)
+    unchanged = _reduce(
+        managed.state, plans,
+        [
+            physical('impact', AlarmStatus.ACTIVE, at=unchanged_at),
+            physical('risk', AlarmStatus.ACTIVE, at=unchanged_at),
+        ],
+        at=unchanged_at, ids=ids,
+    )
+    old_suppressions = resolve_management_cascades(
+        managed.state, planned_alarms=plans, at=managed_at,
+    )
+    continuing = materialize_journey(
+        managed.state, unchanged, state=unchanged.state, cycle_at=unchanged_at,
+        previous_cascade_suppressions=old_suppressions,
+    )
+    assert not [event for event in continuing if event.event_key.startswith('cascade_suppression_')]
+
+    expired_at = managed_at + timedelta(minutes=5)
+    expired = _reduce(
+        unchanged.state, plans,
+        [
+            physical('impact', AlarmStatus.ACTIVE, at=expired_at),
+            physical('risk', AlarmStatus.ACTIVE, at=expired_at),
+        ],
+        at=expired_at, ids=ids,
+    )
+    prior = resolve_management_cascades(
+        unchanged.state, planned_alarms=plans, at=unchanged_at,
+    )
+    ending = materialize_journey(
+        unchanged.state, expired, state=expired.state, cycle_at=expired_at,
+        previous_cascade_suppressions=prior,
+    )
+    ended = [event for event in ending if event.event_key == 'cascade_suppression_ended']
+    assert len(ended) == 1
+    assert ended[0].cascade_management_effect_id == started_events[0].cascade_management_effect_id
