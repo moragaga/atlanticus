@@ -1,4 +1,4 @@
-# Adapta Equipos de Servicio desde un único KPI JSON sin cálculos de negocio en Web.
+# Interpreta filas de equipos y comparaciones a partir del JSON ya preparado.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -10,8 +10,7 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
-from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import EQUIPOS_SERVICIO_KPI_KEY
 from .models import (
@@ -20,50 +19,19 @@ from .models import (
     EquiposServicioState,
 )
 
-_SOURCE_STATUS = {
-    KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
-    KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
-    KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
-}
 
-
-def map_equipos_servicio_store(
-    store_data: object,
+def map_equipos_servicio_readings(
+    readings: Mapping[str, DisplayValue],
 ) -> tuple[EquiposServicioState | None, DisplayStatus]:
-    values, source_status = _latest_values(store_data)
-    if values is None:
-        return None, source_status
-
-    decoded = decode_kpi_latest_value(
-        values.get(EQUIPOS_SERVICIO_KPI_KEY),
-        present=EQUIPOS_SERVICIO_KPI_KEY in values,
-    )
-    if decoded.state is not KpiLatestValueState.OK:
-        return None, _SOURCE_STATUS[decoded.state]
-    if decoded.value_kind != 'json' or not isinstance(decoded.value, Mapping):
+    reading = readings[EQUIPOS_SERVICIO_KPI_KEY]
+    if reading.status is not DisplayStatus.OK:
+        return None, reading.status
+    if not isinstance(reading.value, Mapping):
         return None, DisplayStatus.INVALID
-
     try:
-        return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+        return _map_payload(reading.value), DisplayStatus.OK
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
-
-
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
 
 
 def _map_payload(payload: Mapping[str, object]) -> EquiposServicioState:
@@ -71,7 +39,6 @@ def _map_payload(payload: Mapping[str, object]) -> EquiposServicioState:
         raise ValueError('Equipos Servicio data_state is required')
     data_state = map_dashboard_data_state(payload['data_state'])
 
-    # ERROR puede omitir rows porque no existe contenido útil que renderizar.
     if data_state is DashboardDataState.ERROR:
         return EquiposServicioState(rows=(), data_state=data_state)
 
@@ -79,7 +46,6 @@ def _map_payload(payload: Mapping[str, object]) -> EquiposServicioState:
     if not isinstance(rows, list):
         raise ValueError('Equipos Servicio rows must be a JSON array')
 
-    # Backend determina filas, orden, TOTAL, formato de valores y status.
     return EquiposServicioState(
         rows=tuple(_map_row(item) for item in rows),
         data_state=data_state,
@@ -94,7 +60,6 @@ def _map_row(value: object) -> EquiposServicioRow:
     if not isinstance(equipo, str) or not equipo.strip():
         raise ValueError('Equipos Servicio equipo must be a non-empty string')
 
-    # is_total evita inferir semántica desde el label "TOTAL".
     is_total = _require_value(value, 'is_total')
     if not isinstance(is_total, bool):
         raise TypeError('Equipos Servicio is_total must be bool')
@@ -104,16 +69,13 @@ def _map_row(value: object) -> EquiposServicioRow:
         is_total=is_total,
         operando=_map_comparison(_require_mapping(value, 'operando')),
         disponibles=_map_comparison(_require_mapping(value, 'disponibles')),
-        fuera_servicio=_map_comparison(
-            _require_mapping(value, 'fuera_servicio')
-        ),
+        fuera_servicio=_map_comparison(_require_mapping(value, 'fuera_servicio')),
     )
 
 
 def _map_comparison(
     value: Mapping[str, object],
 ) -> EquiposServicioComparison:
-    # real y plan se preservan como escalares opacos; no se redondean ni recalculan.
     real = _require_value(value, 'real')
     plan = _require_value(value, 'plan')
     if not isinstance(real, str | int | float | bool):

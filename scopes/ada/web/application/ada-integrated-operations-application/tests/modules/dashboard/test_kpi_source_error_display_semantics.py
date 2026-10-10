@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.decoder import (
+    decode_carguio_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.carguio_global_turno import (
     CARGUIO_GLOBAL_TURNO_KPI_KEY,
-    map_carguio_global_turno_store,
+    map_carguio_global_turno_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.equipos_servicio import (
     EQUIPOS_SERVICIO_KPI_KEY,
-    map_equipos_servicio_store,
+    map_equipos_servicio_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.gestion_carguio_turno import (
     GESTION_CARGUIO_TURNO_KPI_KEY,
-    map_gestion_carguio_turno_store,
+    map_gestion_carguio_turno_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.decoder import (
     decode_general_mina_store,
@@ -56,9 +59,10 @@ def test_carguio_source_errors_are_invalid_data() -> None:
         }
     )
 
-    global_state, global_status = map_carguio_global_turno_store(store)
-    equipos_state, equipos_status = map_equipos_servicio_store(store)
-    gestion_state, gestion_status = map_gestion_carguio_turno_store(store)
+    carguio_readings = decode_carguio_store(store)
+    global_state, global_status = map_carguio_global_turno_readings(carguio_readings)
+    equipos_state, equipos_status = map_equipos_servicio_readings(carguio_readings)
+    gestion_state, gestion_status = map_gestion_carguio_turno_readings(carguio_readings)
 
     assert global_state is None
     assert equipos_state is None

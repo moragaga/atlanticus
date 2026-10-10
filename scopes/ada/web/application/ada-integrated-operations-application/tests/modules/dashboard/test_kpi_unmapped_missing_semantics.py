@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import pytest
 
+from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.decoder import (
+    decode_carguio_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.carguio_global_turno import (
     CARGUIO_GLOBAL_TURNO_KPI_KEY,
-    map_carguio_global_turno_store,
+    map_carguio_global_turno_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.equipos_servicio import (
     EQUIPOS_SERVICIO_KPI_KEY,
-    map_equipos_servicio_store,
+    map_equipos_servicio_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.gestion_carguio_turno import (
     GESTION_CARGUIO_TURNO_KPI_KEY,
-    map_gestion_carguio_turno_store,
+    map_gestion_carguio_turno_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.decoder import (
     decode_general_mina_store,
@@ -62,9 +65,10 @@ def test_empty_component_latest_means_not_mapped() -> None:
     perforacion = map_perforacion_readings(readings)
     mp10 = map_mp10_readings(readings)
 
-    global_state, global_status = map_carguio_global_turno_store(empty_store)
-    equipos_state, equipos_status = map_equipos_servicio_store(empty_store)
-    gestion_state, gestion_status = map_gestion_carguio_turno_store(empty_store)
+    carguio_readings = decode_carguio_store(empty_store)
+    global_state, global_status = map_carguio_global_turno_readings(carguio_readings)
+    equipos_state, equipos_status = map_equipos_servicio_readings(carguio_readings)
+    gestion_state, gestion_status = map_gestion_carguio_turno_readings(carguio_readings)
 
     assert remanentes.summary_status is DisplayStatus.NOT_MAPPED
     assert remanentes.stock_3080.value.status is DisplayStatus.NOT_MAPPED
@@ -103,9 +107,10 @@ def test_explicit_missing_kpi_means_empty() -> None:
     perforacion = map_perforacion_readings(readings)
     mp10 = map_mp10_readings(readings)
 
-    global_state, global_status = map_carguio_global_turno_store(store)
-    equipos_state, equipos_status = map_equipos_servicio_store(store)
-    gestion_state, gestion_status = map_gestion_carguio_turno_store(store)
+    carguio_readings = decode_carguio_store(store)
+    global_state, global_status = map_carguio_global_turno_readings(carguio_readings)
+    equipos_state, equipos_status = map_equipos_servicio_readings(carguio_readings)
+    gestion_state, gestion_status = map_gestion_carguio_turno_readings(carguio_readings)
 
     assert remanentes.summary_status is DisplayStatus.EMPTY
     assert remanentes.stock_3080.value.status is DisplayStatus.EMPTY

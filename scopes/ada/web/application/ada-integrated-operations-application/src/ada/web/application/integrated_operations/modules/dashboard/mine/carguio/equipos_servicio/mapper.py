@@ -9,8 +9,7 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
-from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import EQUIPOS_SERVICIO_KPI_KEY
 from .models import (
@@ -19,50 +18,19 @@ from .models import (
     EquiposServicioState,
 )
 
-_SOURCE_STATUS = {
-    KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
-    KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
-    KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
-}
 
-
-def map_equipos_servicio_store(
-    store_data: object,
+def map_equipos_servicio_readings(
+    readings: Mapping[str, DisplayValue],
 ) -> tuple[EquiposServicioState | None, DisplayStatus]:
-    values, source_status = _latest_values(store_data)
-    if values is None:
-        return None, source_status
-
-    decoded = decode_kpi_latest_value(
-        values.get(EQUIPOS_SERVICIO_KPI_KEY),
-        present=EQUIPOS_SERVICIO_KPI_KEY in values,
-    )
-    if decoded.state is not KpiLatestValueState.OK:
-        return None, _SOURCE_STATUS[decoded.state]
-    if decoded.value_kind != 'json' or not isinstance(decoded.value, Mapping):
+    reading = readings[EQUIPOS_SERVICIO_KPI_KEY]
+    if reading.status is not DisplayStatus.OK:
+        return None, reading.status
+    if not isinstance(reading.value, Mapping):
         return None, DisplayStatus.INVALID
-
     try:
-        return _map_payload(decoded.value), DisplayStatus.OK
+        return _map_payload(reading.value), DisplayStatus.OK
     except TypeError, ValueError:
         return None, DisplayStatus.INVALID
-
-
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
 
 
 def _map_payload(payload: Mapping[str, object]) -> EquiposServicioState:

@@ -1,4 +1,5 @@
-# Carguío mantiene un único callback coordinador para sus cards y la shared card que posee.
+# Un callback de Carguío toma un Store y alimenta las tres tarjetas.
+# Los mappers reciben los mismos resultados ya decodificados.
 from __future__ import annotations
 
 from dash import Input, Output
@@ -9,18 +10,11 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
 from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import CARGUIO
 from ada.web.kpis.collector import component_kpi_store_id
 
-from .carguio_global_turno import (
-    build_carguio_global_turno,
-    map_carguio_global_turno_store,
-)
-from .equipos_servicio import (
-    build_equipos_servicio,
-    map_equipos_servicio_store,
-)
-from .gestion_carguio_turno import (
-    build_gestion_carguio_turno,
-    map_gestion_carguio_turno_store,
-)
+from .carguio_global_turno import map_carguio_global_turno_readings
+from .decoder import decode_carguio_store
+from .equipos_servicio import map_equipos_servicio_readings
+from .gestion_carguio_turno import map_gestion_carguio_turno_readings
+from .presentation import build_carguio
 
 
 def register_carguio_callback(dash_app, *, tool_key: str) -> None:
@@ -31,18 +25,9 @@ def register_carguio_callback(dash_app, *, tool_key: str) -> None:
         Input(component_kpi_store_id(tool_key, CARGUIO.tool_component_key), 'data'),
     )
     def refresh_carguio(store_data: object):
-        # Las tres superficies leen el mismo Component KPI Store de Carguío.
-        global_state, global_source_status = map_carguio_global_turno_store(
-            store_data
-        )
-        equipos_state, equipos_source_status = map_equipos_servicio_store(
-            store_data
-        )
-        gestion_state, gestion_source_status = map_gestion_carguio_turno_store(
-            store_data
-        )
-        return (
-            build_carguio_global_turno(global_state, global_source_status),
-            build_equipos_servicio(equipos_state, equipos_source_status),
-            build_gestion_carguio_turno(gestion_state, gestion_source_status),
+        values = decode_carguio_store(store_data)
+        return build_carguio(
+            carguio_global_turno=map_carguio_global_turno_readings(values),
+            equipos_servicio=map_equipos_servicio_readings(values),
+            gestion_carguio_turno=map_gestion_carguio_turno_readings(values),
         )
