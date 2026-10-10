@@ -134,6 +134,11 @@ def build_qualification_runtime(
         root_session=root_session,
         manager_surface=surface,
         root_access=root_access,
+        operational_access=(
+            (lambda: authenticated_root() is not None)
+            if authenticated_root is not None
+            else None
+        ),
     )
     web = create_web_application(
         WebApplicationDefinition(

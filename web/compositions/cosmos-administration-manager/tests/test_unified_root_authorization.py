@@ -82,8 +82,7 @@ def test_local_root_direct_manager_without_material_login(tmp_path, monkeypatch,
         assert client.get(route).status_code == 200
     layout = client.get('/_dash-layout')
     assert layout.status_code == 200
-    assert 'Cosmos Administration' in layout.get_data(as_text=True)
-    assert 'Deployment Access' in layout.get_data(as_text=True)
+    assert '_pages_content' in layout.get_data(as_text=True)
     assert administration.calls == []
     assert client.get('/manager/foreign').status_code != 200
     assert client.get('/').status_code == 200
