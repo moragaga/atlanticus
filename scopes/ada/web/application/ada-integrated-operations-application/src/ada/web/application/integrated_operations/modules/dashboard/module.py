@@ -15,11 +15,8 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.module imp
 from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.runtime import (
     register_transporte_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
-    register_colectiva_callback,
-)
-from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.selectiva import (
-    register_selectiva_callback,
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion import (
+    register_flotacion_callback,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
     PLANT_ASSET_LAYER,
@@ -81,8 +78,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
-            register_colectiva_callback(dash_app, tool_key=tool_key)
-            register_selectiva_callback(dash_app, tool_key=tool_key)
+            register_flotacion_callback(dash_app, tool_key=tool_key)
             register_str_callback(dash_app, tool_key=tool_key)
             register_stc_callback(dash_app, tool_key=tool_key)
             register_tranque_callback(dash_app, tool_key=tool_key)

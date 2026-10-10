@@ -16,9 +16,14 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion
     SCAVENGERS,
     VERTIMILLS,
     build_colectiva,
-    map_colectiva_overview_store,
-    map_colectiva_process_store,
-    register_colectiva_callback,
+    map_colectiva_overview_readings,
+    map_colectiva_process_readings,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.decoder import (
+    decode_flotacion_store,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.runtime import (
+    register_flotacion_callback,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -71,6 +76,13 @@ def _store() -> dict[str, object]:
     }
 
 
+def _mapped(store):
+    readings, timeseries = decode_flotacion_store(store)
+    return map_colectiva_overview_readings(readings, timeseries), map_colectiva_process_readings(
+        readings
+    )
+
+
 def _walk(item):
     if isinstance(item, Component):
         yield item
@@ -83,28 +95,20 @@ def _walk(item):
 def test_definitions_legacy_keys_and_current_equipment_layout():
     assert COLECTIVA_TREND.kpi_key == 'recuperacion_cu_lab'
     assert [item.kpi_key for item in COLECTIVA_INDICATORS] == [
-        'ley_cu_lab',
-        'malla_325_lab',
-        'malla_100_lab',
-        'ley_concentrado_lab',
-        'ley_colas_lab',
+        'ley_cu_lab', 'malla_325_lab', 'malla_100_lab', 'ley_concentrado_lab', 'ley_colas_lab',
     ]
     assert [item.label for item in ROUGHERS] == [f'R{n}' for n in range(1, 10)]
     assert [item.label for item in SCAVENGERS] == ['SC1', 'SC2']
     assert [item.label for item in VERTIMILLS] == ['VT-009', 'VT-010', 'VT-701']
     assert [[item.label for item in group] for group in BOMBAS] == [
-        ['PP45', 'PP46'],
-        ['PP52', 'PP53'],
-        ['PP855', 'PP856'],
+        ['PP45', 'PP46'], ['PP52', 'PP53'], ['PP855', 'PP856'],
     ]
     assert VERTIMILLS[2].amperage_kpi_key == 'amperaje_vertimil_701_inst'
     assert BOMBAS[2][1].state_kpi_key == 'estado_bomba856_inst'
 
 
 def test_latest_values_and_timeseries_are_independent():
-    store = _store()
-    overview = map_colectiva_overview_store(store)
-    process = map_colectiva_process_store(store)
+    overview, process = _mapped(_store())
     assert overview.trend_current.value == '82.5'
     assert [item.value.value for item in overview.indicators] == ['1', '2', '3', '4', '5']
     assert process.roughers[0].state.value == 'Detenido'
@@ -124,48 +128,37 @@ def test_degraded_readings_do_not_become_detenido():
     values = store['latest']['values']
     values.pop(ROUGHERS[0].state_kpi_key)
     values[SCAVENGERS[0].state_kpi_key] = {
-        'status': 'missing',
-        'value_kind': None,
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'missing', 'value_kind': None, 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
     values[VERTIMILLS[0].state_kpi_key] = {
-        'status': 'error',
-        'value_kind': 'json',
-        'value': None,
-        'value_type': None,
-        'parsed_value': None,
+        'status': 'error', 'value_kind': 'json', 'value': None,
+        'value_type': None, 'parsed_value': None,
     }
     values[BOMBAS[0][0].state_kpi_key] = _entry('unrecognized')
-    process = map_colectiva_process_store(store)
+    overview, process = _mapped(store)
     assert process.roughers[0].state.status is DisplayStatus.NOT_MAPPED
     assert process.scavengers[0].state.status is DisplayStatus.EMPTY
     assert process.vertimills[0].state.status is DisplayStatus.ERROR
-    root = build_colectiva(map_colectiva_overview_store(store), process)
+    root = build_colectiva(overview, process)
     circles = [
-        node
-        for node in _walk(root)
+        node for node in _walk(root)
         if 'ada-io-colectiva__circle' in (getattr(node, 'className', '') or '')
     ]
     assert len(circles) == 9
-    invalid_icons = [
-        node for node in _walk(root) if getattr(node, 'src', '').endswith('invalid-data.svg')
-    ]
-    assert invalid_icons
+    assert any(getattr(node, 'src', '').endswith('invalid-data.svg') for node in _walk(root))
 
 
 def test_bad_timeseries_does_not_affect_current_recovery():
     store = _store()
     store['timeseries']['series'][COLECTIVA_TREND.kpi_key]['values'][1] = 'bad'
-    overview = map_colectiva_overview_store(store)
+    overview, _ = _mapped(store)
     assert overview.trend_history.status is DisplayStatus.INVALID
     assert overview.trend_current.value == '82.5'
 
 
 def test_missing_timeseries_and_independent_latest_statuses():
-    overview = map_colectiva_overview_store({'latest': {'values': {}}})
-    process = map_colectiva_process_store({'latest': {'values': {}}})
+    overview, process = _mapped({'latest': {'values': {}}})
     assert overview.trend_history.status is DisplayStatus.NOT_MAPPED
     assert all(item.value.status is DisplayStatus.NOT_MAPPED for item in overview.indicators)
     assert all(item.state.status is DisplayStatus.NOT_MAPPED for item in process.roughers)
@@ -174,10 +167,7 @@ def test_missing_timeseries_and_independent_latest_statuses():
 
 
 def test_each_mapped_kpi_is_inspectable():
-    root = build_colectiva(
-        map_colectiva_overview_store(_store()),
-        map_colectiva_process_store(_store()),
-    )
+    root = build_colectiva(*_mapped(_store()))
     nodes = [node for node in _walk(root) if getattr(node, 'data-kpi-inspection-key', None)]
     keys = [getattr(node, 'data-kpi-inspection-key') for node in nodes]
     expected = {COLECTIVA_TREND.kpi_key}
@@ -208,19 +198,21 @@ class DashStub:
 
 def test_callback_reuses_flotacion_collector_store():
     app = DashStub()
-    register_colectiva_callback(app, tool_key='integrated_operations')
+    register_flotacion_callback(app, tool_key='integrated_operations')
+    assert len(app.args) == 3
     assert app.args[0].component_id == dashboard_card_content_id('colectiva')
-    assert app.args[1].component_id == component_kpi_store_id(
+    assert app.args[1].component_id == dashboard_card_content_id('selectiva')
+    assert app.args[2].component_id == component_kpi_store_id(
         'integrated_operations', FLOTACION.tool_component_key
     )
-    assert isinstance(app.render(_store()), Component)
+    cards = app.render(_store())
+    assert len(cards) == 2 and all(isinstance(card, Component) for card in cards)
 
 
 def test_latest_validation_remains_independent_between_overview_and_process():
     store = _store()
     store['latest'] = {'values': None}
-    overview = map_colectiva_overview_store(store)
-    process = map_colectiva_process_store(store)
+    overview, process = _mapped(store)
     assert overview.trend_current.status is DisplayStatus.INVALID
     assert all(item.value.status is DisplayStatus.INVALID for item in overview.indicators)
     assert all(item.state.status is DisplayStatus.INVALID for item in process.roughers)

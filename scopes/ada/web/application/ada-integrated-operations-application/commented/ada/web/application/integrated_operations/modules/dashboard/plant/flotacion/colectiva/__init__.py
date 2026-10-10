@@ -1,8 +1,7 @@
-# Expone únicamente las piezas necesarias del submódulo.
-from .overview import COLECTIVA_INDICATORS, COLECTIVA_TREND, map_colectiva_overview_store
+# Exporta únicamente la API vigente de este paquete.
+from .overview import COLECTIVA_INDICATORS, COLECTIVA_TREND, map_colectiva_overview_readings
 from .presentation import build_colectiva
-from .process import BOMBAS, ROUGHERS, SCAVENGERS, VERTIMILLS, map_colectiva_process_store
-from .runtime import register_colectiva_callback
+from .process import BOMBAS, ROUGHERS, SCAVENGERS, VERTIMILLS, map_colectiva_process_readings
 
 __all__ = [
     'BOMBAS',
@@ -12,7 +11,6 @@ __all__ = [
     'SCAVENGERS',
     'VERTIMILLS',
     'build_colectiva',
-    'map_colectiva_overview_store',
-    'map_colectiva_process_store',
-    'register_colectiva_callback',
+    'map_colectiva_overview_readings',
+    'map_colectiva_process_readings',
 ]

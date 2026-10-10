@@ -1,6 +1,6 @@
-# Expone únicamente las piezas necesarias del submódulo.
+# Exporta únicamente la API vigente de este paquete.
 from .definitions import BOMBAS, ROUGHERS, SCAVENGERS, VERTIMILLS
-from .mapper import map_colectiva_process_store
+from .mapper import map_colectiva_process_readings
 from .models import ColectivaProcessReading
 from .presentation import build_colectiva_process
 
@@ -11,5 +11,5 @@ __all__ = [
     'VERTIMILLS',
     'ColectivaProcessReading',
     'build_colectiva_process',
-    'map_colectiva_process_store',
+    'map_colectiva_process_readings',
 ]

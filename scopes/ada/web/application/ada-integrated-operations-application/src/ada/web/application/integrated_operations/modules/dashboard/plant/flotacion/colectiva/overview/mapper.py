@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
@@ -13,62 +12,20 @@ from .models import ColectivaIndicatorReading, ColectivaOverviewReading
 _STEP_SECONDS = 120
 
 
-def map_colectiva_overview_store(store_data: object) -> ColectivaOverviewReading:
-    values, status = _latest_values(store_data)
+def map_colectiva_overview_readings(
+    readings: Mapping[str, DisplayValue], timeseries: object
+) -> ColectivaOverviewReading:
     return ColectivaOverviewReading(
-        trend_current=_display_value(values, COLECTIVA_TREND.kpi_key, status),
-        trend_history=_history_values(store_data, COLECTIVA_TREND.kpi_key),
+        trend_current=readings[COLECTIVA_TREND.kpi_key],
+        trend_history=_history_values(timeseries, COLECTIVA_TREND.kpi_key),
         indicators=tuple(
-            ColectivaIndicatorReading(
-                definition, _display_value(values, definition.kpi_key, status)
-            )
+            ColectivaIndicatorReading(definition, readings[definition.kpi_key])
             for definition in COLECTIVA_INDICATORS
         ),
     )
 
 
-def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
-
-
-def _display_value(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    if values is None:
-        return DisplayValue(source_status)
-    decoded = decode_kpi_latest_value(values.get(key), present=key in values)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.ERROR:
-        return DisplayValue.error()
-    if decoded.state is not KpiLatestValueState.OK:
-        return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
-        return DisplayValue.invalid()
-    if not isinstance(decoded.parsed_value, str | int | float):
-        return DisplayValue.invalid()
-    raw = str(decoded.parsed_value).strip()
-    return DisplayValue.ok(raw) if raw else DisplayValue.invalid()
-
-
-def _history_values(store_data: object, key: str) -> TimeSeriesValues:
-    if not isinstance(store_data, Mapping):
-        return TimeSeriesValues(DisplayStatus.INVALID)
-    timeseries = store_data.get('timeseries')
+def _history_values(timeseries: object, key: str) -> TimeSeriesValues:
     if timeseries is None:
         return TimeSeriesValues(DisplayStatus.NOT_MAPPED)
     if not isinstance(timeseries, Mapping):
@@ -107,7 +64,7 @@ def _history_values(store_data: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except KeyError, TypeError, ValueError, OverflowError:
+    except (KeyError, TypeError, ValueError, OverflowError):
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)
 

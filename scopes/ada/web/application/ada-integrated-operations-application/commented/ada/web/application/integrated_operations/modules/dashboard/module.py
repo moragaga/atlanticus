@@ -1,4 +1,3 @@
-# El registro operativo crea un solo callback para Stockpile Chacay y sus dos tarjetas.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -16,11 +15,8 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.module imp
 from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.runtime import (
     register_transporte_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
-    register_colectiva_callback,
-)
-from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.selectiva import (
-    register_selectiva_callback,
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion import (
+    register_flotacion_callback,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
     PLANT_ASSET_LAYER,
@@ -63,6 +59,7 @@ DASHBOARD_ASSET_LAYER = AssetLayer(
 _DASHBOARD_PAGE_PACKAGE = 'ada.web.application.integrated_operations.modules.dashboard.pages'
 
 
+# Registra un callback para Flotación en reemplazo de los dos anteriores.
 def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModule:
     if binding is not None and not isinstance(binding, OperationalRenderBinding):
         raise TypeError('Dashboard binding must be OperationalRenderBinding or None')
@@ -82,8 +79,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
-            register_colectiva_callback(dash_app, tool_key=tool_key)
-            register_selectiva_callback(dash_app, tool_key=tool_key)
+            register_flotacion_callback(dash_app, tool_key=tool_key)
             register_str_callback(dash_app, tool_key=tool_key)
             register_stc_callback(dash_app, tool_key=tool_key)
             register_tranque_callback(dash_app, tool_key=tool_key)
