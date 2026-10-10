@@ -1,0 +1,8 @@
+/* Espejo pedagógico: mantiene idéntica la geometría y el comportamiento CSS de producción. */
+.ada-io-tranque__indicators {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    --atlanticus-inline-value-row-font-size: .54rem;
+}

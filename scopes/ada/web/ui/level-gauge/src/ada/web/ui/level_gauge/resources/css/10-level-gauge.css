@@ -1,0 +1,79 @@
+.ada-level-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .18rem;
+    min-width: 0;
+    width: 100%;
+    font-size: .58rem;
+}
+
+.ada-level-gauge__reading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .12rem;
+    min-height: 1rem;
+    font-weight: 700;
+}
+
+.ada-level-gauge__illustration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 4rem;
+    width: 100%;
+}
+
+.ada-level-gauge__graphic {
+    position: relative;
+    height: 100%;
+    max-width: 100%;
+    aspect-ratio: 243 / 309;
+}
+
+.ada-level-gauge__graphic--st {
+    aspect-ratio: 1;
+}
+
+.ada-level-gauge__image {
+    display: block;
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+}
+
+.ada-level-gauge__column {
+    position: absolute;
+    left: 51%;
+    width: 8%;
+    bottom: 5%;
+    height: 60%;
+    background: rgba(255,255,255,.8);
+    pointer-events: none;
+    display: flex;
+    align-items: end;
+}
+
+.ada-level-gauge__graphic--st .ada-level-gauge__column {
+    height: 70%;
+}
+
+.ada-level-gauge__fill {
+    display: block;
+    width: 100%;
+    opacity: .85;
+}
+
+.ada-level-gauge__label {
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.ada-level-gauge__status-icon {
+    width: .95rem;
+    height: .95rem;
+    object-fit: contain;
+}

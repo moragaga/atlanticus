@@ -1,0 +1,7 @@
+.ada-io-tranque__indicators {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    --atlanticus-inline-value-row-font-size: .54rem;
+}

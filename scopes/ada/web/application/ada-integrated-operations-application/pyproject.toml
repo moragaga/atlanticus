@@ -17,6 +17,7 @@ dependencies = [
     "ada-web-content-state==0.1.0",
     "ada-web-ui-card-display==0.1.0",
     "ada-web-ui-inline-row==0.1.0",
+    "ada-web-ui-level-gauge==0.1.0",
     "ada-web-ui-stockpile==0.1.0",
     "ada-web-ui-equipment-image==0.1.0",
     "ada-web-ui-feeder==0.1.0",
@@ -75,6 +76,7 @@ ada-web-alarm-status = { path = "../../alarms/status", editable = true }
 ada-web-ui-core = { path = "../../ui/core", editable = true }
 ada-web-ui-card-display = { path = "../../ui/card-display", editable = true }
 ada-web-ui-inline-row = { path = "../../ui/inline-row", editable = true }
+ada-web-ui-level-gauge = { path = "../../ui/level-gauge", editable = true }
 ada-web-ui-stockpile = { path = "../../ui/stockpile", editable = true }
 ada-web-ui-equipment-image = { path = "../../ui/equipment-image", editable = true }
 ada-web-ui-feeder = { path = "../../ui/feeder", editable = true }

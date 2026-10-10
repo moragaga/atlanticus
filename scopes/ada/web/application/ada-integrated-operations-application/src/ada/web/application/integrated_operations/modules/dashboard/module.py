@@ -33,14 +33,24 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.tendencia_alimentado import (
     register_tendencia_alimentado_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.sta.runtime import (
+    register_sta_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.stc.runtime import (
+    register_stc_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.str import (
     register_str_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.tranque.runtime import (
+    register_tranque_callback,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
 from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 from ada.web.ui.feeder import ADA_FEEDER_ASSET_LAYER
 from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
+from ada.web.ui.level_gauge import ADA_LEVEL_GAUGE_ASSET_LAYER
 from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
 from ada.web.ui.time_series import ADA_TIME_SERIES_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
@@ -78,6 +88,9 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_colectiva_callback(dash_app, tool_key=tool_key)
             register_selectiva_callback(dash_app, tool_key=tool_key)
             register_str_callback(dash_app, tool_key=tool_key)
+            register_stc_callback(dash_app, tool_key=tool_key)
+            register_tranque_callback(dash_app, tool_key=tool_key)
+            register_sta_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
@@ -85,6 +98,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         asset_layers=(
             ADA_CARD_DISPLAY_ASSET_LAYER,
             ADA_INLINE_ROW_ASSET_LAYER,
+            ADA_LEVEL_GAUGE_ASSET_LAYER,
             ADA_STOCKPILE_ASSET_LAYER,
             ADA_TIME_SERIES_ASSET_LAYER,
             ADA_EQUIPMENT_IMAGE_ASSET_LAYER,
