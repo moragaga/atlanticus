@@ -22,6 +22,9 @@ from atlanticus.web.services import ServiceRegistry
 
 
 class ExampleAccess(DeploymentAccessService):
+    def __init__(self) -> None:
+        pass
+
     def authenticate(self, *, service_user, password):
         if (service_user, password) != ('demo', 'valid-password-12345'):
             raise DeploymentAccessMaterialError('Invalid credentials')

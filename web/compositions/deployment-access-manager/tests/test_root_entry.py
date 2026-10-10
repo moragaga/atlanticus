@@ -145,7 +145,11 @@ def test_root_session_alone_cannot_bypass_manager_authorization():
 
 
 def _principal() -> ManagerPrincipal:
-    return
+    return ManagerPrincipal(
+        subject_id='managed-admin',
+        display_name='Managed',
+        administrative_override=True,
+    )
 
 
 def test_regular_administrative_override_is_not_equivalent_to_root_session():

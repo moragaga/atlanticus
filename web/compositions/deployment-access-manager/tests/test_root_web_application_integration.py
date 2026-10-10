@@ -58,17 +58,13 @@ def _pages(tmp_path: Path, monkeypatch) -> str:
     package = tmp_path / package_name
     package.mkdir()
     (package / '__init__.py').write_text('', encoding='utf-8')
-    for name, route in (
-        ('home', '/'),
-        ('manager', '/manager'),
-        ('deployment_access', '/manager/deployment-access'),
-    ):
-        (package / f'{name}.py').write_text(
-            'from dash import html, register_page\n'
-            f'register_page(__name__, path={route!r}, name={name!r})\n'
-            f'layout = html.Div({name!r})\n',
-            encoding='utf-8',
-        )
+    route = f'/{package_name}'
+    (package / 'home.py').write_text(
+        'from dash import html, register_page\n'
+        f'register_page(__name__, path={route!r}, name="Qualification")\n'
+        'layout = html.Div("Qualification")\n',
+        encoding='utf-8',
+    )
     monkeypatch.syspath_prepend(str(tmp_path))
     return package_name
 
