@@ -1,7 +1,7 @@
+# El adaptador de dominio consume latest y timeseries; no transforma las muestras.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
 
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     DashboardValueStatus,
@@ -9,40 +9,20 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 )
 from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
-from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
 from .definitions import (
-    MOLIENDA_GENERAL_METRICS,
     MOLIENDA_LINES,
-    MOLIENDA_TREND,
     MoliendaEquipmentDefinition,
     MoliendaLineDefinition,
-    MoliendaMetricDefinition,
+    MoliendaSagMetricDefinition,
 )
-from .models import (
-    MoliendaEquipmentReading,
-    MoliendaLineReading,
-    MoliendaMetricReading,
-    MoliendaState,
-)
-
-_STEP_SECONDS = 120
+from .models import MoliendaEquipmentReading, MoliendaLineReading, MoliendaSagMetricReading
 
 
-def map_molienda_store(store_data: object) -> MoliendaState:
+def map_molienda_sags_store(store_data: object) -> tuple[MoliendaLineReading, ...]:
     data = store_data if isinstance(store_data, Mapping) else None
     values, source_status = _latest_values(data)
-    timeseries = data.get('timeseries') if data is not None else None
-    return MoliendaState(
-        trend_current=_value(values, MOLIENDA_TREND.kpi_key, source_status),
-        trend_history=_history(timeseries, MOLIENDA_TREND.kpi_key),
-        general=tuple(
-            _metric(values, definition, source_status)
-            for definition in MOLIENDA_GENERAL_METRICS
-        ),
-        lines=tuple(_line(values, definition, source_status) for definition in MOLIENDA_LINES),
-    )
-
+    return tuple(_line(values, definition, source_status) for definition in MOLIENDA_LINES)
 
 def _latest_values(
     data: Mapping[str, object] | None,
@@ -102,10 +82,10 @@ def _tone(
 
 def _metric(
     values: Mapping[str, object] | None,
-    definition: MoliendaMetricDefinition,
+    definition: MoliendaSagMetricDefinition,
     source_status: DisplayStatus,
-) -> MoliendaMetricReading:
-    return MoliendaMetricReading(
+) -> MoliendaSagMetricReading:
+    return MoliendaSagMetricReading(
         definition=definition,
         value=_value(values, definition.kpi_key, source_status),
         tone=_tone(values, definition.color_kpi_key, source_status),
@@ -136,53 +116,3 @@ def _line(
         mills=tuple(_equipment(values, mill, source_status) for mill in definition.mills),
         metrics=tuple(_metric(values, metric, source_status) for metric in definition.metrics),
     )
-
-
-def _utc(value: object) -> datetime:
-    if not isinstance(value, str) or not value:
-        raise ValueError('Time series timestamp must be a non-empty ISO string')
-    parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise ValueError('Time series timestamp must be timezone-aware')
-    return parsed.astimezone(UTC)
-
-
-def _history(timeseries: object, key: str) -> TimeSeriesValues:
-    if timeseries is None:
-        return TimeSeriesValues(DisplayStatus.NOT_MAPPED)
-    if not isinstance(timeseries, Mapping):
-        return TimeSeriesValues(DisplayStatus.INVALID)
-    raw_series = timeseries.get('series')
-    if not isinstance(raw_series, Mapping):
-        return TimeSeriesValues(DisplayStatus.INVALID)
-    if key not in raw_series:
-        return TimeSeriesValues(DisplayStatus.NOT_MAPPED)
-    try:
-        entry = raw_series[key]
-        if not isinstance(entry, Mapping):
-            raise ValueError('Time series entry must be an object')
-        hours = entry['hours']
-        if type(hours) is not int or not 1 <= hours <= 24:
-            raise ValueError('Time series hours must be between 1 and 24')
-        step = timeseries['step_seconds']
-        if type(step) is not int or step != _STEP_SECONDS:
-            raise ValueError('Time series step_seconds is unsupported')
-        start = _utc(entry['start_utc'])
-        end = _utc(entry['end_utc'])
-        if end != _utc(timeseries['end_utc']) or start != end - timedelta(hours=hours):
-            raise ValueError('Time series bounds are inconsistent')
-        samples = entry['values']
-        if not isinstance(samples, list) or len(samples) != hours * 3600 // step:
-            raise ValueError('Time series samples count is inconsistent')
-        value_type = entry['value_type']
-        if value_type not in {'integer', 'float', None}:
-            raise ValueError('Molienda trend must be numeric')
-        if value_type is None and any(value is not None for value in samples):
-            raise ValueError('Time series values require numeric value_type')
-        points = tuple(
-            TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
-            for index, sample in enumerate(samples)
-        )
-    except (KeyError, TypeError, ValueError, OverflowError):
-        return TimeSeriesValues(DisplayStatus.INVALID)
-    return TimeSeriesValues(DisplayStatus.OK, points)

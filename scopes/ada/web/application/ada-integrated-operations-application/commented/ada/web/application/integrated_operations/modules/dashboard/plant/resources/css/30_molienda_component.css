@@ -1,3 +1,4 @@
+/* Define solamente el contenedor maestro de Molienda. */
 .ada-io-molienda {
     display: flex;
     flex-direction: column;

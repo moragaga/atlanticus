@@ -1,4 +1,3 @@
-# Decodifica latest y reconstruye el eje UTC de timeseries sin transformar muestras numéricas.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,37 +11,22 @@ from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
-from .definitions import (
-    MOLIENDA_GENERAL_METRICS,
-    MOLIENDA_LINES,
-    MOLIENDA_TREND,
-    MoliendaEquipmentDefinition,
-    MoliendaLineDefinition,
-    MoliendaMetricDefinition,
-)
-from .models import (
-    MoliendaEquipmentReading,
-    MoliendaLineReading,
-    MoliendaMetricReading,
-    MoliendaState,
-)
+from .definitions import MOLIENDA_GENERAL_METRICS, MOLIENDA_TREND, MoliendaMetricDefinition
+from .models import MoliendaMetricReading, MoliendaOverviewReading
 
 _STEP_SECONDS = 120
 
 
-# El store recibido puede contener latest y timeseries con ritmos de actualización distintos.
-def map_molienda_store(store_data: object) -> MoliendaState:
+def map_molienda_overview_store(store_data: object) -> MoliendaOverviewReading:
     data = store_data if isinstance(store_data, Mapping) else None
     values, source_status = _latest_values(data)
     timeseries = data.get('timeseries') if data is not None else None
-    return MoliendaState(
+    return MoliendaOverviewReading(
         trend_current=_value(values, MOLIENDA_TREND.kpi_key, source_status),
         trend_history=_history(timeseries, MOLIENDA_TREND.kpi_key),
         general=tuple(
-            _metric(values, definition, source_status)
-            for definition in MOLIENDA_GENERAL_METRICS
+            _metric(values, definition, source_status) for definition in MOLIENDA_GENERAL_METRICS
         ),
-        lines=tuple(_line(values, definition, source_status) for definition in MOLIENDA_LINES),
     )
 
 
@@ -114,32 +98,6 @@ def _metric(
     )
 
 
-def _equipment(
-    values: Mapping[str, object] | None,
-    definition: MoliendaEquipmentDefinition,
-    source_status: DisplayStatus,
-) -> MoliendaEquipmentReading:
-    return MoliendaEquipmentReading(
-        definition=definition,
-        state=_value(values, definition.state_kpi_key, source_status),
-        power=_value(values, definition.power_kpi_key, source_status),
-        power_tone=_tone(values, definition.power_color_kpi_key, source_status),
-    )
-
-
-def _line(
-    values: Mapping[str, object] | None,
-    definition: MoliendaLineDefinition,
-    source_status: DisplayStatus,
-) -> MoliendaLineReading:
-    return MoliendaLineReading(
-        definition=definition,
-        sag=_equipment(values, definition.sag, source_status),
-        mills=tuple(_equipment(values, mill, source_status) for mill in definition.mills),
-        metrics=tuple(_metric(values, metric, source_status) for metric in definition.metrics),
-    )
-
-
 def _utc(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         raise ValueError('Time series timestamp must be a non-empty ISO string')
@@ -149,7 +107,6 @@ def _utc(value: object) -> datetime:
     return parsed.astimezone(UTC)
 
 
-# Los valores numéricos y None se transfieren intactos; solo se reconstruyen instantes UTC.
 def _history(timeseries: object, key: str) -> TimeSeriesValues:
     if timeseries is None:
         return TimeSeriesValues(DisplayStatus.NOT_MAPPED)
@@ -186,6 +143,6 @@ def _history(timeseries: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except KeyError, TypeError, ValueError, OverflowError:
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)

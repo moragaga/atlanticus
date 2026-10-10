@@ -8,8 +8,9 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import MOLIENDA
 from ada.web.kpis.collector import component_kpi_store_id
 
-from .mapper import map_molienda_store
+from .overview import map_molienda_overview_store
 from .presentation import build_molienda
+from .sags import map_molienda_sags_store
 
 
 def register_molienda_callback(dash_app, *, tool_key: str) -> None:
@@ -18,4 +19,7 @@ def register_molienda_callback(dash_app, *, tool_key: str) -> None:
         Input(component_kpi_store_id(tool_key, MOLIENDA.tool_component_key), 'data'),
     )
     def refresh_molienda(store_data: object):
-        return build_molienda(map_molienda_store(store_data))
+        return build_molienda(
+            map_molienda_overview_store(store_data),
+            map_molienda_sags_store(store_data),
+        )

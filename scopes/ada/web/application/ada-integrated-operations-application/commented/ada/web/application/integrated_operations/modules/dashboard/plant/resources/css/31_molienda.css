@@ -1,10 +1,18 @@
-/* La tendencia ocupa toda la anchura; los indicadores generales forman filas verticales. */
-.ada-io-molienda {
+/* Presentación interna y tipografía contextual de Molienda. */
+.ada-io-molienda__overview {
     display: flex;
     flex-direction: column;
+    gap: .45rem;
     width: 100%;
     min-width: 0;
-    gap: .45rem;
+}
+
+.ada-io-molienda__general {
+    --atlanticus-inline-value-row-font-size: .54rem;
+}
+
+.ada-io-molienda__line-metrics {
+    --atlanticus-inline-value-row-font-size: .51rem;
 }
 
 .ada-io-molienda__trend {
@@ -52,7 +60,6 @@
     min-width: 0;
 }
 
-/* Métricas SAG a la izquierda y molinos de bolas a la derecha. */
 .ada-io-molienda__line-details {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

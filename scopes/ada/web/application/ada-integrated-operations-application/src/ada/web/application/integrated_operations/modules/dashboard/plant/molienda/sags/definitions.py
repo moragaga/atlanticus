@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class MoliendaMetricDefinition:
+class MoliendaSagMetricDefinition:
     label: str
     kpi_key: str
     unit: str | None = None
@@ -25,19 +25,7 @@ class MoliendaLineDefinition:
     number: int
     sag: MoliendaEquipmentDefinition
     mills: tuple[MoliendaEquipmentDefinition, ...]
-    metrics: tuple[MoliendaMetricDefinition, ...]
-
-
-MOLIENDA_TREND = MoliendaMetricDefinition(
-    'Rendimiento Molienda', 'rendimiento_real_mean_hora'
-)
-
-MOLIENDA_GENERAL_METRICS = (
-    MoliendaMetricDefinition('Avance Pebbles', 'avance_pebbles_real'),
-    MoliendaMetricDefinition('Recirculación', 'recirculacion_pebbles_mean_hora'),
-    MoliendaMetricDefinition('CEE Planta', 'cee_planta_mean_hora'),
-    MoliendaMetricDefinition('P80 Planta', 'p80_planta_real'),
-)
+    metrics: tuple[MoliendaSagMetricDefinition, ...]
 
 
 def _line(number: int, mill_numbers: tuple[int, ...]) -> MoliendaLineDefinition:
@@ -61,13 +49,13 @@ def _line(number: int, mill_numbers: tuple[int, ...]) -> MoliendaLineDefinition:
             for mill_number in mill_numbers
         ),
         metrics=(
-            MoliendaMetricDefinition(
+            MoliendaSagMetricDefinition(
                 'F80', f'f80_sag_{number}_inst', '"', f'f80_sag_{number}_color_inst'
             ),
-            MoliendaMetricDefinition(
+            MoliendaSagMetricDefinition(
                 'P80', f'p80_sag_{number}_inst', 'µm', f'p80_sag_{number}_color_inst'
             ),
-            MoliendaMetricDefinition(
+            MoliendaSagMetricDefinition(
                 'Rend.', f'tph_sag_{number}_inst', 't/h', f'tph_sag_{number}_color_inst'
             ),
         ),
