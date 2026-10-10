@@ -45,6 +45,7 @@ from ada.web.application.generic.operational_tool import (
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.users_access import AdaInitialUsersStore
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,
@@ -294,8 +295,13 @@ def _prepare_manager_identity(
         source_name=source_name,
         projection_name=projection_name,
     )
+    # Se resuelve Access y Profiles una vez por carga y luego se conserva el snapshot.
     resolver = UsersAccessResolver(
-        store=stores.users_runtime,
+        store=AdaInitialUsersStore(
+            runtime=stores.users_runtime,
+            profiles=stores.profiles,
+            access=stores.access,
+        ),
         runtime=users_runtime,
     )
     return resolved_provider, users_runtime, dependencies, resolver
