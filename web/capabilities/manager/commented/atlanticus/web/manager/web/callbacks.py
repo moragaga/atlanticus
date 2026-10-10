@@ -171,19 +171,6 @@ def register_manager_callbacks(
         return not home_active, not home_active, home_active
 
     @app.callback(
-        Output(workflow_validation_id(ALL), 'data', allow_duplicate=True),
-        Output(workflow_source_verification_id(ALL), 'data', allow_duplicate=True),
-        Input(REFRESH_SIGNAL_ID, 'data'),
-        prevent_initial_call=True,
-    )
-    def clear_transient_workflow(clicks: int):
-        if not _click_is_real(clicks):
-            return no_update, no_update
-        principal = definition.principal_provider()
-        cleared = [None for _ in registry.visible_modules(principal, authorization)]
-        return cleared, cleared
-
-    @app.callback(
         Output(SIDEBAR_MODULES_ID, 'children'),
         Input(STATUS_STORE_ID, 'data'),
         Input(LOCATION_ID, 'pathname'),
@@ -247,6 +234,24 @@ def register_manager_callbacks(
             [build_manager_home_return(registry.root_route), content],
             className='atlanticus-manager__module-page',
         )
+
+    # Una superficie compuesta solo por entradas no necesita callbacks de edición ni publicación.
+    if not registry.modules:
+        return
+
+    # La limpieza de validación solo existe cuando hay módulos de configuración.
+    @app.callback(
+        Output(workflow_validation_id(ALL), 'data', allow_duplicate=True),
+        Output(workflow_source_verification_id(ALL), 'data', allow_duplicate=True),
+        Input(REFRESH_SIGNAL_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def clear_transient_workflow(clicks: int):
+        if not _click_is_real(clicks):
+            return no_update, no_update
+        principal = definition.principal_provider()
+        cleared = [None for _ in registry.visible_modules(principal, authorization)]
+        return cleared, cleared
 
     @app.callback(
         Output(module_section_panel_id(MATCH, 'content'), 'children'),

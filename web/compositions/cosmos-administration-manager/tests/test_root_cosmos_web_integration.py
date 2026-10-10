@@ -129,6 +129,9 @@ def test_real_web_host_shares_root_and_fences_cosmos_inventory(tmp_path, monkeyp
         if row['output'] == 'atlanticus-cosmos-admin-cosmos-administration-report.children'
     )
     assert any(row['output'].endswith('deployment-access-status.children') for row in dependencies)
+    assert not any(
+        'atlanticus-manager-workflow-' in row['output'] for row in dependencies
+    )
 
     invalid = _inventory_callback(client, output=output, connection='not-configured')
     assert invalid.status_code == 200
