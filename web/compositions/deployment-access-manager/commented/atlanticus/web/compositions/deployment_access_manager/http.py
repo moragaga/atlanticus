@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import hmac
+import re
 import secrets
 from collections.abc import Callable
+from datetime import UTC, datetime
 from html import escape
 
 from flask import Flask, Response, redirect, request, session
@@ -37,11 +39,19 @@ def create_deployment_root_http_module(
     *,
     root_session: DeploymentRootSession,
     allow_login_attempt: Callable[[str], bool],
+    manager_href: str | None = None,
 ) -> WebModule:
     if not isinstance(root_session, DeploymentRootSession):
         raise DeploymentRootHttpConfigurationError('ROOT HTTP requires DeploymentRootSession')
     if not callable(allow_login_attempt):
         raise DeploymentRootHttpConfigurationError('ROOT HTTP requires a login attempt gate')
+    if manager_href is not None and (
+        not isinstance(manager_href, str)
+        or re.fullmatch(r'/[a-z0-9][a-z0-9/_-]*', manager_href) is None
+        or manager_href.endswith('/')
+        or '//' in manager_href
+    ):
+        raise DeploymentRootHttpConfigurationError('ROOT HTTP Manager route is invalid')
 
     # La configuración de sesión no depende del orden de registro de otros WebModules.
     def register_middlewares(server: Flask, _services: object) -> None:
@@ -95,11 +105,20 @@ def create_deployment_root_http_module(
             except Exception:
                 return _page('Servicio no disponible', 'Acceso no disponible.', status=503)
             if permitted is not True:
-                return _page('Acceso temporalmente limitado', 'Intenta más tarde.', status=429)
+                return _page(
+                    'Acceso temporalmente limitado',
+                    '<p>Intenta más tarde.</p>'
+                    '<p><a href="/manager-root/login">Volver al formulario</a></p>',
+                    status=429,
+                )
             try:
                 root_session.login(service_user=service_user, password=password)
-            except DeploymentAccessMaterialError, DeploymentRootSessionError:
-                return _page('Acceso denegado', 'Credenciales ROOT inválidas.', status=401)
+            except (DeploymentAccessMaterialError, DeploymentRootSessionError):
+                return _page(
+                    'Acceso denegado',
+                    '<p>Credenciales ROOT inválidas.</p>' + _login_form(_issue_csrf()),
+                    status=401,
+                )
             except DeploymentAccessStorageError:
                 return _page('Servicio no disponible', 'Acceso no disponible.', status=503)
             # La credencial nunca se almacena; se rota el desafío CSRF tras login.
@@ -109,11 +128,18 @@ def create_deployment_root_http_module(
         def status() -> Response:
             try:
                 identity = root_session.current()
-            except DeploymentAccessStorageError, DeploymentRootSessionError:
+            except (DeploymentAccessStorageError, DeploymentRootSessionError):
                 return _page('Servicio no disponible', 'Acceso no disponible.', status=503)
             if identity is None:
                 return _page('Sin sesión ROOT', 'La sesión ROOT no está activa.', status=401)
-            return _page('Sesión ROOT activa', _logout_form(_issue_csrf()))
+            return _page(
+                'Sesión ROOT activa',
+                _logout_form(
+                    _issue_csrf(),
+                    manager_href=manager_href,
+                    expires_at_epoch=identity.expires_at_epoch,
+                ),
+            )
 
         def logout() -> Response:
             if not _valid_csrf():
@@ -123,22 +149,16 @@ def create_deployment_root_http_module(
             return redirect(ROOT_LOGIN_PATH, code=303)
 
         server.add_url_rule(
-            ROOT_LOGIN_PATH,
-            endpoint='atlanticus_deployment_root_login',
-            view_func=login,
-            methods=['GET', 'POST'],
+            ROOT_LOGIN_PATH, endpoint='atlanticus_deployment_root_login',
+            view_func=login, methods=['GET', 'POST']
         )
         server.add_url_rule(
-            ROOT_STATUS_PATH,
-            endpoint='atlanticus_deployment_root_status',
-            view_func=status,
-            methods=['GET'],
+            ROOT_STATUS_PATH, endpoint='atlanticus_deployment_root_status',
+            view_func=status, methods=['GET']
         )
         server.add_url_rule(
-            ROOT_LOGOUT_PATH,
-            endpoint='atlanticus_deployment_root_logout',
-            view_func=logout,
-            methods=['POST'],
+            ROOT_LOGOUT_PATH, endpoint='atlanticus_deployment_root_logout',
+            view_func=logout, methods=['POST']
         )
 
     return WebModule(
@@ -181,11 +201,18 @@ def _login_form(token: str) -> str:
     )
 
 
-def _logout_form(token: str) -> str:
+def _logout_form(token: str, *, manager_href: str | None, expires_at_epoch: int) -> str:
+    expiration = datetime.fromtimestamp(expires_at_epoch, tz=UTC).strftime('%Y-%m-%d %H:%M UTC')
+    manager_link = (
+        f'<p><a href="{escape(manager_href, quote=True)}">Ir al Manager</a></p>'
+        if manager_href is not None
+        else ''
+    )
     return (
-        '<p>La sesión ROOT fue autenticada. El acceso al Manager depende de que el host '
-        'componga la superficie administrativa y la protección de acceso.</p>'
-        '<form method="post" action="/manager-root/logout">'
+        '<p>La sesión ROOT está activa en este navegador y expira automáticamente.</p>'
+        f'<p>Vence: {escape(expiration)}</p>'
+        + manager_link
+        + '<form method="post" action="/manager-root/logout">'
         f'<input type="hidden" name="csrf_token" value="{escape(token, quote=True)}">'
         '<button type="submit">Cerrar sesión ROOT</button></form>'
     )

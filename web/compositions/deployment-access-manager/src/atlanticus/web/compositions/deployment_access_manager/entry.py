@@ -54,7 +54,12 @@ def create_deployment_access_manager_entry(
         try:
             identity = root_session.current()
             if identity is None:
-                return html.P('Se requiere una sesión ROOT vigente para consultar el material.')
+                return html.Div(
+                    [
+                        html.P('Se requiere una sesión ROOT vigente para consultar el material.'),
+                        html.A('Iniciar sesión ROOT', href=ROOT_LOGIN_PATH),
+                    ]
+                )
             if not policy.can_view(principal_provider(), entry):
                 return html.P('No tienes autorización para consultar Deployment Access.')
         except DeploymentRootSessionError, DeploymentAccessStorageError:
@@ -67,6 +72,7 @@ def create_deployment_access_manager_entry(
                 html.P('Material ROOT: PRESENT y verificado.'),
                 html.P(f'Usuario de servicio: {identity.service_user}'),
                 html.P(f'Vigencia de sesión: {expires}'),
+                html.A('Gestionar sesión ROOT y cerrar sesión', href=ROOT_STATUS_PATH),
             ]
         )
 
@@ -79,13 +85,6 @@ def create_deployment_access_manager_entry(
                 ),
                 html.Div(status_content(), id=status_id, role='status'),
                 html.Button('Actualizar estado', id=refresh_id, n_clicks=0),
-                html.P(
-                    [
-                        html.A('Iniciar sesión ROOT', href=ROOT_LOGIN_PATH),
-                        ' · ',
-                        html.A('Gestionar sesión y cerrar sesión', href=ROOT_STATUS_PATH),
-                    ]
-                ),
                 html.P(
                     'La creación, rotación y eliminación del material se realizan mediante '
                     'el procedimiento administrativo externo. Esta página no modifica material.'

@@ -4,13 +4,7 @@ import re
 
 import pytest
 
-from qualification.runtime import (
-    DEMO_LOCK_SECONDS,
-    DEMO_PASSWORD,
-    DEMO_USER,
-    LocalFailureGate,
-    build_qualification_runtime,
-)
+from qualification.runtime import DEMO_PASSWORD, DEMO_USER, build_qualification_runtime
 
 
 def _csrf(page) -> str:
@@ -101,42 +95,27 @@ def test_visual_qualification_login_manager_and_callbacks(tmp_path, monkeypatch)
     assert client.get('/manager').status_code == 401
 
 
-def test_lockout_after_three_bad_passwords_and_automatic_recovery(tmp_path, monkeypatch):
+def test_local_demo_retries_failed_logins_without_lockout(tmp_path, monkeypatch):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
-    now = [1200.0]
-    runtime = build_qualification_runtime(directory=tmp_path, gate_clock=lambda: now[0])
+    runtime = build_qualification_runtime(directory=tmp_path)
     client = runtime.web.server.test_client()
-    different_browser = runtime.web.server.test_client()
 
-    for _ in range(3):
-        assert _login(client, 'DemoRoot-incorrect-password').status_code == 401
-    assert _login(client, DEMO_PASSWORD).status_code == 429
-    assert _login(different_browser, DEMO_PASSWORD).status_code == 429
-    assert client.get('/manager-root/status').status_code == 401
-    now[0] += DEMO_LOCK_SECONDS - 1
-    assert _login(client, DEMO_PASSWORD).status_code == 429
-    now[0] += 1
-    assert _login(client, DEMO_PASSWORD).status_code == 303
+    for _ in range(5):
+        denied = _login(client, 'DemoRoot-incorrect-password')
+        assert denied.status_code == 401
+        assert 'Credenciales ROOT inválidas.' in denied.get_data(as_text=True)
+        assert 'name="service_user"' in denied.get_data(as_text=True)
+        assert 'name="csrf_token"' in denied.get_data(as_text=True)
+
+    authenticated = _login(client, DEMO_PASSWORD)
+    assert authenticated.status_code == 303
+    status = client.get('/manager-root/status')
+    assert status.status_code == 200
+    body = status.get_data(as_text=True)
+    assert 'Ir al Manager' in body
+    assert 'href="/manager"' in body
+    assert 'Vence:' in body
     assert client.get('/manager').status_code == 200
-
-    assert _login(client, 'DemoRoot-incorrect-password').status_code == 401
-    assert _login(client, DEMO_PASSWORD).status_code == 303
-    assert runtime.gate.allow_login_attempt('127.0.0.1') is True
-
-
-def test_failure_gate_isolated_by_ip_and_success_reset():
-    now = [10.0]
-    gate = LocalFailureGate(max_failures=2, lock_seconds=5, clock=lambda: now[0])
-    assert gate.allow_login_attempt('127.0.0.1')
-    gate.record_failure('127.0.0.1')
-    gate.record_failure('127.0.0.1')
-    assert gate.allow_login_attempt('127.0.0.1') is False
-    assert gate.allow_login_attempt('127.0.0.2') is True
-    now[0] += 5
-    assert gate.allow_login_attempt('127.0.0.1') is True
-    gate.record_failure('127.0.0.1')
-    gate.record_success('127.0.0.1')
-    assert gate.allow_login_attempt('127.0.0.1') is True
 
 
 def test_visual_qualification_rejects_nonlocal_environment(tmp_path, monkeypatch):

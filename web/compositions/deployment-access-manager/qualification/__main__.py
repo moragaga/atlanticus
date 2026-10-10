@@ -6,8 +6,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from qualification.runtime import (
-    DEMO_LOCK_SECONDS,
-    DEMO_MAX_FAILURES,
     DEMO_PASSWORD,
     DEMO_USER,
     build_qualification_runtime,
@@ -32,9 +30,7 @@ def main() -> None:
         print(f'Demo user: {DEMO_USER}', flush=True)
         print(f'Demo password: {DEMO_PASSWORD}', flush=True)
         print(
-            f'Lockout: {DEMO_MAX_FAILURES} incorrect passwords; '
-            f'next attempt returns HTTP 429 for {DEMO_LOCK_SECONDS} seconds',
-            flush=True,
+            'Login retry: incorrect credentials return HTTP 401 without a demo lockout', flush=True
         )
         print('Stop with Ctrl+C. Demo material is removed at exit.', flush=True)
         runtime.web.server.run(
