@@ -453,3 +453,28 @@
         grid-column: span 5 !important;
     }
 }
+
+@media only screen and (min-width: 1280px) and (max-width: 2559px) and (prefers-reduced-motion: no-preference) {
+    html.ada-io-presentation-transition .ada-io-dashboard .ada-io-scope--mine {
+        view-transition-name: ada-io-mine;
+    }
+
+    html.ada-io-presentation-transition .ada-io-dashboard .ada-io-scope--plant {
+        view-transition-name: ada-io-plant;
+    }
+
+    html.ada-io-presentation-transition::view-transition-old(root),
+    html.ada-io-presentation-transition::view-transition-new(root) {
+        animation: none;
+    }
+
+    html.ada-io-presentation-transition::view-transition-group(ada-io-mine),
+    html.ada-io-presentation-transition::view-transition-group(ada-io-plant),
+    html.ada-io-presentation-transition::view-transition-old(ada-io-mine),
+    html.ada-io-presentation-transition::view-transition-new(ada-io-mine),
+    html.ada-io-presentation-transition::view-transition-old(ada-io-plant),
+    html.ada-io-presentation-transition::view-transition-new(ada-io-plant) {
+        animation-duration: 420ms;
+        animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+    }
+}

@@ -11,6 +11,7 @@
     const DESKTOP_MIN_WIDTH = 1366;
     const VIDEOWALL_MIN_WIDTH = 2560;
     let resizeFrame = null;
+    let presentationTransition = null;
 
     function resolveViewportMode(width) {
         if (width >= VIDEOWALL_MIN_WIDTH) {
@@ -125,6 +126,61 @@
         }
     }
 
+    function updateInteractivePresentation(dashboard, mode, presentation) {
+        applyPresentation(dashboard, presentation);
+        synchronizeAlarmBaseline(dashboard, mode, presentation);
+        synchronizeOverviewControls(dashboard, mode, presentation);
+    }
+
+    function animatePresentationFallback(dashboard, presentation) {
+        const scopes = presentation === 'overview'
+            ? dashboard.querySelectorAll('.ada-io-scope')
+            : dashboard.querySelectorAll(`.ada-io-scope--${presentation}`);
+        scopes.forEach((scope) => {
+            if (typeof scope.animate === 'function') {
+                scope.animate(
+                    [
+                        { opacity: 0.65, transform: 'translateY(8px)' },
+                        { opacity: 1, transform: 'translateY(0)' },
+                    ],
+                    { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+                );
+            }
+        });
+    }
+
+    function transitionPresentation(dashboard, mode, presentation) {
+        if (dashboard.dataset.adaIoPresentation === presentation) {
+            return;
+        }
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            updateInteractivePresentation(dashboard, mode, presentation);
+            return;
+        }
+        if (typeof document.startViewTransition !== 'function') {
+            updateInteractivePresentation(dashboard, mode, presentation);
+            animatePresentationFallback(dashboard, presentation);
+            return;
+        }
+
+        if (presentationTransition) {
+            presentationTransition.skipTransition();
+        }
+        const root = document.documentElement;
+        root.classList.add('ada-io-presentation-transition');
+        const transition = document.startViewTransition(() => {
+            updateInteractivePresentation(dashboard, mode, presentation);
+        });
+        presentationTransition = transition;
+        const finish = () => {
+            if (presentationTransition === transition) {
+                presentationTransition = null;
+                root.classList.remove('ada-io-presentation-transition');
+            }
+        };
+        transition.finished.then(finish, finish);
+    }
+
     function synchronizeDashboard(dashboard) {
         const previousMode = dashboard.dataset.adaIoViewport || '';
         const mode = resolveViewportMode(window.innerWidth);
@@ -194,9 +250,7 @@
             return;
         }
 
-        applyPresentation(dashboard, presentation);
-        synchronizeAlarmBaseline(dashboard, mode, presentation);
-        synchronizeOverviewControls(dashboard, mode, presentation);
+        transitionPresentation(dashboard, mode, presentation);
     }
 
     document.addEventListener('click', handleClick);
