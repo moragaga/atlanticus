@@ -125,14 +125,18 @@ class OperationalIdentificationService:
             raise OperationalReferenceError('Operational catalog changed before assigning position')
 
     def projection_status(self, source_key: SourceKey) -> ProjectionStatus:
-        source_kind(source_key)
+        kind, _user_id = source_kind(source_key)
+        if kind != 'catalog':
+            raise OperationalReferenceError('Individual assignments are not projected')
         return self._projection.get_status(source_key)
 
     def project_current(
         self,
         source_key: SourceKey,
     ) -> ProjectionRecord[OperationalDocument] | None:
-        source_kind(source_key)
+        kind, _user_id = source_kind(source_key)
+        if kind != 'catalog':
+            raise OperationalReferenceError('Individual assignments are not projected')
         target = self._projection.select_current_target(source_key)
         if target is None:
             return None
@@ -151,7 +155,7 @@ class OperationalIdentificationService:
 
     def assignment_for_read(self, user_id: str) -> OperationalAssignment:
         self._require_user(user_id)
-        return self._projected_assignment(user_id)
+        return self._source_assignment(user_id)
 
     def assignment_for_resolved_user(self, user: RuntimeUser) -> OperationalAssignment:
         if not isinstance(user, RuntimeUser):
@@ -171,7 +175,7 @@ class OperationalIdentificationService:
 
     def runtime_snapshot_for_user(self, user_id: str) -> RuntimeOperational:
         self._require_user(user_id)
-        assignment = self._projected_assignment(user_id)
+        assignment = self._source_assignment(user_id)
         catalog = self.catalog_for_read()
         document = catalog.to_document()
         areas = {item['id']: item['label'] for item in document['areas']}
@@ -202,16 +206,13 @@ class OperationalIdentificationService:
         )
         return RuntimeOperational(area=area, position=position, group=group)
 
-    def _projected_assignment(self, user_id: str) -> OperationalAssignment:
-        active = self._projections.get_active(assignment_source_key(user_id))
-        if active is None:
+    def _source_assignment(self, user_id: str) -> OperationalAssignment:
+        _snapshot, assignment = self._source.current(assignment_source_key(user_id))
+        if assignment is None:
             return OperationalAssignment(user_id=user_id)
-        if (
-            not isinstance(active.payload, OperationalAssignment)
-            or active.payload.user_id != user_id
-        ):
-            raise OperationalReferenceError('Operational assignment projection has an invalid type')
-        return active.payload
+        if not isinstance(assignment, OperationalAssignment) or assignment.user_id != user_id:
+            raise OperationalReferenceError('Operational assignment source is invalid')
+        return assignment
 
     def _require_user(self, user_id: str) -> None:
         assignment_source_key(user_id)

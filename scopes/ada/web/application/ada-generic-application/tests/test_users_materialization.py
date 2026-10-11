@@ -71,14 +71,15 @@ class _Operations:
         return self.snapshots.setdefault(key.value, SimpleNamespace(current=None))
 
     def current(self, key):
-        raise AssertionError('Materialization must use the projected assignment')
+        snapshot = self.snapshot(key)
+        return snapshot, self.assignments.get(key.value)
 
 
 class _Writer:
     def __init__(self) -> None:
         self.users = {}
 
-    def upsert_user(self, user):
+    def upsert_base_user(self, user):
         self.users[user.user_id] = user
         return user
 
@@ -285,55 +286,30 @@ def test_operational_catalog_behind_source_fails_closed():
         service.materialize_user(identities[0].user_id)
 
 
-def test_stale_operational_assignment_projection_fails_closed():
-    service, stores, _ops, identities = _setup()
-    key = f'ada-operational-user:{identities[0].user_id}'
-    stores.operational.assignments[key].source_release = 'outdated'
-    with pytest.raises(
-        UsersMaterializationError, match='current Operational assignment projection'
-    ):
-        service.materialize_user(identities[0].user_id)
-
-
-def test_missing_operational_assignment_projection_fails_closed():
-    service, stores, _ops, identities = _setup()
+def test_operational_assignment_uses_source_without_individual_projection():
+    service, stores, ops, identities = _setup()
     stores.operational.assignments.clear()
-    with pytest.raises(
-        UsersMaterializationError, match='current Operational assignment projection'
-    ):
-        service.materialize_user(identities[0].user_id)
+    user = service.materialize_user(identities[0].user_id)
+    assert user.operational.position.id == 'operator'
+    assert ops.current is not None
 
 
-def test_orphan_operational_assignment_projection_fails_closed():
+def test_operational_assignment_source_change_during_materialization_fails_closed():
     service, _stores, ops, identities = _setup()
-    ops.snapshots[f'ada-operational-user:{identities[0].user_id}'] = SimpleNamespace(current=None)
-    with pytest.raises(UsersMaterializationError, match='projection has no source'):
-        service.materialize_user(identities[0].user_id)
+    original = ops.snapshot
+    calls = {'number': 0}
 
+    def changing_snapshot(key):
+        result = original(key)
+        if key.value.startswith('ada-operational-user:'):
+            calls['number'] += 1
+            if calls['number'] > 1:
+                return SimpleNamespace(current=SimpleNamespace(release_ref='newer'))
+        return result
 
-def test_projected_assignment_change_during_materialization_fails_closed():
-    service, stores, _ops, identities = _setup()
-    key = f'ada-operational-user:{identities[0].user_id}'
-    projection = stores.operational
-    before = projection.assignments[key]
-
-    class ChangingProjection(_Projection):
-        def __init__(self):
-            super().__init__(projection.record, assignments=dict(projection.assignments))
-            self.reads = 0
-
-        def get_active(self, source_key):
-            result = super().get_active(source_key)
-            if source_key.value == key:
-                self.reads += 1
-                if self.reads == 2:
-                    return SimpleNamespace(source_release='assignment-2', payload=before.payload)
-            return result
-
-    stores.operational = ChangingProjection()
+    ops.snapshot = changing_snapshot
     with pytest.raises(UsersMaterializationError, match='changed during resolution'):
         service.materialize_user(identities[0].user_id)
-
 
 def test_disabled_membership_is_materialized_without_granting_enabled_status():
     service, stores, _ops, identities = _setup()

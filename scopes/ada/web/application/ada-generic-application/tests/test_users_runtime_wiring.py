@@ -64,7 +64,7 @@ def test_integrated_manager_wires_individual_publication(tmp_path, monkeypatch):
                 user for user in self.stores.users_registry.load().users if user.user_id == user_id
             )
             membership = self.stores.users_memberships.load().get(user_id)
-            return writer.upsert_user(
+            return writer.upsert_base_user(
                 RuntimeUser(
                     identity=user,
                     enabled=membership.enabled,

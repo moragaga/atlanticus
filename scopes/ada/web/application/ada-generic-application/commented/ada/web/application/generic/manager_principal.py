@@ -10,6 +10,7 @@ from ada.web.application.configuration_manager.wiring import (
     compose_configuration_manager_dependencies,
 )
 from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
 from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.identity.access import AccessRuntime, AccessSnapshot, AccessStatus
@@ -120,9 +121,12 @@ def compose_integrated_manager_dependencies(
         trusted_local_users=trusted_local_users and resolved_environment.is_local,
     )
     # Solo ADA integra la publicación individual posterior a guardar la membership.
-    writer = stores.users_runtime
-    if not callable(getattr(writer, 'upsert_user', None)):
-        raise TypeError('Integrated ADA Manager requires an individual users runtime writer')
+    writer = stores.users_runtime_writer or AdaLocalRuntimeUserWriter(stores.users_runtime)
+    if not all(
+        callable(getattr(writer, name, None))
+        for name in ('upsert_base_user', 'upsert_operational')
+    ):
+        raise TypeError('Integrated ADA Manager requires additive runtime writers')
     materializer = AdaUsersRuntimeMaterializer(stores=stores)
     return compose_configuration_manager_dependencies(
         stores=stores,
@@ -131,6 +135,9 @@ def compose_integrated_manager_dependencies(
         source_name=source_name,
         projection_name=projection_name,
         users_runtime_publisher=lambda user_id: materializer.publish_user(user_id, writer=writer),
+        operational_runtime_publisher=lambda user_id: materializer.publish_operational(
+            user_id, writer=writer
+        ),
     )
 
 

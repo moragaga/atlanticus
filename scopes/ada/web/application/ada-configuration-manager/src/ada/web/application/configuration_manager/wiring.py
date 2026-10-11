@@ -97,6 +97,7 @@ class ConfigurationManagerStores:
     users_registry: UsersRegistryStore
     users_memberships: ToolMembershipStore
     users_runtime: UsersRuntimeStore
+    users_runtime_writer: object | None = None
     users_directory: UsersDirectoryReader | None = None
     operational_source: SourceStore | None = None
     operational: ProjectionStore[OperationalDocument] | None = None
@@ -125,6 +126,11 @@ class ConfigurationManagerStores:
         ):
             if not isinstance(getattr(self, name), expected):
                 raise TypeError(f'Configuration Manager {name} must implement {expected.__name__}')
+        if self.users_runtime_writer is not None and any(
+            not callable(getattr(self.users_runtime_writer, name, None))
+            for name in ('upsert_base_user', 'upsert_operational')
+        ):
+            raise TypeError('Users runtime writer must support base and operational publication')
         if (self.operational_source is None) != (self.operational is None):
             raise ValueError('Operational source and projection must be injected together')
         if self.operational_source is not None and not isinstance(self.operational_source, SourceStore):
@@ -155,6 +161,7 @@ def compose_configuration_manager_dependencies(
     profiles_projection_name: str | None = None,
     kpi_projection_name: str | None = None,
     users_runtime_publisher: Callable[[str], RuntimeUser] | None = None,
+    operational_runtime_publisher: Callable[[str], RuntimeUser] | None = None,
 ) -> ConfigurationManagerDependencies:
     if not isinstance(stores, ConfigurationManagerStores):
         raise TypeError('Configuration Manager stores are invalid')
@@ -311,7 +318,7 @@ def compose_configuration_manager_dependencies(
         operational_catalog_contracts=operational_catalog_contracts,
         operational_users=users_administration.managed_users if operational_service is not None else None,
         operational_runtime_publisher=(
-            users_runtime_publisher if operational_service is not None else None
+            operational_runtime_publisher if operational_service is not None else None
         ),
         kpi_registry_source=kpi_registry_source,
         kpi_registry_projection=kpi_registry_projection,

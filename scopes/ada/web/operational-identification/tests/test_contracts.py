@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 
@@ -19,31 +19,45 @@ from ada.web.operational.identification import (
     assignment_source_key,
 )
 from ada.web.operational.identification.projection import (
-    OperationalProjectionBuilder,
     projection_from_document,
     projection_to_document,
 )
 from ada.web.operational.identification.source import OperationalSourceCodec
 from atlanticus.connectivity.cosmos import CosmosError, CosmosPreconditionFailedError
+from atlanticus.web.profiles.models import BASIC_PROFILE
 from atlanticus.web.projection.errors import ProjectionExecutionError
-from atlanticus.web.projection.models import ProjectionRecord, ProjectionTarget
+from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.errors import SourceConcurrencyError
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceReleaseId
-from atlanticus.web.users.models import EffectiveUser
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import (
+    RuntimeOperational,
+    RuntimeOperationalReference,
+    RuntimeProfile,
+    RuntimeUser,
+    ToolMembershipSnapshot,
+    ToolUserMembership,
+    UserIdentity,
+)
 
 USER_A = 'user:' + 'a' * 24
 USER_B = 'user:' + 'b' * 24
 
 
-class FakeUsers:
+class FakeMemberships:
     def __init__(self, *known: str) -> None:
-        self.known = set(known)
+        self.snapshot = ToolMembershipSnapshot(
+            memberships=tuple(
+                ToolUserMembership(user_id=user_id, profile_key='basic')
+                for user_id in known
+            )
+        )
         self.reads = 0
 
-    def get(self, user_id: str):
+    def load(self) -> ToolMembershipSnapshot:
         self.reads += 1
-        return SimpleNamespace(user_id=user_id) if user_id in self.known else None
+        return self.snapshot
 
 
 class FakeCosmos:
@@ -99,10 +113,28 @@ def make_service(tmp_path, users=(USER_A, USER_B)):
     cosmos = FakeCosmos()
     source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
     projections = CosmosOperationalProjectionStore(client=cosmos, container_name='users-support')
+    memberships = FakeMemberships(*users)
     service = OperationalIdentificationService(
-        source_store=source, projections=projections, users=FakeUsers(*users)
+        source_store=source,
+        projections=projections,
+        memberships=memberships,
     )
-    return service, cosmos, source, projections
+    return service, cosmos, source, projections, memberships
+
+
+def publish_catalog(service, *, positions=()):
+    snapshot, _ = service.catalog_for_edit()
+    service.publish_catalog(OperationalCatalog(positions=positions), actor='manager', expected=snapshot)
+    return service.project_current(CATALOG_SOURCE_KEY)
+
+
+def publish_assignment(service, user_id, **values):
+    snapshot, _ = service.assignment_for_edit(user_id)
+    return service.publish_assignment(
+        OperationalAssignment(user_id=user_id, **values),
+        actor='manager',
+        expected=snapshot,
+    )
 
 
 def test_optional_operational_fields_and_roundtrip():
@@ -111,9 +143,7 @@ def test_optional_operational_fields_and_roundtrip():
     assert assignment.position_id is None
     assert assignment.group_id is None
     assert OperationalAssignment.from_document(assignment.to_document()) == assignment
-    assert OperationalCatalog.from_document(OperationalCatalog().to_document()) == (
-        OperationalCatalog()
-    )
+    assert OperationalCatalog.from_document(OperationalCatalog().to_document()) == OperationalCatalog()
 
 
 @pytest.mark.parametrize(
@@ -132,16 +162,13 @@ def test_assignment_rejects_invalid_values(data):
 
 def test_catalog_requires_stable_position_ids_and_unique_labels():
     original = OperationalCatalog(positions=(Position('engineer', 'Ingeniero de sala'),))
-    current = OperationalCatalog(positions=(Position('engineer', 'Ingeniero de control'),))
-    current.validate_revision(original)
+    updated = OperationalCatalog(positions=(Position('engineer', 'Ingeniero de control'),))
+    updated.validate_revision(original)
     with pytest.raises(OperationalReferenceError):
         OperationalCatalog().validate_revision(original)
     with pytest.raises(OperationalIdentificationError):
         OperationalCatalog(
-            positions=(
-                Position('eng', 'Ingeniero'),
-                Position('superintendent', 'ingeniero'),
-            )
+            positions=(Position('eng', 'Ingeniero'), Position('superintendent', 'ingeniero'))
         )
 
 
@@ -156,7 +183,7 @@ def test_source_codec_is_deterministic_and_rejects_wrong_resources():
 
 
 def test_source_per_user_does_not_overwrite_other_user(tmp_path):
-    _, _, store, _ = make_service(tmp_path)
+    _, _, store, _, _ = make_service(tmp_path)
     source = OperationalSourceService(store=store)
     for user, group in ((USER_A, 1), (USER_B, 3)):
         key = assignment_source_key(user)
@@ -171,7 +198,7 @@ def test_source_per_user_does_not_overwrite_other_user(tmp_path):
 
 
 def test_source_rejects_stale_save(tmp_path):
-    _, _, store, _ = make_service(tmp_path)
+    _, _, store, _, _ = make_service(tmp_path)
     source = OperationalSourceService(store=store)
     key = assignment_source_key(USER_A)
     original = source.snapshot(key)
@@ -184,47 +211,33 @@ def test_source_rejects_stale_save(tmp_path):
         )
 
 
-def test_manager_contract_and_individual_projection(tmp_path):
-    service, cosmos, _, projections = make_service(tmp_path)
-    catalog_snapshot, catalog = service.catalog_for_edit()
-    assert catalog.positions == ()
-    with_positions = OperationalCatalog(
-        (
-            Position('engineer', 'Ingeniero de sala'),
-            Position('superintendent', 'Superintendente'),
-        )
-    )
-    service.publish_catalog(with_positions, actor='operator', expected=catalog_snapshot)
+def test_catalog_only_is_projected_and_assignment_is_owned_by_source(tmp_path):
+    service, cosmos, source, projections, _ = make_service(tmp_path)
+    positions = (Position('engineer', 'Ingeniero de sala'),)
     assert service.catalog_for_read() == OperationalCatalog()
-    service.project_current(CATALOG_SOURCE_KEY)
-    assert service.catalog_for_read() == with_positions
-
+    publish_catalog(service, positions=positions)
+    assert service.catalog_for_read() == OperationalCatalog(positions=positions)
     for user, group in ((USER_A, 1), (USER_B, 4)):
-        snapshot, _ = service.assignment_for_edit(user)
-        service.publish_assignment(
-            OperationalAssignment(
-                user_id=user,
-                area_id='mina',
-                position_id='engineer',
-                group_id=group,
-            ),
-            actor='operator',
-            expected=snapshot,
-        )
-        service.project_current(assignment_source_key(user))
-    assert service.assignment_for_read(USER_A).group_id == 1
-    assert service.assignment_for_read(USER_B).group_id == 4
-    assert len(cosmos.items) == 3
-    assert all(key[0] == 'users-support' for key in cosmos.items)
-    assert projections.get_active(assignment_source_key(USER_A)).payload.user_id == USER_A
+        publish_assignment(service, user, area_id='mina', position_id='engineer', group_id=group)
+        assert service.assignment_for_read(user).group_id == group
+        assert source.get_current(assignment_source_key(user)).current is not None
+        assert projections.get_active(assignment_source_key(user)) is None
+        with pytest.raises(OperationalReferenceError, match='not projected'):
+            service.project_current(assignment_source_key(user))
+        with pytest.raises(OperationalReferenceError, match='not projected'):
+            service.projection_status(assignment_source_key(user))
+    assert len(cosmos.items) == 1
+    assert {entry['document_type'] for entry in cosmos.items.values()} == {
+        'ada_operational_catalog_projection'
+    }
 
 
-def test_missing_promotion_rejected_and_no_source_written(tmp_path):
-    service, _, store, _ = make_service(tmp_path, users=(USER_A,))
+def test_missing_membership_rejected_without_source_write(tmp_path):
+    service, _, store, _, _ = make_service(tmp_path, users=(USER_A,))
     source = OperationalSourceService(store=store)
-    with pytest.raises(OperationalReferenceError, match='promoted'):
+    with pytest.raises(OperationalReferenceError, match='Tool membership'):
         service.assignment_for_edit(USER_B)
-    with pytest.raises(OperationalReferenceError, match='promoted'):
+    with pytest.raises(OperationalReferenceError, match='Tool membership'):
         service.publish_assignment(
             OperationalAssignment(user_id=USER_B),
             actor='manager',
@@ -234,188 +247,136 @@ def test_missing_promotion_rejected_and_no_source_written(tmp_path):
 
 
 def test_deactivated_position_retains_existing_assignment_only(tmp_path):
-    service, _, _, _ = make_service(tmp_path)
-    original, _ = service.catalog_for_edit()
-    service.publish_catalog(
-        OperationalCatalog((Position('engineer', 'Ingeniero'),)),
-        actor='manager',
-        expected=original,
-    )
-    service.project_current(CATALOG_SOURCE_KEY)
-    initial, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, position_id='engineer'),
-        actor='manager',
-        expected=initial,
-    )
-    revised, _ = service.catalog_for_edit()
+    service, _, _, _, _ = make_service(tmp_path)
+    publish_catalog(service, positions=(Position('engineer', 'Ingeniero'),))
+    publish_assignment(service, USER_A, position_id='engineer')
+    snapshot, _ = service.catalog_for_edit()
     service.publish_catalog(
         OperationalCatalog((Position('engineer', 'Ingeniero', active=False),)),
         actor='manager',
-        expected=revised,
+        expected=snapshot,
     )
-    current, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, position_id='engineer', group_id=3),
-        actor='manager',
-        expected=current,
-    )
-    new_user, _ = service.assignment_for_edit(USER_B)
+    publish_assignment(service, USER_A, position_id='engineer', group_id=3)
     with pytest.raises(OperationalReferenceError, match='outdated'):
-        service.publish_assignment(
-            OperationalAssignment(user_id=USER_B, position_id='engineer'),
-            actor='manager',
-            expected=new_user,
-        )
+        publish_assignment(service, USER_B, position_id='engineer')
     service.project_current(CATALOG_SOURCE_KEY)
     with pytest.raises(OperationalReferenceError, match='unavailable'):
-        service.publish_assignment(
-            OperationalAssignment(user_id=USER_B, position_id='engineer'),
-            actor='manager',
-            expected=new_user,
-        )
+        publish_assignment(service, USER_B, position_id='engineer')
 
 
-def test_failed_projection_can_be_retried_from_durable_source(tmp_path):
-    service, cosmos, _, _ = make_service(tmp_path)
-    expected, _ = service.assignment_for_edit(USER_A)
-    published = service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, area_id='planta'),
+def test_assignment_does_not_depend_on_cosmos_writes(tmp_path):
+    service, cosmos, source, _, _ = make_service(tmp_path)
+    cosmos.fail_writes = True
+    result = publish_assignment(service, USER_A, area_id='planta')
+    assert service.assignment_for_read(USER_A).area_id == 'planta'
+    assert source.get_current(assignment_source_key(USER_A)).current.release_ref == result.release.release_ref
+    with pytest.raises(OperationalReferenceError, match='not projected'):
+        service.project_current(assignment_source_key(USER_A))
+    assert cosmos.writes == 0
+
+
+def test_catalog_projection_failure_can_retry_without_rewriting_source(tmp_path):
+    service, cosmos, source, _, _ = make_service(tmp_path)
+    snapshot, _ = service.catalog_for_edit()
+    published = service.publish_catalog(
+        OperationalCatalog(positions=(Position('operator', 'Operador'),)),
         actor='manager',
-        expected=expected,
+        expected=snapshot,
     )
     cosmos.fail_writes = True
     with pytest.raises(ProjectionExecutionError):
-        service.project_current(assignment_source_key(USER_A))
-    source_state, source_value = service.assignment_for_edit(USER_A)
-    assert source_state.current.release_ref == published.release.release_ref
-    assert source_value.area_id == 'planta'
+        service.project_current(CATALOG_SOURCE_KEY)
+    assert source.get_current(CATALOG_SOURCE_KEY).current.release_ref == published.release.release_ref
     cosmos.fail_writes = False
-    service.project_current(assignment_source_key(USER_A))
-    assert service.assignment_for_read(USER_A).area_id == 'planta'
+    assert service.project_current(CATALOG_SOURCE_KEY).payload.position('operator') is not None
     writes = cosmos.writes
-    service.project_current(assignment_source_key(USER_A))
+    service.project_current(CATALOG_SOURCE_KEY)
     assert cosmos.writes == writes
 
 
-def test_projection_update_uses_etag_and_refuses_stale_replay(tmp_path):
-    service, cosmos, source, projections = make_service(tmp_path)
-    previous, _ = service.assignment_for_edit(USER_A)
-    first = service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=1),
+def test_catalog_projection_uses_etag_and_rejects_stale_replay(tmp_path):
+    service, cosmos, source, projections, _ = make_service(tmp_path)
+    previous, _ = service.catalog_for_edit()
+    first = service.publish_catalog(
+        OperationalCatalog(positions=(Position('engineer', 'Ingeniero'),)),
         actor='manager',
         expected=previous,
     )
-    service.project_current(assignment_source_key(USER_A))
-    newer, _ = service.assignment_for_edit(USER_A)
-    second = service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=2),
+    service.project_current(CATALOG_SOURCE_KEY)
+    newer, _ = service.catalog_for_edit()
+    second = service.publish_catalog(
+        OperationalCatalog(positions=(Position('engineer', 'Ingeniero senior'),)),
         actor='manager',
         expected=newer,
     )
-    service.project_current(assignment_source_key(USER_A))
-    assert service.assignment_for_read(USER_A).group_id == 2
-    builder = OperationalProjectionBuilder()
-    metadata, resources = source.read_release(
-        assignment_source_key(USER_A), first.release.release_ref
-    )
+    service.project_current(CATALOG_SOURCE_KEY)
+    assert service.catalog_for_read().position('engineer').label == 'Ingeniero senior'
+    metadata, resources = source.read_release(CATALOG_SOURCE_KEY, first.release.release_ref)
     stale = ProjectionRecord(
         source_key=metadata.source_key,
         source_release_id=first.release.release_ref.release_id,
         source_published_at_utc=first.release.release_ref.published_at_utc,
         projected_at_utc=datetime.now(UTC),
-        payload=builder.build(
-            target=ProjectionTarget(metadata.source_key, first.release.release_ref),
-            release=metadata,
-            resources=resources,
-        ),
+        payload=OperationalSourceCodec().decode(resources),
     )
     with pytest.raises(OperationalPersistenceError, match='newer'):
         projections.replace_active(stale)
-    assert service.assignment_for_read(USER_A).group_id == 2
+    assert service.catalog_for_read().position('engineer').label == 'Ingeniero senior'
     assert second.release.release_ref.published_at_utc >= first.release.release_ref.published_at_utc
+    assert cosmos.writes == 2
 
 
-def test_projection_codec_rejects_cross_document_payload():
-    target = assignment_source_key(USER_A)
+def test_catalog_projection_codec_detects_invalid_document():
     now = datetime(2026, 9, 28, tzinfo=UTC)
-    original = ProjectionRecord(
-        source_key=target,
+    record = ProjectionRecord(
+        source_key=CATALOG_SOURCE_KEY,
         source_release_id=SourceReleaseId('r1'),
         source_published_at_utc=now,
         projected_at_utc=now + timedelta(seconds=1),
-        payload=OperationalAssignment(user_id=USER_A, group_id=2),
+        payload=OperationalCatalog(positions=(Position('operator', 'Operador'),)),
     )
-    document = projection_to_document(original, item_id='test-projection')
-    assert projection_from_document(document) == original
-    wrong = {**document, 'user_id': USER_B}
+    document = projection_to_document(record, item_id='catalog-projection')
+    assert projection_from_document(document) == record
+    with pytest.raises(OperationalIdentificationError):
+        projection_from_document({**document, 'document_type': 'not-catalog'})
     with pytest.raises(OperationalIdentificationError):
         projection_to_document(
-            ProjectionRecord(
-                source_key=target,
-                source_release_id=SourceReleaseId('r1'),
-                source_published_at_utc=now,
-                projected_at_utc=now,
-                payload=OperationalAssignment(user_id=USER_B),
-            ),
-            item_id='test-projection',
+            replace(record, payload=OperationalAssignment(user_id=USER_A)),
+            item_id='catalog-projection',
         )
-    with pytest.raises(OperationalIdentificationError):
-        projection_from_document(wrong)
-    client = FakeCosmos()
-    projection = CosmosOperationalProjectionStore(client=client, container_name='users-support')
-    projection.replace_active(original)
-    stored = next(iter(client.items.values()))
-    stored['user_id'] = USER_B
-    with pytest.raises(OperationalIdentificationError):
-        projection.get_active(target)
 
 
-def test_resolved_session_user_reads_projection_without_requerying_global_users(tmp_path):
-    users = FakeUsers(USER_A)
-    cosmos = FakeCosmos()
-    source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
-    projections = CosmosOperationalProjectionStore(client=cosmos, container_name='users-support')
-    service = OperationalIdentificationService(
-        source_store=source,
-        projections=projections,
-        users=users,
-    )
-    snapshot, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=2),
-        actor='manager',
-        expected=snapshot,
-    )
-    service.project_current(assignment_source_key(USER_A))
-    before = users.reads
-    resolved = EffectiveUser(
-        user_id=USER_A,
-        subject_id='subject-a',
+def test_resolved_runtime_user_reads_its_snapshot_without_source_or_membership_lookup(tmp_path):
+    user_id = build_user_key(issuer='issuer', subject_id='operator-a')
+    service, _, _, _, memberships = make_service(tmp_path, users=(user_id,))
+    publish_assignment(service, user_id, group_id=2)
+    identity = UserIdentity(
+        user_id=user_id,
+        issuer='issuer',
+        subject_id='operator-a',
         display_name='Operator A',
-        email=None,
-        enabled=True,
-        avatar_text='OA',
-        profile_key='basic',
     )
-    assert service.assignment_for_resolved_user(resolved).group_id == 2
-    assert users.reads == before
-    with pytest.raises(OperationalReferenceError):
-        service.assignment_for_resolved_user(
-            EffectiveUser(
-                user_id=USER_A,
-                subject_id='subject-a',
-                display_name='Operator A',
-                email=None,
-                enabled=False,
-                avatar_text='OA',
-                profile_key='basic',
-            )
-        )
+    resolved = RuntimeUser(
+        identity=identity,
+        enabled=True,
+        profile=RuntimeProfile.from_profile(BASIC_PROFILE),
+    )
+    before = memberships.reads
+    assert service.assignment_for_resolved_user(resolved).group_id is None
+    enriched = replace(
+        resolved,
+        operational=RuntimeOperational(
+            group=RuntimeOperationalReference(id=2, label='Grupo 2'),
+        ),
+    )
+    assert service.assignment_for_resolved_user(enriched).group_id == 2
+    assert memberships.reads == before
+    with pytest.raises(OperationalReferenceError, match='not authorized'):
+        service.assignment_for_resolved_user(replace(enriched, enabled=False))
 
 
-def test_operational_documents_do_not_modify_other_shared_support_records(tmp_path):
-    service, cosmos, _, _ = make_service(tmp_path)
+def test_catalog_projection_does_not_modify_other_support_records(tmp_path):
+    service, cosmos, _, _, _ = make_service(tmp_path)
     existing = {
         'id': 'profile-existing',
         'partition_key': 'profiles-configuration',
@@ -425,33 +386,26 @@ def test_operational_documents_do_not_modify_other_shared_support_records(tmp_pa
     }
     key = ('users-support', 'profile-existing', 'profiles-configuration')
     cosmos.items[key] = dict(existing)
-    current, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=1),
-        actor='manager',
-        expected=current,
-    )
-    service.project_current(assignment_source_key(USER_A))
+    publish_catalog(service)
+    publish_assignment(service, USER_A, group_id=1)
     assert cosmos.items[key] == existing
     assert len(cosmos.items) == 2
+    assert all(
+        entry['document_type'] != 'ada_operational_assignment_projection'
+        for entry in cosmos.items.values()
+    )
 
 
-def test_projection_retries_optimistic_conflict(tmp_path):
-    service, cosmos, _, _ = make_service(tmp_path)
-    first_snapshot, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=1),
+def test_catalog_projection_retries_optimistic_conflict(tmp_path):
+    service, cosmos, _, _, _ = make_service(tmp_path)
+    publish_catalog(service, positions=(Position('engineer', 'Ingeniero'),))
+    original, _ = service.catalog_for_edit()
+    service.publish_catalog(
+        OperationalCatalog(positions=(Position('engineer', 'Ingeniero senior'),)),
         actor='manager',
-        expected=first_snapshot,
+        expected=original,
     )
-    service.project_current(assignment_source_key(USER_A))
-    second_snapshot, _ = service.assignment_for_edit(USER_A)
-    service.publish_assignment(
-        OperationalAssignment(user_id=USER_A, group_id=2),
-        actor='manager',
-        expected=second_snapshot,
-    )
-    original = cosmos.patch_item
+    original_patch = cosmos.patch_item
     attempts = 0
 
     def transient(*args, **kwargs):
@@ -459,9 +413,9 @@ def test_projection_retries_optimistic_conflict(tmp_path):
         attempts += 1
         if attempts == 1:
             raise CosmosPreconditionFailedError('ETag conflict')
-        return original(*args, **kwargs)
+        return original_patch(*args, **kwargs)
 
     cosmos.patch_item = transient
-    service.project_current(assignment_source_key(USER_A))
+    service.project_current(CATALOG_SOURCE_KEY)
     assert attempts == 2
-    assert service.assignment_for_read(USER_A).group_id == 2
+    assert service.catalog_for_read().position('engineer').label == 'Ingeniero senior'

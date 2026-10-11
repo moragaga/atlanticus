@@ -24,17 +24,14 @@ from ada.web.application.generic import bootstrap
 from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.application.generic.users_access import AdaInitialUsersStore
-from ada.web.application.generic.users_materialization import (
-    AdaUsersRuntimeMaterializer,
-    UsersMaterializationError,
-)
+from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
     OperationalCatalog,
     OperationalIdentificationService,
     Position,
-    assignment_source_key,
 )
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.compositions.users_manager import USERS_ADMINISTRATION_SERVICE
@@ -222,8 +219,8 @@ def _seed_initial_users(stores) -> None:
         expected_version=None,
     )
     materializer = AdaUsersRuntimeMaterializer(stores=stores)
-    materializer.publish_user(admin.user_id, writer=stores.users_runtime)
-    materializer.publish_user(disabled.user_id, writer=stores.users_runtime)
+    materializer.publish_user(admin.user_id, writer=AdaLocalRuntimeUserWriter(stores.users_runtime))
+    materializer.publish_user(disabled.user_id, writer=AdaLocalRuntimeUserWriter(stores.users_runtime))
 
 
 @pytest.fixture
@@ -340,8 +337,6 @@ def test_promote_project_publish_and_refresh_user_snapshot(qualification):
         assert initial.access_keys == ('dashboard.view',)
         assert initial.operational.position is None
         _assignment(operations, operator)
-        projected = operations.project_current(assignment_source_key(operator.user_id))
-        assert projected is not None
         assert dependencies.operational_runtime_publisher is not None
         updated = dependencies.operational_runtime_publisher(operator.user_id)
         assert updated.operational.area.label == 'Mina'
@@ -371,19 +366,14 @@ def test_promote_project_publish_and_refresh_user_snapshot(qualification):
     assert stores.users_runtime.resolve(supervisor.authenticated()).enabled
 
 
-def test_assignment_without_projection_fails_closed_and_retry_preserves_source(qualification):
+def test_assignment_without_individual_projection_updates_runtime_and_preserves_source(qualification):
     stores, operations, dependencies, administration = qualification
     operator = _PEOPLE['synthetic-operator']
     _promote(administration, stores, operator)
     existing_runtime = stores.users_runtime.resolve(operator.authenticated())
     durable_snapshot = _assignment(operations, operator)
-    assert dependencies.operational_runtime_publisher is not None
-    with pytest.raises(UsersMaterializationError, match='current Operational assignment projection'):
-        dependencies.operational_runtime_publisher(operator.user_id)
     assert stores.users_runtime.resolve(operator.authenticated()) == existing_runtime
-
-    projected = operations.project_current(assignment_source_key(operator.user_id))
-    assert projected is not None
+    assert dependencies.operational_runtime_publisher is not None
     recovered = dependencies.operational_runtime_publisher(operator.user_id)
     assert recovered.operational.position.id == 'operator'
     assert operations.assignment_for_edit(operator.user_id)[0] == durable_snapshot
@@ -419,19 +409,24 @@ def test_users_runtime_outage_retries_without_rewriting_source(tmp_path, monkeyp
         memberships=stores.users_memberships,
         profiles=lambda: stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY).payload,
         directory=stores.users_directory,
-        publish_runtime=lambda user_id: materializer.publish_user(user_id, writer=runtime),
+        publish_runtime=lambda user_id: materializer.publish_user(
+            user_id, writer=AdaLocalRuntimeUserWriter(runtime)
+        ),
     )
     _promote(admin, stores, operator)
     previous = runtime.resolve(operator.authenticated())
     durable_snapshot = _assignment(operations, operator)
-    operations.project_current(assignment_source_key(operator.user_id))
     runtime.fail = True
     with pytest.raises(ConnectionError, match='Sensitive provider detail'):
-        materializer.publish_user(operator.user_id, writer=runtime)
+        materializer.publish_operational(
+            operator.user_id, writer=AdaLocalRuntimeUserWriter(runtime)
+        )
     assert runtime.resolve(operator.authenticated()) == previous
     assert operations.assignment_for_edit(operator.user_id)[0] == durable_snapshot
     runtime.fail = False
-    published = materializer.publish_user(operator.user_id, writer=runtime)
+    published = materializer.publish_operational(
+        operator.user_id, writer=AdaLocalRuntimeUserWriter(runtime)
+    )
     assert published.operational.position.id == 'operator'
     assert operations.assignment_for_edit(operator.user_id)[0] == durable_snapshot
 

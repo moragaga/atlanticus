@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -14,6 +13,7 @@ from ada.web.operational.identification import (
 )
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
+from atlanticus.web.users.models import ToolMembershipSnapshot
 
 
 class ProjectionMemory(ProjectionStore):
@@ -28,16 +28,16 @@ class ProjectionMemory(ProjectionStore):
         return projection
 
 
-class UsersMemory:
-    def get(self, user_id):
-        return SimpleNamespace(user_id=user_id)
+class MembershipsMemory:
+    def load(self):
+        return ToolMembershipSnapshot()
 
 
 def service_for(tmp_path):
     return OperationalIdentificationService(
         source_store=LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source')),
         projections=ProjectionMemory(),
-        users=UsersMemory(),
+        memberships=MembershipsMemory(),
     )
 
 

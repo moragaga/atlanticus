@@ -28,6 +28,7 @@ from ada.web.tools.projection.cosmos import (
     CosmosToolProjectionStore,
     CosmosToolProjectionStoreSettings,
 )
+from ada.web.application.generic.users_runtime_publication import AdaCosmosRuntimeUserWriter
 from atlanticus.connectivity.cosmos import CosmosClient
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.navigation.projection.cosmos import (
@@ -204,6 +205,11 @@ def compose_durable_manager_stores(
             blob_name=namespace.scope_blob_name('users/memberships.json.gz'),
         ),
         users_runtime=users_runtime,
+        users_runtime_writer=AdaCosmosRuntimeUserWriter(
+            client=cosmos['users_runtime'],
+            store=users_runtime,
+            container_name=physical['users_runtime'].physical_name,
+        ),
         operational_source=tool_source,
         operational=CosmosOperationalProjectionStore(
             client=cosmos['users_support'],

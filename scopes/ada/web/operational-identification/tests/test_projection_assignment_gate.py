@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from ada.web.operational.identification import (
@@ -15,6 +13,7 @@ from ada.web.operational.identification import (
 )
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
+from atlanticus.web.users.models import ToolMembershipSnapshot, ToolUserMembership
 
 USER_A = 'user:' + 'a' * 24
 USER_B = 'user:' + 'b' * 24
@@ -32,16 +31,21 @@ class ProjectionMemory(ProjectionStore):
         return projection
 
 
-class UsersMemory:
-    def get(self, user_id):
-        return SimpleNamespace(user_id=user_id) if user_id in {USER_A, USER_B} else None
+class MembershipsMemory:
+    def load(self):
+        return ToolMembershipSnapshot(
+            memberships=tuple(
+                ToolUserMembership(user_id=key, profile_key='basic')
+                for key in (USER_A, USER_B)
+            )
+        )
 
 
 def service_for(tmp_path):
     return OperationalIdentificationService(
         source_store=LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source')),
         projections=ProjectionMemory(),
-        users=UsersMemory(),
+        memberships=MembershipsMemory(),
     )
 
 
@@ -138,9 +142,11 @@ def test_catalog_projection_contains_reference_areas_and_groups(tmp_path):
     ]
 
 
-def test_assignment_projection_stays_independent(tmp_path):
+def test_assignment_source_is_independent_without_cosmos_projection(tmp_path):
     service = service_for(tmp_path)
     publish_assignment(service, USER_A, group_id=4)
-    service.project_current(assignment_source_key(USER_A))
     assert service.assignment_for_read(USER_A).group_id == 4
     assert service.assignment_for_read(USER_B).group_id is None
+    with pytest.raises(OperationalReferenceError, match="not projected"):
+        service.project_current(assignment_source_key(USER_A))
+    assert service.catalog_for_read() == OperationalCatalog()

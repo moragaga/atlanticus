@@ -553,7 +553,7 @@ def _assignment_modal(catalog: OperationalCatalog) -> object:
                 className='btn btn-outline-secondary',
             ),
             html.Button(
-                'Reintentar proyección',
+                'Reintentar publicación',
                 id=ids.ASSIGNMENT_REPROJECT,
                 type='button',
                 n_clicks=0,

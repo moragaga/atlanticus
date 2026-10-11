@@ -25,7 +25,6 @@ from ada.web.operational.identification import (
     OperationalCatalog,
     OperationalIdentificationService,
     Position,
-    assignment_source_key,
 )
 from atlanticus.web.manager import ManagerPrincipal, ManagerWorkspaceBinding
 from atlanticus.web.manager.web.ids import (
@@ -231,8 +230,7 @@ def test_assignment_remains_immediate_and_uses_individual_source(tmp_path):
     assert service.assignment_for_read(USER_ID).area_id == 'mina'
     assert service.assignment_for_read(USER_ID).position_id == position_id
     assert service.assignment_for_read(USER_ID).group_id == 2
-    status = service.projection_status(assignment_source_key(USER_ID))
-    assert status.projected_source_release is not None
+    assert service.assignment_for_edit(USER_ID)[0].current is not None
 
 
 def test_catalog_draft_rejects_stale_editor_revision(tmp_path):
@@ -327,22 +325,19 @@ def test_operational_save_publishes_runtime_after_projection(tmp_path):
     assert 'usuario actualizado' in result.children
 
 
-def test_failed_projection_never_publishes_runtime(tmp_path):
+def test_assignment_publication_no_longer_requires_individual_projection(tmp_path):
     catalog, assignment_context, _contracts, service = _contexts(tmp_path)
     published = []
     assignment_context = replace(assignment_context, publish_runtime=published.append)
-
     def fail_projection(_source_key):
-        raise RuntimeError('Cosmos projection unavailable')
-
+        raise RuntimeError('Individual projections must not run')
     service.project_current = fail_projection
     app = FakeApp()
     register_operational_callbacks(app, catalog, assignment_context)
     revision, result = app.registered['save_assignment'](1, USER_ID, 'mina', None, 2, None)
     assert revision is not no_update
-    assert published == []
-    assert 'Reintentar proyección' in result.children
-    assert 'warning' in result.className
+    assert published == [USER_ID]
+    assert 'usuario actualizado' in result.children
 
 
 def test_runtime_retry_does_not_rewrite_source(tmp_path):

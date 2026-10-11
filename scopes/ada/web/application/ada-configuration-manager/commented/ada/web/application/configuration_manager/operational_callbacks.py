@@ -12,7 +12,6 @@ from ada.web.application.configuration_manager.operational_layout import (
     _position_options,
     _release_label,
     _revision,
-    _status_label,
     modal_class,
     page_label,
     render_assignment_list,
@@ -22,7 +21,6 @@ from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
     OperationalCatalog,
-    assignment_source_key,
 )
 from atlanticus.web.manager import (
     ManagerProjectionError,
@@ -455,7 +453,6 @@ def _register_assignment_callbacks(
             return None
         try:
             snapshot, _value = context.service.assignment_for_edit(user_id)
-            status = context.service.projection_status(assignment_source_key(user_id))
             catalog_status = context.service.projection_status(CATALOG_SOURCE_KEY)
             catalog_current = (
                 catalog_status.source_current_release is not None
@@ -463,14 +460,17 @@ def _register_assignment_callbacks(
             )
             return html.Div(
                 [
-                    html.Span(_status_label(status), className='ada-operational-admin__badge'),
+                    html.Span(
+                        'Source publicado' if snapshot.current else 'Sin asignación',
+                        className='ada-operational-admin__badge',
+                    ),
                     html.Small(
                         'Source: '
                         f'{_release_label(
                             snapshot.current.release_ref if snapshot.current else None
                         )}'
                     ),
-                    html.Small(f'Projection: {_release_label(status.projected_source_release)}'),
+                    html.Small('Destino individual: users-runtime'),
                     html.Small(
                         'Catálogo proyectado y vigente'
                         if catalog_current
@@ -524,30 +524,16 @@ def _register_assignment_callbacks(
                 'Assignment could not be saved. Reload and try again.',
                 error=True,
             )
-        try:
-            projected = context.service.project_current(assignment_source_key(user_id))
-            if projected is None:
-                raise ValueError('Assignment projection is missing')
-        except Exception:
-            result = _message(
-                'Asignación guardada en Source. Usa Reintentar proyección.',
-                warning=True,
-            )
+        if context.publish_runtime is None:
+            result = _message('Asignación guardada en Source.')
         else:
-            # Solo se publica el usuario cuando la proyección de la asignación terminó.
             try:
-                if context.publish_runtime is not None:
-                    context.publish_runtime(user_id)
-                message = (
-                    'Asignación guardada, proyectada y usuario actualizado.'
-                    if context.publish_runtime is not None
-                    else 'Asignación guardada y proyectada.'
-                )
-                result = _message(message)
+                context.publish_runtime(user_id)
+                result = _message('Asignación guardada en Source y usuario actualizado.')
             except Exception:
                 result = _message(
-                    'Asignación guardada y proyectada. Actualización de users-runtime '
-                    'pendiente; usa Reintentar proyección.',
+                    'Asignación guardada en Source. Actualización de users-runtime pendiente; '
+                    'usa Reintentar publicación.',
                     warning=True,
                 )
         return _revision(updated_snapshot), result
@@ -578,26 +564,18 @@ def _register_assignment_callbacks(
         if not clicks or not user_id or not context.can_manage():
             return no_update
         try:
-            result = context.service.project_current(assignment_source_key(user_id))
-        except Exception:
-            return _message('Assignment could not be projected.', error=True)
-        # Reintentar no guarda otra revisión en Storage.
-        if result is None:
-            return _message('No hay publicación.')
-        try:
-            if context.publish_runtime is not None:
-                context.publish_runtime(user_id)
+            snapshot, _assignment = context.service.assignment_for_edit(user_id)
+            if snapshot.current is None:
+                return _message('No hay publicación.')
+            if context.publish_runtime is None:
+                raise RuntimeError('Operational runtime publisher is unavailable')
+            context.publish_runtime(user_id)
         except Exception:
             return _message(
-                'Asignación proyectada. Actualización de users-runtime pendiente; '
-                'usa Reintentar proyección.',
+                'Actualización operacional pendiente; usa Reintentar publicación.',
                 warning=True,
             )
-        return _message(
-            'Asignación proyectada y usuario actualizado.'
-            if context.publish_runtime is not None
-            else 'Asignación proyectada.'
-        )
+        return _message('Asignación publicada y usuario actualizado desde Source.')
 
 
 # Expone o ejecuta la responsabilidad `_catalog` sin cambiar contratos externos.

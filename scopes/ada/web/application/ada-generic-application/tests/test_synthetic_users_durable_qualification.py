@@ -22,17 +22,13 @@ from ada.web.application.generic.manager_deployment import (
 from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.application.generic.users_access import AdaInitialUsersStore
-from ada.web.application.generic.users_materialization import (
-    AdaUsersRuntimeMaterializer,
-    UsersMaterializationError,
-)
+from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
     OperationalCatalog,
     OperationalIdentificationService,
     Position,
-    assignment_source_key,
 )
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.compositions.users_manager import USERS_ADMINISTRATION_SERVICE
@@ -314,7 +310,7 @@ def test_synthetic_users_with_real_blob_and_cosmos(monkeypatch):
         )
         materializer = AdaUsersRuntimeMaterializer(stores=stores)
         for person in (admin_person, disabled):
-            materializer.publish_user(person.user_id, writer=stores.users_runtime)
+            materializer.publish_user(person.user_id, writer=stores.users_runtime_writer)
 
         dependencies = compose_integrated_manager_dependencies(
             stores=stores,
@@ -364,10 +360,7 @@ def test_synthetic_users_with_real_blob_and_cosmos(monkeypatch):
             expected=snapshot,
         )
         saved_snapshot, _ = operations.assignment_for_edit(operator.user_id)
-        with pytest.raises(UsersMaterializationError, match='current Operational assignment projection'):
-            dependencies.operational_runtime_publisher(operator.user_id)
         assert stores.users_runtime.resolve(operator.authenticated()) == original_operator
-        assert operations.project_current(assignment_source_key(operator.user_id)) is not None
         assert dependencies.operational_runtime_publisher is not None
         published = dependencies.operational_runtime_publisher(operator.user_id)
         assert published.operational.area.label == 'Mina'

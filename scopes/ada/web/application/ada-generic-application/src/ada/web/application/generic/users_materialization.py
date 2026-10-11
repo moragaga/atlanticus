@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -26,13 +27,16 @@ from atlanticus.web.users.models import (
 )
 from atlanticus.web.users.profiles import require_managed_profile
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class UsersMaterializationError(RuntimeError):
     pass
 
 
 class RuntimeUserWriter(Protocol):
-    def upsert_user(self, user: RuntimeUser) -> RuntimeUser: ...
+    def upsert_base_user(self, user: RuntimeUser) -> RuntimeUser: ...
+    def upsert_operational(self, user_id: str, operational: RuntimeOperational) -> RuntimeUser: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,10 +54,82 @@ class _Context:
 
 class AdaUsersRuntimeMaterializer:
     def __init__(self, *, stores: ConfigurationManagerStores) -> None:
-        if stores.operational_source is None or stores.operational is None:
-            raise UsersMaterializationError('Operational stores are required to materialize users')
         self._stores = stores
-        self._operational_source = OperationalSourceService(store=stores.operational_source)
+        self._operational_source = (
+            OperationalSourceService(store=stores.operational_source)
+            if stores.operational_source is not None
+            else None
+        )
+
+    def materialize_base_user(self, user_id: str) -> RuntimeUser:
+        stores = self._stores
+        registry = stores.users_registry.load()
+        memberships = stores.users_memberships.load()
+        identity = registry.get(user_id)
+        membership = memberships.get(user_id)
+        if identity is None or membership is None:
+            raise UsersMaterializationError('Tool membership is missing its global identity')
+        profiles_snapshot = stores.profiles_source.get_current(PROFILES_CONFIGURATION_SOURCE_KEY)
+        profiles_record = stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY)
+        if profiles_snapshot.current is None:
+            if profiles_record is not None:
+                raise UsersMaterializationError('Profiles projection has no source')
+            profiles = ProfileCatalog()
+        else:
+            if (
+                profiles_record is None
+                or profiles_record.source_release != profiles_snapshot.current.release_ref
+                or not isinstance(profiles_record.payload, ProfileCatalog)
+            ):
+                raise UsersMaterializationError('A current Profiles projection is required')
+            profiles = profiles_record.payload
+        profile = require_managed_profile(membership.profile_key, profiles=profiles)
+        access_keys = self._optional_access(profile.key, profiles, profiles_record)
+        user = build_runtime_user(
+            identity=identity,
+            membership=membership,
+            profile=profile,
+            access_keys=access_keys,
+        )
+        if (
+            stores.users_registry.load() != registry
+            or stores.users_memberships.load() != memberships
+            or stores.profiles_source.get_current(PROFILES_CONFIGURATION_SOURCE_KEY)
+            != profiles_snapshot
+            or not _same_profiles_record(
+                stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY), profiles_record
+            )
+        ):
+            raise UsersMaterializationError('Base user sources changed during resolution')
+        return user
+
+    def _optional_access(
+        self, profile_key: str, profiles: ProfileCatalog, profiles_record: ProjectionRecord[ProfileCatalog] | None
+    ) -> tuple[str, ...]:
+        try:
+            source = self._stores.access_source.get_current(ADA_ACCESS_SOURCE_KEY)
+            projected = self._stores.access.get_active(ADA_ACCESS_SOURCE_KEY)
+            if source.current is None:
+                return ()
+            if (
+                projected is None
+                or projected.source_release != source.current.release_ref
+                or profiles_record is None
+                or projected.dependencies != (profiles_record.target,)
+                or not isinstance(projected.payload, AdaAccessConfiguration)
+            ):
+                return ()
+            projected.payload.validate_profiles(profiles)
+            keys = tuple(sorted(projected.payload.resolve(profile_key, profiles=profiles).access_keys))
+            if (
+                self._stores.access_source.get_current(ADA_ACCESS_SOURCE_KEY) != source
+                or self._stores.access.get_active(ADA_ACCESS_SOURCE_KEY) != projected
+            ):
+                return ()
+            return keys
+        except Exception as error:
+            _LOGGER.warning('ADA optional access enrichment unavailable (%s)', type(error).__name__)
+            return ()
 
     def materialize_user(self, user_id: str) -> RuntimeUser:
         context = self._context()
@@ -65,9 +141,7 @@ class AdaUsersRuntimeMaterializer:
 
     def materialize_all(self) -> tuple[RuntimeUser, ...]:
         context = self._context()
-        assignments: dict[
-            str, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]
-        ] = {}
+        assignments: dict[str, SourceSnapshot] = {}
         users: list[RuntimeUser] = []
         for membership in context.memberships.memberships:
             user, assignment_state = self._build_user(context, membership.user_id)
@@ -77,13 +151,63 @@ class AdaUsersRuntimeMaterializer:
         return tuple(sorted(users, key=lambda item: item.user_id))
 
     def publish_user(self, user_id: str, *, writer: RuntimeUserWriter) -> RuntimeUser:
-        user = self.materialize_user(user_id)
-        persisted = writer.upsert_user(user)
-        if persisted != user:
-            raise UsersMaterializationError('Persisted runtime user differs from materialized user')
+        base = self.materialize_base_user(user_id)
+        persisted = writer.upsert_base_user(base)
+        if (
+            not isinstance(persisted, RuntimeUser)
+            or persisted.identity != base.identity
+            or persisted.enabled != base.enabled
+            or persisted.profile != base.profile
+            or persisted.access_keys != base.access_keys
+        ):
+            raise UsersMaterializationError('Persisted base user differs from materialized user')
+        return persisted
+
+    def publish_operational(self, user_id: str, *, writer: RuntimeUserWriter) -> RuntimeUser:
+        if self._operational_source is None or self._stores.operational is None:
+            raise UsersMaterializationError('Operational enrichment is not configured')
+        memberships = self._stores.users_memberships.load()
+        if memberships.get(user_id) is None:
+            raise UsersMaterializationError('User does not have a Tool membership')
+        key = assignment_source_key(user_id)
+        snapshot, assignment = self._operational_source.current(key)
+        if assignment is None:
+            assignment = OperationalAssignment(user_id=user_id)
+        if not isinstance(assignment, OperationalAssignment) or assignment.user_id != user_id:
+            raise UsersMaterializationError('Operational assignment is invalid')
+        catalog_snapshot = self._operational_source.snapshot(CATALOG_SOURCE_KEY)
+        catalog_record = self._stores.operational.get_active(CATALOG_SOURCE_KEY)
+        if catalog_snapshot.current is None:
+            if catalog_record is not None:
+                raise UsersMaterializationError('Operational catalog projection has no source')
+            catalog = OperationalCatalog()
+        elif (
+            catalog_record is None
+            or catalog_record.source_release != catalog_snapshot.current.release_ref
+            or not isinstance(catalog_record.payload, OperationalCatalog)
+        ):
+            raise UsersMaterializationError('A current Operational catalog projection is required')
+        else:
+            catalog = catalog_record.payload
+        operational = _resolve_operational(assignment, catalog)
+        if (
+            self._stores.users_memberships.load() != memberships
+            or self._operational_source.snapshot(key) != snapshot
+            or self._operational_source.snapshot(CATALOG_SOURCE_KEY) != catalog_snapshot
+            or self._stores.operational.get_active(CATALOG_SOURCE_KEY) != catalog_record
+        ):
+            raise UsersMaterializationError('Operational enrichment changed during resolution')
+        update = getattr(writer, 'upsert_operational', None)
+        if not callable(update):
+            raise TypeError('Operational writer must support partial operational publication')
+        persisted = update(user_id, operational)
+        if not isinstance(persisted, RuntimeUser) or persisted.user_id != user_id or persisted.operational != operational:
+            raise UsersMaterializationError('Persisted operational enrichment differs from request')
         return persisted
 
     def _context(self) -> _Context:
+        if self._operational_source is None or self._stores.operational is None:
+            raise UsersMaterializationError('Operational reconstruction is not configured')
         stores = self._stores
         registry = stores.users_registry.load()
         memberships = stores.users_memberships.load()
@@ -133,9 +257,9 @@ class AdaUsersRuntimeMaterializer:
             catalog=catalog,
         )
 
-    def _build_user(
-        self, context: _Context, user_id: str
-    ) -> tuple[RuntimeUser, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]]:
+    def _build_user(self, context: _Context, user_id: str) -> tuple[RuntimeUser, SourceSnapshot]:
+        if self._operational_source is None:
+            raise UsersMaterializationError('Operational reconstruction is not configured')
         membership = context.memberships.get(user_id)
         identity = context.registry.get(user_id)
         if membership is None or identity is None:
@@ -143,23 +267,11 @@ class AdaUsersRuntimeMaterializer:
         profile = require_managed_profile(membership.profile_key, profiles=context.profiles_record.payload)
         access = context.access_record.payload.resolve(profile.key, profiles=context.profiles_record.payload)
         source_key = assignment_source_key(user_id)
-        snapshot = self._operational_source.snapshot(source_key)
-        record = self._stores.operational.get_active(source_key)
-        if snapshot.current is None:
-            if record is not None:
-                raise UsersMaterializationError('Operational assignment projection has no source')
+        snapshot, assignment = self._operational_source.current(source_key)
+        if assignment is None:
             assignment = OperationalAssignment(user_id=user_id)
-        else:
-            if record is None or record.source_release != snapshot.current.release_ref:
-                raise UsersMaterializationError(
-                    'A current Operational assignment projection is required'
-                )
-            if (
-                not isinstance(record.payload, OperationalAssignment)
-                or record.payload.user_id != user_id
-            ):
-                raise UsersMaterializationError('Operational assignment projection is invalid')
-            assignment = record.payload
+        if not isinstance(assignment, OperationalAssignment) or assignment.user_id != user_id:
+            raise UsersMaterializationError('Operational assignment source is invalid')
         operational = _resolve_operational(assignment, context.catalog)
         user = build_runtime_user(
             identity=identity,
@@ -168,50 +280,40 @@ class AdaUsersRuntimeMaterializer:
             access_keys=tuple(sorted(access.access_keys)),
             operational=operational,
         )
-        return user, (snapshot, record)
+        return user, snapshot
 
-    def _verify(
-        self,
-        context: _Context,
-        assignments: dict[
-            str, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]
-        ],
-    ) -> None:
+    def _verify(self, context: _Context, assignments: dict[str, SourceSnapshot]) -> None:
         stores = self._stores
         if (
             stores.users_registry.load() != context.registry
             or stores.users_memberships.load() != context.memberships
-            or stores.profiles_source.get_current(PROFILES_CONFIGURATION_SOURCE_KEY)
-            != context.profiles_snapshot
+            or stores.profiles_source.get_current(PROFILES_CONFIGURATION_SOURCE_KEY) != context.profiles_snapshot
             or stores.access_source.get_current(ADA_ACCESS_SOURCE_KEY) != context.access_snapshot
             or self._operational_source.snapshot(CATALOG_SOURCE_KEY) != context.catalog_snapshot
-            or not _profiles_projection_unchanged(
-                stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY),
-                context.profiles_record,
+            or not _same_profiles_record(
+                stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY), context.profiles_record
             )
             or stores.access.get_active(ADA_ACCESS_SOURCE_KEY) != context.access_record
             or stores.operational.get_active(CATALOG_SOURCE_KEY) != context.catalog_record
         ):
             raise UsersMaterializationError('Users materialization sources changed during resolution')
-        for user_id, (snapshot, record) in assignments.items():
-            source_key = assignment_source_key(user_id)
-            if (
-                self._operational_source.snapshot(source_key) != snapshot
-                or stores.operational.get_active(source_key) != record
-            ):
+        for user_id, snapshot in assignments.items():
+            if self._operational_source.snapshot(assignment_source_key(user_id)) != snapshot:
                 raise UsersMaterializationError('Operational assignment changed during resolution')
 
 
-def _profiles_projection_unchanged(
-    current: ProjectionRecord[ProfileCatalog] | None,
-    expected: ProjectionRecord[ProfileCatalog],
+def _same_profiles_record(
+    left: ProjectionRecord[ProfileCatalog] | None,
+    right: ProjectionRecord[ProfileCatalog] | None,
 ) -> bool:
+    if left is None or right is None:
+        return left is right
     return (
-        current is not None
-        and current.target == expected.target
-        and current.projected_at_utc == expected.projected_at_utc
-        and isinstance(current.payload, ProfileCatalog)
-        and current.payload.all() == expected.payload.all()
+        isinstance(left.payload, ProfileCatalog)
+        and isinstance(right.payload, ProfileCatalog)
+        and left.target == right.target
+        and getattr(left, 'projected_at_utc', None) == getattr(right, 'projected_at_utc', None)
+        and left.payload.all() == right.payload.all()
     )
 
 
