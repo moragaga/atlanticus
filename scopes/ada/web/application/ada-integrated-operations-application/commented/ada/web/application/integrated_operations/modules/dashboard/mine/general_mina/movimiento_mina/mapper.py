@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
-)
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
-)
 from ada.web.kpis.collector import KpiLatestValueState
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
+)
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
+)
 
 from .models import (
     MOVIMIENTO_MINA_KPI_KEY,
@@ -63,10 +64,10 @@ def map_movimiento_mina_payload(payload: Mapping[str, object]) -> MovimientoMina
     if 'data_state' not in payload:
         raise MovimientoMinaContractError('Movimiento Mina data_state is required')
     try:
-        data_state = map_dashboard_data_state(payload['data_state'])
+        data_state = map_kpi_payload_data_state(payload['data_state'])
     except ValueError as error:
         raise MovimientoMinaContractError(str(error)) from error
-    if data_state is DashboardDataState.ERROR and 'rows' not in payload:
+    if data_state is KpiPayloadDataState.ERROR and 'rows' not in payload:
         return MovimientoMinaState(rows=(), data_state=data_state)
     rows = _require_mapping(payload, 'rows')
     return MovimientoMinaState(
@@ -93,7 +94,7 @@ def _map_comparison(
 ) -> MovimientoMinaComparison:
     section = _require_mapping(row, section_key)
     try:
-        status = map_dashboard_value_status(section.get('status'))
+        status = map_value_severity_code(section.get('status'))
     except ValueError as error:
         raise MovimientoMinaContractError(str(error)) from error
     return MovimientoMinaComparison(

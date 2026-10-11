@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
@@ -34,9 +34,9 @@ def map_gestion_carguio_turno_readings(
 def _map_payload(payload: Mapping[str, object]) -> GestionCarguioTurnoState:
     if 'data_state' not in payload:
         raise ValueError('Gestion Carguio Turno data_state is required')
-    data_state = map_dashboard_data_state(payload['data_state'])
+    data_state = map_kpi_payload_data_state(payload['data_state'])
 
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return GestionCarguioTurnoState(sections=(), data_state=data_state)
 
     sections = payload.get('sections')

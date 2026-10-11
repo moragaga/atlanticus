@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,7 +14,7 @@ class MP10MetricState:
     # El backend entrega el valor listo para mostrar junto con la alerta y su severidad semántica.
     value: str | int | float | bool
     alert: str | None
-    status: DashboardValueStatus
+    status: ValueSeverity
 
     def __post_init__(self) -> None:
         if not isinstance(self.value, str | int | float | bool):
@@ -23,8 +23,8 @@ class MP10MetricState:
             not isinstance(self.alert, str) or not self.alert.strip()
         ):
             raise ValueError('MP10 alert must be null or a non-empty string')
-        if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError('MP10 status must be DashboardValueStatus')
+        if not isinstance(self.status, ValueSeverity):
+            raise TypeError('MP10 status must be ValueSeverity')
 
 
 @dataclass(frozen=True, slots=True)

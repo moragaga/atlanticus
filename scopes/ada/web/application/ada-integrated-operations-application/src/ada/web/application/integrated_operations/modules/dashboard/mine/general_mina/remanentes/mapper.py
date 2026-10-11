@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import REMANENTES_SUMMARY_KPI_KEY, STOCK_3080_KPI_KEY
 from .models import (
@@ -28,7 +29,7 @@ def map_remanentes_readings(readings: Mapping[str, DisplayValue]) -> RemanentesS
     return RemanentesState(
         summary=summary,
         summary_status=summary_status,
-        stock_3080=Stock3080State(value=stock, status=DashboardValueStatus.NEUTRAL),
+        stock_3080=Stock3080State(value=stock, status=ValueSeverity.NEUTRAL),
     )
 
 
@@ -47,8 +48,8 @@ def _map_summary(reading: DisplayValue) -> tuple[RemanentesSummaryState | None, 
 def _map_summary_payload(payload: Mapping[str, object]) -> RemanentesSummaryState:
     if 'data_state' not in payload:
         raise ValueError('Remanentes data_state is required')
-    data_state = map_dashboard_data_state(payload['data_state'])
-    if data_state is DashboardDataState.ERROR:
+    data_state = map_kpi_payload_data_state(payload['data_state'])
+    if data_state is KpiPayloadDataState.ERROR:
         return RemanentesSummaryState(rows=(), data_state=data_state)
     rows = payload.get('rows')
     if not isinstance(rows, list):

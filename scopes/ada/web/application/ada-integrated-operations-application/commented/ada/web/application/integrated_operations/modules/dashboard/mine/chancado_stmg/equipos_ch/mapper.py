@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .models import EquiposChDefinition, EquiposChReading
 
@@ -96,6 +97,6 @@ def _color(readings: Mapping[str, DisplayValue], key: str | None) -> DisplayValu
     if result.status is not DisplayStatus.OK:
         return result
     try:
-        return DisplayValue.ok(map_dashboard_value_status(result.value))
+        return DisplayValue.ok(map_value_severity_code(result.value))
     except ValueError:
         return DisplayValue.invalid()

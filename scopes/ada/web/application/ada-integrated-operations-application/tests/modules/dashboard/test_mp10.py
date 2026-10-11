@@ -9,10 +9,10 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.general_mi
     build_mp10,
     map_mp10_readings,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 def _json(value: object) -> dict[str, object]:
@@ -62,9 +62,9 @@ def test_mp10_maps_independent_json_contracts() -> None:
     assert state.instant is not None
     assert state.instant.value == '275'
     assert state.instant.alert == 'Alerta 2'
-    assert state.instant.status is DashboardValueStatus.WARNING
+    assert state.instant.status is ValueSeverity.WARNING
     assert state.projection is not None
-    assert state.projection.status is DashboardValueStatus.DANGER
+    assert state.projection.status is ValueSeverity.DANGER
 
 
 def test_mp10_keeps_source_states_independent() -> None:

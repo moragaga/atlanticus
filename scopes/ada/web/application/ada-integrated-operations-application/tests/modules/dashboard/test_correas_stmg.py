@@ -12,11 +12,11 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_s
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.decoder import (
     decode_chancado_stmg_store,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
-)
 from ada.web.kpis.readings import read_component_latest
-from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+)
 
 
 def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
@@ -103,9 +103,9 @@ def test_invalid_component_store_is_not_silenced(store, expected):
 @pytest.mark.parametrize(
     ('code', 'expected'),
     [
-        ('0', DashboardValueStatus.NEUTRAL),
-        ('1', DashboardValueStatus.DANGER),
-        ('2', DashboardValueStatus.WARNING),
+        ('0', ValueSeverity.NEUTRAL),
+        ('1', ValueSeverity.DANGER),
+        ('2', ValueSeverity.WARNING),
     ],
 )
 def test_optional_color_is_independent_of_value(code, expected):

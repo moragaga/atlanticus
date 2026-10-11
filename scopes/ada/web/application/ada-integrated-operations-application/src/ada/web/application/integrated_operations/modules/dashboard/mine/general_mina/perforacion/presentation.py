@@ -3,13 +3,14 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
 from .definitions import PERFORACION_DETALLE_KPI_KEY, PERFORACION_RESUMEN_KPI_KEY
 from .models import (
@@ -22,9 +23,9 @@ from .models import (
 )
 
 _STATUS_CLASS = {
-    DashboardValueStatus.NEUTRAL: '',
-    DashboardValueStatus.DANGER: 'perforacion__value--danger',
-    DashboardValueStatus.WARNING: 'perforacion__value--warning',
+    ValueSeverity.NEUTRAL: '',
+    ValueSeverity.DANGER: 'perforacion__value--danger',
+    ValueSeverity.WARNING: 'perforacion__value--warning',
 }
 
 
@@ -53,7 +54,7 @@ def _build_resumen(
                 _build_status(status, 'Información no disponible'),
             ],
         )
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='perforacion__resumen perforacion__resumen--unavailable',
             **{'data-kpi-inspection-key': PERFORACION_RESUMEN_KPI_KEY},
@@ -96,7 +97,7 @@ def _build_resumen(
             ],
         ),
     ]
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         children.append(_build_unshift_state())
 
     return html.Div(
@@ -115,7 +116,7 @@ def _build_resumen_title() -> Component:
 
 def _build_progress(
     avance: str | None,
-    status: DashboardValueStatus,
+    status: ValueSeverity,
 ) -> Component:
     fill = None
     if avance is not None:
@@ -143,7 +144,7 @@ def _build_detalle(
                 _build_status(status, 'Información no disponible'),
             ],
         )
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='perforacion__detalle perforacion__detalle--unavailable',
             **{'data-kpi-inspection-key': PERFORACION_DETALLE_KPI_KEY},
@@ -164,7 +165,7 @@ def _build_detalle(
             ],
         )
     ]
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         children.append(_build_unshift_state())
 
     return html.Div(

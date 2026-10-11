@@ -4,10 +4,12 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.inline_row import (
     InlineValueRowDefinition,
     InlineValueRowState,
@@ -74,8 +76,8 @@ def _metric(reading: MoliendaMetricReading) -> Component:
     )
 
 
-def _tone(value: DashboardValueStatus) -> InlineValueRowTone:
-    label = 'default' if value is DashboardValueStatus.NEUTRAL else value.value
+def _tone(value: ValueSeverity) -> InlineValueRowTone:
+    label = 'default' if value is ValueSeverity.NEUTRAL else value.value
     return InlineValueRowTone(label)
 
 

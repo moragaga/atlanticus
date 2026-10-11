@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    ValueSeverity,
 )
 
 
@@ -16,15 +16,15 @@ class EquiposServicioComparison:
     # real y plan son valores opacos; Web sólo interpreta status para presentación.
     real: str | int | float | bool
     plan: str | int | float | bool
-    status: DashboardValueStatus
+    status: ValueSeverity
 
     def __post_init__(self) -> None:
         if not isinstance(self.real, str | int | float | bool):
             raise TypeError('Equipos Servicio real must be a scalar')
         if not isinstance(self.plan, str | int | float | bool):
             raise TypeError('Equipos Servicio plan must be a scalar')
-        if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError('Equipos Servicio status must be DashboardValueStatus')
+        if not isinstance(self.status, ValueSeverity):
+            raise TypeError('Equipos Servicio status must be ValueSeverity')
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,10 +54,10 @@ class EquiposServicioRow:
 class EquiposServicioState:
     # El orden de rows es propiedad de backend y se conserva sin sorting.
     rows: tuple[EquiposServicioRow, ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.rows, tuple):
             raise TypeError('Equipos Servicio rows must be a tuple')
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Equipos Servicio data_state must be DashboardDataState')
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Equipos Servicio data_state must be KpiPayloadDataState')

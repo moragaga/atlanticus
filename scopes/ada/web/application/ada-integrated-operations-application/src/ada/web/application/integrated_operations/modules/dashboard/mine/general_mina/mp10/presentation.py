@@ -3,10 +3,11 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
 from .definitions import (
     MP10_HOTEL_MINA_INST_KPI_KEY,
@@ -18,9 +19,9 @@ from .definitions import (
 from .models import MP10MetricState, MP10State
 
 _ALERT_CLASS = {
-    DashboardValueStatus.NEUTRAL: 'mp10__alert--neutral',
-    DashboardValueStatus.DANGER: 'mp10__alert--danger',
-    DashboardValueStatus.WARNING: 'mp10__alert--warning',
+    ValueSeverity.NEUTRAL: 'mp10__alert--neutral',
+    ValueSeverity.DANGER: 'mp10__alert--danger',
+    ValueSeverity.WARNING: 'mp10__alert--warning',
 }
 
 

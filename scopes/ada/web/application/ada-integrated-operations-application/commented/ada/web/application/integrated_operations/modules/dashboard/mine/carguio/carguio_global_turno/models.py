@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    ValueSeverity,
 )
 
 
@@ -16,15 +16,15 @@ class CarguioGlobalTurnoComparison:
     # real y plan son valores opacos para Web; sólo status tiene semántica visual.
     real: str | int | float | bool
     plan: str | int | float | bool
-    status: DashboardValueStatus
+    status: ValueSeverity
 
     def __post_init__(self) -> None:
         if not isinstance(self.real, str | int | float | bool):
             raise TypeError('Carguio Global Turno real must be a scalar')
         if not isinstance(self.plan, str | int | float | bool):
             raise TypeError('Carguio Global Turno plan must be a scalar')
-        if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError('Carguio Global Turno status must be DashboardValueStatus')
+        if not isinstance(self.status, ValueSeverity):
+            raise TypeError('Carguio Global Turno status must be ValueSeverity')
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,10 +56,10 @@ class CarguioGlobalTurnoRow:
 class CarguioGlobalTurnoState:
     # rows conserva exactamente el orden entregado por backend.
     rows: tuple[CarguioGlobalTurnoRow, ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.rows, tuple):
             raise TypeError('Carguio Global Turno rows must be a tuple')
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Carguio Global Turno data_state must be DashboardDataState')
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Carguio Global Turno data_state must be KpiPayloadDataState')

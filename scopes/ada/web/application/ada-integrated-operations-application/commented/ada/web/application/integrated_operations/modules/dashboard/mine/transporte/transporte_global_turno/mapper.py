@@ -3,14 +3,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import (
     TRANSPORTE_GLOBAL_TURNO_KPI_KEY,
@@ -40,15 +41,15 @@ def map_transporte_global_turno_readings(
 def _map_payload(payload: Mapping[str, object]) -> TransporteGlobalTurnoState:
     if 'data_state' not in payload:
         raise ValueError('Transporte Global Turno data_state is required')
-    data_state = map_dashboard_data_state(payload['data_state'])
+    data_state = map_kpi_payload_data_state(payload['data_state'])
 
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return TransporteGlobalTurnoState(rows=(), data_state=data_state)
 
     rows = payload.get('rows')
     if not isinstance(rows, list):
         raise ValueError('Transporte Global Turno rows must be a JSON array')
-    if data_state is DashboardDataState.UNSHIFT:
+    if data_state is KpiPayloadDataState.UNSHIFT:
         if rows:
             raise ValueError('Transporte Global Turno unshift rows must be empty')
         return TransporteGlobalTurnoState(rows=(), data_state=data_state)
@@ -89,7 +90,7 @@ def _map_value(value: Mapping[str, object]) -> TransporteGlobalTurnoValue:
         raise ValueError('Transporte Global Turno metric status is required')
     return TransporteGlobalTurnoValue(
         value=metric_value,
-        status=map_dashboard_value_status(value['status']),
+        status=map_value_severity_code(value['status']),
     )
 
 

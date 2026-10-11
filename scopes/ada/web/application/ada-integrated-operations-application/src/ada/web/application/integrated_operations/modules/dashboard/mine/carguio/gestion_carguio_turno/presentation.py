@@ -3,8 +3,8 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
@@ -36,7 +36,7 @@ def build_gestion_carguio_turno(
     if not isinstance(state, GestionCarguioTurnoState):
         raise TypeError('state must be GestionCarguioTurnoState or None')
 
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return _build_root(
             [
                 _build_table(()),
@@ -44,7 +44,7 @@ def build_gestion_carguio_turno(
             ]
         )
 
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         return _build_root(
             [
                 _build_table(()),

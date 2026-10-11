@@ -4,13 +4,14 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
 from .models import (
     MOVIMIENTO_MINA_KPI_KEY,
@@ -30,9 +31,9 @@ _ROW_LABELS = {
 }
 
 _STATUS_CLASS = {
-    DashboardValueStatus.NEUTRAL: '',
-    DashboardValueStatus.DANGER: 'movimiento-mina__value--danger',
-    DashboardValueStatus.WARNING: 'movimiento-mina__value--warning',
+    ValueSeverity.NEUTRAL: '',
+    ValueSeverity.DANGER: 'movimiento-mina__value--danger',
+    ValueSeverity.WARNING: 'movimiento-mina__value--warning',
 }
 
 
@@ -40,7 +41,7 @@ def build_movimiento_mina(state: MovimientoMinaState) -> Component:
     if not isinstance(state, MovimientoMinaState):
         raise TypeError('state must be MovimientoMinaState')
     # Todo el bloque representa un único KPI JSON y por eso comparte un solo trigger de inspección.
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='movimiento-mina movimiento-mina--unavailable',
             **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
@@ -141,7 +142,7 @@ def _build_row(row: MovimientoMinaRow) -> Component:
 def _build_comparison_metric(
     value: object,
     plan: object,
-    status: DashboardValueStatus,
+    status: ValueSeverity,
 ) -> Component:
     modifier = _STATUS_CLASS[status]
     value_class = ' '.join(
@@ -169,10 +170,10 @@ def _build_rhythm_metric(value: object) -> Component:
     )
 
 
-def _build_state(state: DashboardDataState) -> Component | None:
-    if state is DashboardDataState.OK:
+def _build_state(state: KpiPayloadDataState) -> Component | None:
+    if state is KpiPayloadDataState.OK:
         return None
-    if state is DashboardDataState.UNSHIFT:
+    if state is KpiPayloadDataState.UNSHIFT:
         return html.Div(
             className='movimiento-mina__state movimiento-mina__state--unshift',
             children=[

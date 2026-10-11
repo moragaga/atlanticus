@@ -3,13 +3,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,26 +26,26 @@ class RemanentesSummaryRow:
 @dataclass(frozen=True, slots=True)
 class RemanentesSummaryState:
     rows: tuple[RemanentesSummaryRow, ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.rows, tuple):
             raise TypeError('Remanentes summary rows must be a tuple')
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Remanentes summary data_state must be DashboardDataState')
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Remanentes summary data_state must be KpiPayloadDataState')
 
 
 @dataclass(frozen=True, slots=True)
 class Stock3080State:
     # DisplayValue conserva OK, NOT_MAPPED, EMPTY, INVALID y ERROR sin ligarlo al JSON summary.
     value: DisplayValue
-    status: DashboardValueStatus = DashboardValueStatus.NEUTRAL
+    status: ValueSeverity = ValueSeverity.NEUTRAL
 
     def __post_init__(self) -> None:
         if not isinstance(self.value, DisplayValue):
             raise TypeError('Stock 3080 value must be DisplayValue')
-        if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError('Stock 3080 status must be DashboardValueStatus')
+        if not isinstance(self.status, ValueSeverity):
+            raise TypeError('Stock 3080 status must be ValueSeverity')
 
 
 @dataclass(frozen=True, slots=True)

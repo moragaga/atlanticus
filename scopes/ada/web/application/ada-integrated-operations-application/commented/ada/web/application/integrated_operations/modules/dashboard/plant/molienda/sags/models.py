@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayValue,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayValue
 
 from .definitions import (
     MoliendaEquipmentDefinition,
@@ -19,7 +19,7 @@ from .definitions import (
 class MoliendaSagMetricReading:
     definition: MoliendaSagMetricDefinition
     value: DisplayValue
-    tone: DashboardValueStatus = DashboardValueStatus.NEUTRAL
+    tone: ValueSeverity = ValueSeverity.NEUTRAL
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +27,7 @@ class MoliendaEquipmentReading:
     definition: MoliendaEquipmentDefinition
     state: DisplayValue
     power: DisplayValue
-    power_tone: DashboardValueStatus = DashboardValueStatus.NEUTRAL
+    power_tone: ValueSeverity = ValueSeverity.NEUTRAL
 
 
 @dataclass(frozen=True, slots=True)

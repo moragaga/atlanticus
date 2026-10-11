@@ -8,10 +8,10 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
     build_transporte_global_turno,
     map_transporte_global_turno_readings,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 def _metric(value: object, status: object) -> dict[str, object]:
@@ -92,12 +92,12 @@ def test_transporte_global_turno_preserves_independent_real_plan_statuses() -> N
     assert status is DisplayStatus.OK
     assert state is not None
     values = {row.key: row for row in state.rows}
-    assert values['rendimiento'].real.status is DashboardValueStatus.WARNING
-    assert values['rendimiento'].plan.status is DashboardValueStatus.NEUTRAL
-    assert values['ciclo'].real.status is DashboardValueStatus.DANGER
-    assert values['ciclo'].plan.status is DashboardValueStatus.WARNING
-    assert values['uebd'].real.status is DashboardValueStatus.NEUTRAL
-    assert values['uebd'].plan.status is DashboardValueStatus.DANGER
+    assert values['rendimiento'].real.status is ValueSeverity.WARNING
+    assert values['rendimiento'].plan.status is ValueSeverity.NEUTRAL
+    assert values['ciclo'].real.status is ValueSeverity.DANGER
+    assert values['ciclo'].plan.status is ValueSeverity.WARNING
+    assert values['uebd'].real.status is ValueSeverity.NEUTRAL
+    assert values['uebd'].plan.status is ValueSeverity.DANGER
 
 
 def test_transporte_global_turno_supports_unshift() -> None:

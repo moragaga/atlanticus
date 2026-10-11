@@ -6,10 +6,12 @@ from collections.abc import Sequence
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.equipment_image import (
     EquipmentStateImage,
     LabelPosition,
@@ -26,9 +28,9 @@ from .definitions import CorreaStmgDefinition, CorreaStmgMetricDefinition
 from .models import CorreasStmgState
 
 _TONES = {
-    DashboardValueStatus.NEUTRAL: InlineValueRowTone.DEFAULT,
-    DashboardValueStatus.DANGER: InlineValueRowTone.DANGER,
-    DashboardValueStatus.WARNING: InlineValueRowTone.WARNING,
+    ValueSeverity.NEUTRAL: InlineValueRowTone.DEFAULT,
+    ValueSeverity.DANGER: InlineValueRowTone.DANGER,
+    ValueSeverity.WARNING: InlineValueRowTone.WARNING,
 }
 
 

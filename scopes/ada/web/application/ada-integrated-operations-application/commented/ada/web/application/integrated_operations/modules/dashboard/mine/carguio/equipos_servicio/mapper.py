@@ -3,14 +3,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import EQUIPOS_SERVICIO_KPI_KEY
 from .models import (
@@ -37,9 +38,9 @@ def map_equipos_servicio_readings(
 def _map_payload(payload: Mapping[str, object]) -> EquiposServicioState:
     if 'data_state' not in payload:
         raise ValueError('Equipos Servicio data_state is required')
-    data_state = map_dashboard_data_state(payload['data_state'])
+    data_state = map_kpi_payload_data_state(payload['data_state'])
 
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return EquiposServicioState(rows=(), data_state=data_state)
 
     rows = payload.get('rows')
@@ -89,7 +90,7 @@ def _map_comparison(
     return EquiposServicioComparison(
         real=real,
         plan=plan,
-        status=map_dashboard_value_status(value['status']),
+        status=map_value_severity_code(value['status']),
     )
 
 

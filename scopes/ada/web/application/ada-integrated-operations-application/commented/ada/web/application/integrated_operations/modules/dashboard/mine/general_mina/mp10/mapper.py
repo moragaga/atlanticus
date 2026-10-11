@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import MP10_HOTEL_MINA_INST_KPI_KEY, MP10_HOTEL_MINA_PROY_KPI_KEY
 from .models import MP10MetricState, MP10State
@@ -48,7 +49,7 @@ def _map_metric_payload(payload: Mapping[str, object]) -> MP10MetricState:
 
     if 'status' not in payload:
         raise ValueError('MP10 status is required')
-    status = map_dashboard_value_status(payload['status'])
+    status = map_value_severity_code(payload['status'])
 
     return MP10MetricState(
         value=value,

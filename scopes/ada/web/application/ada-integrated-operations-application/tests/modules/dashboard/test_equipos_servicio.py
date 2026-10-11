@@ -8,10 +8,10 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.eq
     build_equipos_servicio,
     map_equipos_servicio_readings,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 def _json(value: object) -> dict[str, object]:
@@ -73,8 +73,8 @@ def test_equipos_servicio_preserves_backend_rows_and_total() -> None:
     assert state is not None
     assert [row.equipo for row in state.rows] == ['Bulldozer', 'TOTAL']
     assert state.rows[1].is_total is True
-    assert state.rows[0].disponibles.status is DashboardValueStatus.WARNING
-    assert state.rows[0].fuera_servicio.status is DashboardValueStatus.DANGER
+    assert state.rows[0].disponibles.status is ValueSeverity.WARNING
+    assert state.rows[0].fuera_servicio.status is ValueSeverity.DANGER
     assert state.rows[1].operando.real == '15'
 
 

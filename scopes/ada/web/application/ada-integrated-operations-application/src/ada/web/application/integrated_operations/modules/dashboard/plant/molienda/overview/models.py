@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayValue,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayValue
 from ada.web.ui.time_series import TimeSeriesValues
 
 from .definitions import MoliendaMetricDefinition
@@ -15,7 +15,7 @@ from .definitions import MoliendaMetricDefinition
 class MoliendaMetricReading:
     definition: MoliendaMetricDefinition
     value: DisplayValue
-    tone: DashboardValueStatus = DashboardValueStatus.NEUTRAL
+    tone: ValueSeverity = ValueSeverity.NEUTRAL
 
 
 @dataclass(frozen=True, slots=True)

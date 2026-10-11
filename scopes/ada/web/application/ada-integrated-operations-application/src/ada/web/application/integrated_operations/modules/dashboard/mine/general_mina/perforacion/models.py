@@ -2,41 +2,41 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 @dataclass(frozen=True, slots=True)
 class PerforacionComparison:
     real: object
     plan: object
-    status: DashboardValueStatus
+    status: ValueSeverity
 
     def __post_init__(self) -> None:
-        if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError('Perforacion comparison status must be DashboardValueStatus')
+        if not isinstance(self.status, ValueSeverity):
+            raise TypeError('Perforacion comparison status must be ValueSeverity')
 
 
 @dataclass(frozen=True, slots=True)
 class PerforacionResumenState:
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
     acumulado_semanal: PerforacionComparison | None = None
     plan_semanal: object | None = None
     avance: str | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Perforacion resumen data_state must be DashboardDataState')
-        if self.data_state is DashboardDataState.ERROR:
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Perforacion resumen data_state must be KpiPayloadDataState')
+        if self.data_state is KpiPayloadDataState.ERROR:
             return
         if not isinstance(self.acumulado_semanal, PerforacionComparison):
             raise TypeError('Perforacion resumen acumulado_semanal must be PerforacionComparison')
-        if self.data_state is DashboardDataState.OK and not isinstance(self.avance, str):
+        if self.data_state is KpiPayloadDataState.OK and not isinstance(self.avance, str):
             raise TypeError(
                 'Perforacion resumen avance must be a percentage string when data_state is ok'
             )
@@ -69,12 +69,12 @@ class PerforacionFaseState:
 
 @dataclass(frozen=True, slots=True)
 class PerforacionDetalleState:
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
     fases: tuple[PerforacionFaseState, ...]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Perforacion detalle data_state must be DashboardDataState')
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Perforacion detalle data_state must be KpiPayloadDataState')
         if not isinstance(self.fases, tuple):
             raise TypeError('Perforacion detalle fases must be a tuple')
 

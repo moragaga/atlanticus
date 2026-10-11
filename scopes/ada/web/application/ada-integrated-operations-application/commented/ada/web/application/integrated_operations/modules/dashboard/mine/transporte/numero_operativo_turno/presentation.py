@@ -5,8 +5,8 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 from ada.web.ui.inline_row import (
@@ -36,12 +36,12 @@ def build_numero_operativo_turno(
     if not isinstance(state, NumeroOperativoTurnoState):
         raise TypeError('state must be NumeroOperativoTurnoState or None')
 
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return _build_root(
             [_build_status(DisplayStatus.INVALID, 'Información no disponible')]
         )
 
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         return _build_root([_build_unshift_state()])
 
     values = state.as_mapping()

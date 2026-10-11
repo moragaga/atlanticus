@@ -8,10 +8,10 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.ca
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.decoder import (
     decode_carguio_store,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
 )
-from ada.web.ui.display_status import DisplayStatus
 
 
 def _json(value: object) -> dict[str, object]:
@@ -75,8 +75,8 @@ def test_carguio_global_turno_maps_backend_rows_without_calculating_total() -> N
     assert state is not None
     assert [row.flota for row in state.rows] == ['PA', 'TOTAL']
     assert state.rows[1].is_total is True
-    assert state.rows[0].op_req.status is DashboardValueStatus.WARNING
-    assert state.rows[0].rendimiento.status is DashboardValueStatus.DANGER
+    assert state.rows[0].op_req.status is ValueSeverity.WARNING
+    assert state.rows[0].rendimiento.status is ValueSeverity.DANGER
     assert state.rows[1].op_req.real == '14'
 
 

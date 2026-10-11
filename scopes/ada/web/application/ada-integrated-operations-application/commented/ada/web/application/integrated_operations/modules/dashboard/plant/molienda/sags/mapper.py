@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import (
     MOLIENDA_LINES,
@@ -25,16 +26,16 @@ def map_molienda_sags_readings(
 
 
 # El estado del color es independiente del estado de la lectura mostrada.
-def _tone(readings: Mapping[str, DisplayValue], key: str | None) -> DashboardValueStatus:
+def _tone(readings: Mapping[str, DisplayValue], key: str | None) -> ValueSeverity:
     if key is None:
-        return DashboardValueStatus.NEUTRAL
+        return ValueSeverity.NEUTRAL
     reading = readings[key]
     if reading.status is not DisplayStatus.OK:
-        return DashboardValueStatus.NEUTRAL
+        return ValueSeverity.NEUTRAL
     try:
-        return map_dashboard_value_status(reading.value)
+        return map_value_severity_code(reading.value)
     except ValueError:
-        return DashboardValueStatus.NEUTRAL
+        return ValueSeverity.NEUTRAL
 
 
 def _metric(

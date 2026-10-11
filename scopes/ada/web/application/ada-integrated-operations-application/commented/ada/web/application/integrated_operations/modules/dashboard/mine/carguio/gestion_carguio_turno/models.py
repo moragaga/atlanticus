@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
 
 # Los valores de celdas ya vienen resueltos por backend y Web no los normaliza.
@@ -58,7 +58,7 @@ class GestionCarguioTurnoSection:
 class GestionCarguioTurnoState:
     # Backend controla orden de secciones y orden de equipos dentro de cada sección.
     sections: tuple[GestionCarguioTurnoSection, ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.sections, tuple):
@@ -68,5 +68,5 @@ class GestionCarguioTurnoState:
             for section in self.sections
         ):
             raise TypeError('Gestion Carguio Turno sections must be sections')
-        if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError('Gestion Carguio Turno data_state must be DashboardDataState')
+        if not isinstance(self.data_state, KpiPayloadDataState):
+            raise TypeError('Gestion Carguio Turno data_state must be KpiPayloadDataState')

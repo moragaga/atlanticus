@@ -3,13 +3,14 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
 from .definitions import EQUIPOS_SERVICIO_KPI_KEY
 from .models import (
@@ -19,9 +20,9 @@ from .models import (
 )
 
 _STATUS_CLASS = {
-    DashboardValueStatus.NEUTRAL: '',
-    DashboardValueStatus.DANGER: 'equipos-servicio__value--danger',
-    DashboardValueStatus.WARNING: 'equipos-servicio__value--warning',
+    ValueSeverity.NEUTRAL: '',
+    ValueSeverity.DANGER: 'equipos-servicio__value--danger',
+    ValueSeverity.WARNING: 'equipos-servicio__value--warning',
 }
 
 
@@ -45,7 +46,7 @@ def build_equipos_servicio(
     if not isinstance(state, EquiposServicioState):
         raise TypeError('state must be EquiposServicioState or None')
 
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='equipos-servicio equipos-servicio--unavailable',
             **{'data-kpi-inspection-key': EQUIPOS_SERVICIO_KPI_KEY},
@@ -62,7 +63,7 @@ def build_equipos_servicio(
             children=[_build_row(row) for row in state.rows],
         ),
     ]
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         children.append(_build_unshift_state())
 
     return html.Div(

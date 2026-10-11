@@ -5,10 +5,12 @@ from collections.abc import Sequence
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.equipment_image import EquipmentStateImage, build_equipment_state_image
 
 from .models import EquiposChReading
@@ -145,8 +147,8 @@ def _color_indicator(color: DisplayValue, key: str) -> Component:
     class_name = 'ada-io-equipos-ch__color-indicator'
     if color.status is DisplayStatus.OK:
         state = color.value
-        if not isinstance(state, DashboardValueStatus):
-            raise ValueError('Equipos CH color state must be DashboardValueStatus')
+        if not isinstance(state, ValueSeverity):
+            raise ValueError('Equipos CH color state must be ValueSeverity')
         class_name += f' ada-io-equipos-ch__color-indicator--{state.value}'
         child = html.Span(className='ada-io-equipos-ch__color-dot', **{'aria-hidden': 'true'})
     else:
@@ -170,8 +172,8 @@ def _metric(
     class_name = 'ada-io-equipos-ch__value'
     if value.status is DisplayStatus.OK and color is not None and color.status is DisplayStatus.OK:
         state = color.value
-        if not isinstance(state, DashboardValueStatus):
-            raise ValueError('Equipos CH color state must be DashboardValueStatus')
+        if not isinstance(state, ValueSeverity):
+            raise ValueError('Equipos CH color state must be ValueSeverity')
         class_name += f' ada-io-equipos-ch__value--{state.value}'
     return html.Span(
         _display(value),

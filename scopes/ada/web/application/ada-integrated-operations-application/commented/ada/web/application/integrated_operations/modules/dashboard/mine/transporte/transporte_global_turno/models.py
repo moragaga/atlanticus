@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    ValueSeverity,
 )
 
 
@@ -15,14 +15,14 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 class TransporteGlobalTurnoValue:
     # El JSON conserva semántica real/plan; la UI genérica recibirá first/second.
     value: str | int | float | bool
-    status: DashboardValueStatus
+    status: ValueSeverity
 
     def __post_init__(self) -> None:
         if not isinstance(self.value, str | int | float | bool):
             raise TypeError('Transporte Global Turno value must be a scalar')
-        if not isinstance(self.status, DashboardValueStatus):
+        if not isinstance(self.status, ValueSeverity):
             raise TypeError(
-                'Transporte Global Turno status must be DashboardValueStatus'
+                'Transporte Global Turno status must be ValueSeverity'
             )
 
 
@@ -44,12 +44,12 @@ class TransporteGlobalTurnoRow:
 @dataclass(frozen=True, slots=True)
 class TransporteGlobalTurnoState:
     rows: tuple[TransporteGlobalTurnoRow, ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.rows, tuple):
             raise TypeError('Transporte Global Turno rows must be a tuple')
-        if not isinstance(self.data_state, DashboardDataState):
+        if not isinstance(self.data_state, KpiPayloadDataState):
             raise TypeError(
-                'Transporte Global Turno data_state must be DashboardDataState'
+                'Transporte Global Turno data_state must be KpiPayloadDataState'
             )

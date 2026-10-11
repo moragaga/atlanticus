@@ -6,14 +6,15 @@ import re
 from collections.abc import Callable, Mapping
 from typing import TypeVar
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    map_dashboard_value_status,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    map_value_severity_code,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import PERFORACION_DETALLE_KPI_KEY, PERFORACION_RESUMEN_KPI_KEY
 from .models import (
@@ -61,7 +62,7 @@ def _map_json_value(
 
 def _map_resumen_payload(payload: Mapping[str, object]) -> PerforacionResumenState:
     data_state = _map_data_state(payload)
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return PerforacionResumenState(data_state=data_state)
     acumulado_semanal = _map_comparison(_require_mapping(payload, 'acumulado_semanal'))
     plan_semanal = _require_value(payload, 'plan_semanal')
@@ -69,7 +70,7 @@ def _map_resumen_payload(payload: Mapping[str, object]) -> PerforacionResumenSta
     if avance is not None:
         if not isinstance(avance, str) or _PERCENTAGE_PATTERN.fullmatch(avance) is None:
             raise ValueError('Perforacion resumen avance must be a percentage string')
-    if data_state is DashboardDataState.OK and avance is None:
+    if data_state is KpiPayloadDataState.OK and avance is None:
         raise ValueError('Perforacion resumen avance is required when data_state is ok')
     return PerforacionResumenState(
         data_state=data_state,
@@ -81,7 +82,7 @@ def _map_resumen_payload(payload: Mapping[str, object]) -> PerforacionResumenSta
 
 def _map_detalle_payload(payload: Mapping[str, object]) -> PerforacionDetalleState:
     data_state = _map_data_state(payload)
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return PerforacionDetalleState(data_state=data_state, fases=())
     fases = payload.get('fases')
     if not isinstance(fases, list):
@@ -116,7 +117,7 @@ def _map_equipo(value: object) -> PerforacionEquipoState:
 
 def _map_comparison(value: Mapping[str, object]) -> PerforacionComparison:
     try:
-        status = map_dashboard_value_status(value.get('status'))
+        status = map_value_severity_code(value.get('status'))
     except ValueError as error:
         raise ValueError(str(error)) from error
     return PerforacionComparison(
@@ -126,11 +127,11 @@ def _map_comparison(value: Mapping[str, object]) -> PerforacionComparison:
     )
 
 
-def _map_data_state(payload: Mapping[str, object]) -> DashboardDataState:
+def _map_data_state(payload: Mapping[str, object]) -> KpiPayloadDataState:
     if 'data_state' not in payload:
         raise ValueError('Perforacion data_state is required')
     try:
-        return map_dashboard_data_state(payload['data_state'])
+        return map_kpi_payload_data_state(payload['data_state'])
     except ValueError as error:
         raise ValueError(str(error)) from error
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
-    map_dashboard_data_state,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
+    map_kpi_payload_data_state,
 )
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
@@ -29,16 +29,16 @@ def map_numero_operativo_turno_readings(
 def _map_payload(payload: Mapping[str, object]) -> NumeroOperativoTurnoState:
     if 'data_state' not in payload:
         raise ValueError('Numero Operativo Turno data_state is required')
-    data_state = map_dashboard_data_state(payload['data_state'])
+    data_state = map_kpi_payload_data_state(payload['data_state'])
 
-    if data_state is DashboardDataState.ERROR:
+    if data_state is KpiPayloadDataState.ERROR:
         return NumeroOperativoTurnoState(values=(), data_state=data_state)
 
     raw_values = payload.get('values')
     if not isinstance(raw_values, Mapping):
         raise ValueError('Numero Operativo Turno values must be an object')
 
-    if data_state is DashboardDataState.UNSHIFT:
+    if data_state is KpiPayloadDataState.UNSHIFT:
         if raw_values:
             raise ValueError('Numero Operativo Turno unshift values must be empty')
         return NumeroOperativoTurnoState(values=(), data_state=data_state)

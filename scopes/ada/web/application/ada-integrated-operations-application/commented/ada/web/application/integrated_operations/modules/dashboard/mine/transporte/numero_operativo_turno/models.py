@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
 
 
@@ -12,7 +12,7 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 class NumeroOperativoTurnoState:
     # Los valores ya vienen resueltos por backend; Web no suma ni deriva categorías.
     values: tuple[tuple[str, str | int | float | bool], ...]
-    data_state: DashboardDataState
+    data_state: KpiPayloadDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.values, tuple):
@@ -27,9 +27,9 @@ class NumeroOperativoTurnoState:
                 raise TypeError(
                     'Numero Operativo Turno values must contain scalar pairs'
                 )
-        if not isinstance(self.data_state, DashboardDataState):
+        if not isinstance(self.data_state, KpiPayloadDataState):
             raise TypeError(
-                'Numero Operativo Turno data_state must be DashboardDataState'
+                'Numero Operativo Turno data_state must be KpiPayloadDataState'
             )
 
     def as_mapping(self) -> dict[str, str | int | float | bool]:

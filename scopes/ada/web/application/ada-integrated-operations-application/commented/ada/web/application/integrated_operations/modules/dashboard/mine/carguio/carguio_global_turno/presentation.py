@@ -4,13 +4,14 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
 from .definitions import CARGUIO_GLOBAL_TURNO_KPI_KEY
 from .models import (
@@ -20,9 +21,9 @@ from .models import (
 )
 
 _STATUS_CLASS = {
-    DashboardValueStatus.NEUTRAL: '',
-    DashboardValueStatus.DANGER: 'carguio-global-turno__value--danger',
-    DashboardValueStatus.WARNING: 'carguio-global-turno__value--warning',
+    ValueSeverity.NEUTRAL: '',
+    ValueSeverity.DANGER: 'carguio-global-turno__value--danger',
+    ValueSeverity.WARNING: 'carguio-global-turno__value--warning',
 }
 
 
@@ -46,7 +47,7 @@ def build_carguio_global_turno(
     if not isinstance(state, CarguioGlobalTurnoState):
         raise TypeError('state must be CarguioGlobalTurnoState or None')
 
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='carguio-global-turno carguio-global-turno--unavailable',
             **{'data-kpi-inspection-key': CARGUIO_GLOBAL_TURNO_KPI_KEY},
@@ -64,7 +65,7 @@ def build_carguio_global_turno(
             children=[_build_row(row) for row in state.rows],
         ),
     ]
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         children.append(_build_unshift_state())
 
     # Todo el contenido representa un único KPI JSON y comparte el trigger de inspection.

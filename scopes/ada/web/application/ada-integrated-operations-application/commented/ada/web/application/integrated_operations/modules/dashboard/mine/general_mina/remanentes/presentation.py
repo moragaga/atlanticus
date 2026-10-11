@@ -5,13 +5,15 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.data_state import (
-    DashboardDataState,
+from ada.web.kpis.readings import (
+    KpiPayloadDataState,
 )
-from ada.web.application.integrated_operations.modules.dashboard.value_status import (
-    DashboardValueStatus,
+from ada.web.ui.display_status import (
+    DisplayStatus,
+    DisplayValue,
+    ValueSeverity,
+    build_display_status_icon,
 )
-from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.inline_row import (
     InlineValueRowState,
     InlineValueRowTone,
@@ -27,9 +29,9 @@ from .definitions import (
 from .models import RemanentesState, RemanentesSummaryRow, RemanentesSummaryState
 
 _TONE = {
-    DashboardValueStatus.NEUTRAL: InlineValueRowTone.DEFAULT,
-    DashboardValueStatus.DANGER: InlineValueRowTone.DANGER,
-    DashboardValueStatus.WARNING: InlineValueRowTone.WARNING,
+    ValueSeverity.NEUTRAL: InlineValueRowTone.DEFAULT,
+    ValueSeverity.DANGER: InlineValueRowTone.DANGER,
+    ValueSeverity.WARNING: InlineValueRowTone.WARNING,
 }
 
 
@@ -72,7 +74,7 @@ def _build_summary(
                 _build_status(status, 'Información no disponible'),
             ],
         )
-    if state.data_state is DashboardDataState.ERROR:
+    if state.data_state is KpiPayloadDataState.ERROR:
         return html.Div(
             className='remanentes__summary remanentes__summary--error',
             **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
@@ -88,7 +90,7 @@ def _build_summary(
             children=[_build_row(row) for row in state.rows],
         ),
     ]
-    if state.data_state is DashboardDataState.UNSHIFT:
+    if state.data_state is KpiPayloadDataState.UNSHIFT:
         children.append(
             html.Div(
                 className='remanentes__state remanentes__state--unshift',
