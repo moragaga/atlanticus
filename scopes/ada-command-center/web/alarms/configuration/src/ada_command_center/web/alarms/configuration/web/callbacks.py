@@ -107,7 +107,7 @@ def register_alarm_configuration_admin_callbacks(
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data'),
         Input(context.draft_store_id, 'data'),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def load_browser_draft(draft_data: dict[str, object] | None):
         if draft_data is None:

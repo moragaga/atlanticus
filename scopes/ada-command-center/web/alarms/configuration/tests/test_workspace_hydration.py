@@ -97,11 +97,11 @@ def _registered_callbacks():
     return app, binding
 
 
-def test_browser_draft_waits_for_manager_hydration_before_initial_load() -> None:
+def test_browser_draft_runs_when_dynamic_editor_first_mounts() -> None:
     app, _binding = _registered_callbacks()
     callback = app.callbacks['load_browser_draft']
 
-    assert app.options['load_browser_draft']['prevent_initial_call'] is True
+    assert app.options['load_browser_draft']['prevent_initial_call'] is False
     assert callback(None) == empty_authoring_document()
 
 
@@ -111,6 +111,8 @@ def test_browser_draft_loads_exact_manager_workspace_payload() -> None:
     expected = configuration().to_document()
     workspace_document = binding.save_payload(None, expected)
 
+    assert callback(workspace_document) == expected
+    assert callback(None) == empty_authoring_document()
     assert callback(workspace_document) == expected
 
 
