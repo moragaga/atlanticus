@@ -11,6 +11,7 @@ class AdaApplicationDescriptor:
     display_name: str
     distribution_name: str
     application_root: Path
+    pwa_short_name: str | None = None
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -22,6 +23,13 @@ class AdaApplicationDescriptor:
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value or value != value.strip():
                 raise ValueError(f'{field_name} must be non-empty trimmed text')
+        if self.pwa_short_name is not None:
+            if (
+                not isinstance(self.pwa_short_name, str)
+                or not self.pwa_short_name
+                or self.pwa_short_name != self.pwa_short_name.strip()
+            ):
+                raise ValueError('pwa_short_name must be non-empty trimmed text')
         if not isinstance(self.application_root, Path):
             raise TypeError('application_root must be pathlib.Path')
         object.__setattr__(self, 'application_root', self.application_root.expanduser().resolve())

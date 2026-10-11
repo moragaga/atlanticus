@@ -87,6 +87,7 @@ ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
 ada-web-runtime-experience = { path = "../../runtime-experience", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
+atlanticus-web-pwa = { path = "../../../../../web/framework/pwa", editable = true }
 atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }

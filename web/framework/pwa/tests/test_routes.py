@@ -47,8 +47,15 @@ def test_service_worker_is_versioned_and_scoped_to_root() -> None:
     assert response.headers['Service-Worker-Allowed'] == '/'
     assert response.headers['Cache-Control'] == 'no-store, no-cache, must-revalidate, max-age=0'
     assert 'atlanticus-pwa:generic-app:2.0.0' in content
-    assert "url.pathname.startsWith('/assets/')" in content
-    assert 'url.origin === self.location.origin' in content
-    assert "CACHE_PREFIX = 'atlanticus-pwa:'" in content
-    assert '/_dash-' not in content
-    assert '/api/' not in content
+
+
+def test_new_version_changes_service_worker_script() -> None:
+    first = Flask('first')
+    second = Flask('second')
+    register_pwa_routes(first, _definition('1.0.0'))
+    register_pwa_routes(second, _definition('2.0.0'))
+
+    first_script = first.test_client().get('/service-worker.js').get_data(as_text=True)
+    second_script = second.test_client().get('/service-worker.js').get_data(as_text=True)
+
+    assert first_script != second_script

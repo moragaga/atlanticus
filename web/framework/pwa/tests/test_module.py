@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from atlanticus.web.pwa import WebPwaDefinition, create_web_pwa_module
+from atlanticus.web.pwa import WebPwaDefinition, WebPwaIcon, create_web_pwa_module
 
 
 def test_module_contributes_manifest_metadata_and_registration_asset() -> None:
@@ -24,6 +24,24 @@ def test_module_contributes_manifest_metadata_and_registration_asset() -> None:
         'service_worker_url': '/service-worker.js',
         'scope': '/',
     }
+
+
+def test_module_links_favicon_to_first_pwa_icon() -> None:
+    module = create_web_pwa_module(
+        WebPwaDefinition(
+            application_id='test-app',
+            version='1.0.0',
+            name='Test App',
+            short_name='Test',
+            theme_color='#101010',
+            background_color='#FFFFFF',
+            icons=(WebPwaIcon('/assets/test-icon.png', '192x192'),),
+        )
+    )
+
+    assert '<link rel="icon" type="image/png" href="/assets/test-icon.png">' in (
+        module.index.head_fragments
+    )
 
 
 def test_registration_asset_registers_root_scoped_service_worker() -> None:

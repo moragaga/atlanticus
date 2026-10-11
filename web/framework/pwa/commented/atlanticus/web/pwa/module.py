@@ -1,6 +1,8 @@
 # Espejo comentado: composición del módulo Web PWA y sus assets.
 from __future__ import annotations
 
+from html import escape
+
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.index import IndexContribution
 from atlanticus.web.modules import WebModule
@@ -19,6 +21,18 @@ def create_web_pwa_module(definition: WebPwaDefinition) -> WebModule:
     def register_routes(app, _services) -> None:
         register_pwa_routes(app, definition)
 
+    favicon = (
+        ()
+        if not definition.icons
+        else (
+            '<link rel="icon" type="'
+            + escape(definition.icons[0].mime_type, quote=True)
+            + '" href="'
+            + escape(definition.icons[0].src, quote=True)
+            + '">',
+        )
+    )
+
     return WebModule(
         name='pwa',
         asset_layers=(PWA_ASSET_LAYER,),
@@ -27,6 +41,7 @@ def create_web_pwa_module(definition: WebPwaDefinition) -> WebModule:
             head_fragments=(
                 '<link rel="manifest" href="/manifest.webmanifest">',
                 f'<meta name="theme-color" content="{definition.theme_color}">',
+                *favicon,
             ),
             runtime_config={
                 'service_worker_url': '/service-worker.js',

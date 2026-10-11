@@ -40,9 +40,30 @@ from ada.web.time_status.runtime import (
 from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
+from atlanticus.web.assets import AssetLayer
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
+from atlanticus.web.pwa import WebPwaDefinition, WebPwaIcon, create_web_pwa_module
 
 _LOGGER = logging.getLogger(__name__)
+_PWA_ICON_LAYER = AssetLayer(
+    name='ada_application_pwa',
+    load_order=205,
+    package='ada.web.application.generic',
+    resource_directory='resources/pwa',
+)
+
+
+def _pwa_icons() -> tuple[WebPwaIcon, ...]:
+    root = f'/assets/{_PWA_ICON_LAYER.target_name}/img'
+    return (
+        WebPwaIcon(src=f'{root}/ada-pwa-icon-192.png', sizes='192x192'),
+        WebPwaIcon(src=f'{root}/ada-pwa-icon-512.png', sizes='512x512'),
+        WebPwaIcon(
+            src=f'{root}/ada-pwa-maskable-512.png',
+            sizes='512x512',
+            purpose=('maskable',),
+        ),
+    )
 
 
 def _resolve_publications_root(descriptor: AdaApplicationDescriptor) -> Path:
@@ -118,13 +139,23 @@ def create_application_definition(
         if time_status_binding is None
         else (create_time_status_runtime_module(time_status_binding),)
     )
+    metadata = ApplicationMetadata(
+        application_id=resolved_descriptor.application_id,
+        display_name=resolved_descriptor.display_name,
+        version=application_version,
+    )
+    pwa = WebPwaDefinition.from_application(
+        metadata,
+        short_name=resolved_descriptor.pwa_short_name or metadata.display_name,
+        theme_color='#5B5C64',
+        background_color='#FFFFFF',
+        icons=_pwa_icons(),
+        start_url='/',
+        scope='/',
+    )
     return WebApplicationDefinition(
         import_name=resolved_descriptor.import_name,
-        metadata=ApplicationMetadata(
-            application_id=resolved_descriptor.application_id,
-            display_name=resolved_descriptor.display_name,
-            version=application_version,
-        ),
+        metadata=metadata,
         publications_root=_resolve_publications_root(resolved_descriptor),
         layout=partial(
             resolved_composition.layout,
@@ -147,7 +178,8 @@ def create_application_definition(
             operational_render_binding=operational_render_binding,
             operational_body_factory=resolved_composition.operational_body_factory,
         ),
-        modules=(*resolved_composition.modules, *runtime_modules),
+        modules=(*resolved_composition.modules, *runtime_modules, create_web_pwa_module(pwa)),
+        asset_layers=(_PWA_ICON_LAYER,),
         page_packages=resolved_composition.page_packages,
     )
 
