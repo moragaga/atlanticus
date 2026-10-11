@@ -237,12 +237,17 @@ def synchronize_visual_targets(
             else {
                 'tool_key': key,
                 'component_keys': [],
+                'display_component_key': None,
                 'subcomponents': [],
                 'process_projection_mode': None,
             }
         )
         if str(catalog[key].get('kind')).upper() != 'PROCESS':
             target['process_projection_mode'] = None
+        if str(catalog[key].get('kind')).upper() != 'INTEGRATED_OPERATIONS' or target.get(
+            'display_component_key'
+        ) not in target.get('component_keys', []):
+            target['display_component_key'] = None
         targets.append(target)
     rule['visual_targets'] = targets
     return updated
@@ -265,6 +270,8 @@ def set_visual_components(
         raise ValueError('Selected component is not in the confirmed Tool catalog')
     keys = list(dict.fromkeys(selected))
     target['component_keys'] = keys
+    if target.get('display_component_key') not in keys:
+        target['display_component_key'] = None
     allowed_subcomponents = (
         {
             (item['owner_component_key'], item['subcomponent_key'])
@@ -460,6 +467,7 @@ def add_visual_target(document: dict[str, object], rule_index: int) -> dict[str,
         {
             'tool_key': '',
             'component_keys': [],
+            'display_component_key': None,
             'subcomponents': [],
             'process_projection_mode': None,
         }
@@ -486,10 +494,17 @@ def set_visual_target_field(
 ) -> dict[str, object]:
     value = normalize_authoring_document(document)
     target = _visual_targets(_rule(value, rule_index))[target_index]
-    if field not in {'tool_key', 'process_projection_mode'}:
+    if field not in {'tool_key', 'process_projection_mode', 'display_component_key'}:
         raise ValueError(f'Unsupported Alarm Configuration visual target field: {field}')
+    if (
+        field == 'display_component_key'
+        and field_value is not None
+        and (not isinstance(field_value, str) or field_value not in _component_keys(target))
+    ):
+        raise ValueError('Display component must be one of the selected components')
     if field == 'tool_key' and target.get('tool_key') != field_value:
         target['component_keys'] = []
+        target['display_component_key'] = None
         target['subcomponents'] = []
     target[field] = field_value
     return value

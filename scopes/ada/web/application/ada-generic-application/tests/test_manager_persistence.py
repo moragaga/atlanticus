@@ -92,6 +92,7 @@ def test_factory_is_lazy_and_scopes_all_configuration_sources_to_the_tool():
     stores = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
+    assert stores.users_directory is not None
     assert all(not storage.calls for storage in (tool, users))
     assert not ada_cosmos.calls
 

@@ -40,6 +40,12 @@ def _entry(tool_key: str) -> ToolDependencyEntry:
                     scope=ToolScope.MINE,
                     subcomponents=(ToolSubcomponent(key='crusher', display_name='Crusher'),),
                 ),
+                ToolComponent(
+                    key='plant',
+                    display_name='Plant',
+                    scope=ToolScope.PLANT,
+                    subcomponents=(ToolSubcomponent(key='mill', display_name='Mill'),),
+                ),
             ),
         ),
     )

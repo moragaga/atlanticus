@@ -48,7 +48,11 @@ from atlanticus.web.storage.topology import (
     StorageResourceOverride,
     resolve_storage_plan,
 )
-from atlanticus.web.users.blob import BlobToolMembershipStore, BlobUsersRegistryStore
+from atlanticus.web.users.blob import (
+    BlobToolMembershipStore,
+    BlobUsersDirectoryReader,
+    BlobUsersRegistryStore,
+)
 from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
 from atlanticus.web.users.storage import (
     USERS_RUNTIME_STORAGE_RESOURCE,
@@ -199,6 +203,11 @@ def compose_durable_manager_stores(
             client=storage['users_registry'],
             container_name=resources.users_registry.container_name,
             blob_name=namespace.application_blob_name('users/users.json.gz'),
+        ),
+        users_directory=BlobUsersDirectoryReader(
+            client=storage['users_registry'],
+            container_name=resources.users_registry.container_name,
+            prefix=namespace.application_blob_name('users/discovery'),
         ),
         users_memberships=BlobToolMembershipStore(
             client=storage['tool_source'],

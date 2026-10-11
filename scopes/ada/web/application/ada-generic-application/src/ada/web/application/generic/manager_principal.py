@@ -13,7 +13,12 @@ from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.identity.access import AccessRuntime, AccessSnapshot, AccessStatus
 from atlanticus.web.manager import ManagerPrincipal
-from atlanticus.web.profiles.models import LOCAL_PROFILE, LOCAL_PROFILE_KEY, ROOT_PROFILE_KEY
+from atlanticus.web.profiles.models import (
+    GUEST_PROFILE_KEY,
+    LOCAL_PROFILE,
+    LOCAL_PROFILE_KEY,
+    ROOT_PROFILE_KEY,
+)
 from atlanticus.web.users.local import LOCAL_ISSUER, LOCAL_USERS
 from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, build_avatar_text
 from atlanticus.web.users.runtime import UsersRuntime
@@ -51,7 +56,11 @@ def resolve_manager_principal(
             if user is not None
             else access.identity.display_name or access.identity.subject_id
         ),
-        profile_keys=(() if profile is None else (profile.id,)),
+        profile_keys=(
+            (GUEST_PROFILE_KEY,)
+            if user is None and not access.bootstrap_root
+            else () if profile is None else (profile.id,)
+        ),
         access_keys=(),
         administrative_override=(
             user is not None and not is_local and user.profile.id == ROOT_PROFILE_KEY

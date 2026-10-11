@@ -20,6 +20,7 @@ from ada.contracts.alarms import AlarmConfiguration, AlarmConfigurationValidatio
 from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_escalation_step,
+    component_suggestions,
     empty_authoring_document,
     remove_escalation_step,
     remove_message,
@@ -148,6 +149,12 @@ def register_alarm_configuration_admin_callbacks(
         reference_document: dict[str, object] | None,
         navigation: dict[str, object] | None,
     ):
+        # El modal utiliza su propio render; no reconstruir la lista durante escritura activa.
+        if isinstance(navigation, dict) and (
+            type(navigation.get('rule_index')) is int
+            or type(navigation.get('message_index')) is int
+        ):
+            return no_update, no_update
         return build_structured_editors(authoring_document, reference_document, navigation)
 
     @app.callback(
@@ -182,6 +189,67 @@ def register_alarm_configuration_admin_callbacks(
         document = authoring_document or empty_authoring_document()
         title, details = build_active_alarm_editor(document, references, navigation)
         return title, details, details is None
+
+    # Mantener una sola ubicación principal y quitarla si deja de ser componente afectado.
+    @app.callback(
+        Output(
+            {
+                'type': TARGET_FIELD_TYPE,
+                'rule': MATCH,
+                'target': MATCH,
+                'field': 'display_component_key',
+            },
+            'options',
+        ),
+        Output(
+            {
+                'type': TARGET_FIELD_TYPE,
+                'rule': MATCH,
+                'target': MATCH,
+                'field': 'display_component_key',
+            },
+            'value',
+        ),
+        Output(
+            {
+                'type': TARGET_FIELD_TYPE,
+                'rule': MATCH,
+                'target': MATCH,
+                'field': 'display_component_key',
+            },
+            'disabled',
+        ),
+        Input(
+            {'type': TARGET_FIELD_TYPE, 'rule': MATCH, 'target': MATCH, 'field': 'component_keys'},
+            'value',
+        ),
+        State({'type': VISUAL_TOOL_STORE_TYPE, 'rule': MATCH, 'target': MATCH}, 'data'),
+        State(TOOL_REFERENCE_STORE_ID, 'data'),
+        State(
+            {
+                'type': TARGET_FIELD_TYPE,
+                'rule': MATCH,
+                'target': MATCH,
+                'field': 'display_component_key',
+            },
+            'value',
+        ),
+    )
+    def update_display_component_choices(
+        selected_components: list[str] | None,
+        tool_key: str | None,
+        references: dict[str, object] | None,
+        previous: str | None,
+    ):
+        if not isinstance(references, dict):
+            return no_update, no_update, no_update
+        selected = selected_components if isinstance(selected_components, list) else []
+        allowed = set(selected)
+        options = [
+            item for item in component_suggestions(references, tool_key) if item['value'] in allowed
+        ]
+        values = {item['value'] for item in options}
+        return options, previous if previous in values else None, not bool(options)
 
     @app.callback(
         Output(
@@ -344,7 +412,7 @@ def register_alarm_configuration_admin_callbacks(
                         str(component_id['field']),
                         field_value,
                     )
-            except (IndexError, KeyError, TypeError, ValueError):
+            except IndexError, KeyError, TypeError, ValueError:
                 continue
         for rule_index in sorted(synchronize_rules):
             updated = synchronize_visual_targets(updated, rule_index, reference_document)
@@ -773,7 +841,7 @@ def _field_updates() -> tuple[tuple[dict[str, object], object], ...]:
         raw_id = prop_id.removesuffix('.value')
         try:
             component_id = json.loads(raw_id)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         if isinstance(component_id, dict):
             updates.append((component_id, entry.get('value')))

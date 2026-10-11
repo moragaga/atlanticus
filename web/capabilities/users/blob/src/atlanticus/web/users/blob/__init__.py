@@ -1,3 +1,4 @@
+from atlanticus.web.users.blob.directory import BlobUsersDirectoryReader
 from atlanticus.web.users.blob.recovery import (
     BlobToolUsersRecoverySnapshotStore,
     BlobUsersRecoveryAuditStore,
@@ -9,6 +10,7 @@ __all__ = [
     'BlobToolMembershipStore',
     'BlobToolUsersRecoverySnapshotStore',
     'BlobUsersRecoveryAuditStore',
+    'BlobUsersDirectoryReader',
     'BlobUsersRegistryStore',
     'BlobUsersReplaceBeforeImageStore',
 ]

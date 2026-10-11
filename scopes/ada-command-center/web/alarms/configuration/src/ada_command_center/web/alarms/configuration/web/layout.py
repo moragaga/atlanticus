@@ -835,6 +835,31 @@ def _visual_targets_editor(
                     clearable=False,
                 )
             )
+        if kind == 'INTEGRATED_OPERATIONS':
+            selected_component = raw_target.get('display_component_key')
+            selected_options = [item for item in options if item['value'] in component_keys]
+            selected_keys = {item['value'] for item in selected_options}
+            target_children.append(
+                _labeled(
+                    'Componente principal (ubicación de la alarma)',
+                    dcc.Dropdown(
+                        id={
+                            'type': TARGET_FIELD_TYPE,
+                            'rule': rule_index,
+                            'target': target_index,
+                            'field': 'display_component_key',
+                        },
+                        options=selected_options,
+                        value=selected_component if selected_component in selected_keys else None,
+                        multi=False,
+                        disabled=not bool(selected_options),
+                        searchable=True,
+                        clearable=True,
+                        placeholder='Selecciona uno de los componentes afectados',
+                        style=dash_select_style(),
+                    ),
+                )
+            )
         target_children.extend(
             [
                 _labeled(
@@ -1009,9 +1034,7 @@ def _deactivation_duration_options() -> list[dict[str, object]]:
     ] + [{'label': 'Fin del turno', 'value': END_OF_SHIFT}]
 
 
-def _deactivation_duration_field(
-    rule_index: int, field: str, label: str, value: object
-) -> object:
+def _deactivation_duration_field(rule_index: int, field: str, label: str, value: object) -> object:
     return _labeled(
         label,
         dcc.Dropdown(

@@ -49,6 +49,14 @@ def _record() -> ProjectionRecord[AlarmConfigurationSnapshot]:
                                         ),
                                     ),
                                 ),
+                                ToolComponent(
+                                    key='plant',
+                                    display_name='Plant',
+                                    scope=ToolScope.PLANT,
+                                    subcomponents=(
+                                        ToolSubcomponent(key='mill', display_name='Mill'),
+                                    ),
+                                ),
                             ),
                         ),
                     ),

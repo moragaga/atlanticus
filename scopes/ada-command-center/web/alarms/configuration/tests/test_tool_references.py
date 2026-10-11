@@ -59,6 +59,7 @@ def test_reader_builds_ui_references_and_full_dependency_catalog_from_one_snapsh
     assert tuple(component.component_key for component in integrated.components) == (
         'mine_primary',
         'mine_secondary',
+        'plant_primary',
     )
     strategic = catalog.dependencies.get('strategic_tool')
     assert strategic is not None
@@ -133,6 +134,12 @@ def _integrated_entry() -> ToolCatalogEntry:
                     scope=ToolScope.MINE,
                     subcomponents=(ToolSubcomponent(key='haulage', display_name='Haulage'),),
                 ),
+                ToolComponent(
+                    key='plant_primary',
+                    display_name='Plant Primary',
+                    scope=ToolScope.PLANT,
+                    subcomponents=(ToolSubcomponent(key='mill', display_name='Mill'),),
+                ),
             ),
         ),
     )
@@ -148,6 +155,7 @@ def _process_entry() -> ToolCatalogEntry:
             tool_key='process_tool',
             kind=ToolConfigurationKind.PROCESS,
             operational_scope=ToolScope.PLANT,
+            center_component_key='plant_process',
             components=(
                 ToolComponent(
                     key='plant_process',
