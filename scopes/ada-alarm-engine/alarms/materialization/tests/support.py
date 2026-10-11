@@ -109,6 +109,7 @@ def modeler_alarm(alarm_key: str = 'risk') -> ResolvedModelerAlarm:
             ResolvedVisualTarget(
                 tool_key='tool-a',
                 tool_kind=ToolConfigurationKind.PROCESS,
+                display_component_key='main',
             ),
         ),
     )

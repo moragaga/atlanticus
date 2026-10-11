@@ -383,6 +383,7 @@ def _visual_target_to_document(value: AlarmVisualTarget) -> dict[str, object]:
     return {
         'tool_key': value.tool_key,
         'component_keys': list(value.component_keys),
+        'display_component_key': value.display_component_key,
         'subcomponents': [
             {
                 'owner_component_key': subcomponent.owner_component_key,
@@ -401,6 +402,8 @@ def _visual_target_to_document(value: AlarmVisualTarget) -> dict[str, object]:
 def _visual_target_from_document(document: object) -> AlarmVisualTarget:
     value = _require_mapping(document)
     component_keys = _require_list(value.get('component_keys', []))
+    # Sin Tool kind en B.1, una ubicación ausente equivale a None; B.2 la exige para Integrated.
+    raw_display_component = value.get('display_component_key')
     raw_subcomponents = _require_list(value.get('subcomponents', []))
     raw_projection_mode = value.get('process_projection_mode')
     subcomponents: list[AlarmVisualSubcomponentTarget] = []
@@ -415,6 +418,9 @@ def _visual_target_from_document(document: object) -> AlarmVisualTarget:
     return AlarmVisualTarget(
         tool_key=_require_string(value['tool_key']),
         component_keys=tuple(_require_string(item) for item in component_keys),
+        display_component_key=(
+            None if raw_display_component is None else _require_string(raw_display_component)
+        ),
         subcomponents=tuple(subcomponents),
         process_projection_mode=(
             None

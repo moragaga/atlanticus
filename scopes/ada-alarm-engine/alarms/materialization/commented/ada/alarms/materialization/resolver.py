@@ -142,6 +142,28 @@ def _collect_reference_findings(
             if entry is None:
                 continue
             base_path = f'{path}.visual_targets[{target.tool_key}]'
+            # B.2 conoce el tipo confirmado de Tool y exige ubicación solo en Operaciones Integradas.
+            if entry.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
+                if target.display_component_key is None:
+                    findings.append(
+                        _blocking_finding(
+                            code='display_component_required',
+                            message='Integrated Operations target requires display_component_key',
+                            rule=rule,
+                            field_path=f'{base_path}.display_component_key',
+                            reference_key=target.tool_key,
+                        )
+                    )
+            elif target.display_component_key is not None:
+                findings.append(
+                    _blocking_finding(
+                        code='display_component_unexpected',
+                        message='display_component_key is only valid for Integrated Operations',
+                        rule=rule,
+                        field_path=f'{base_path}.display_component_key',
+                        reference_key=target.display_component_key,
+                    )
+                )
             for component_key in target.component_keys:
                 try:
                     entry.structure.component(component_key)
@@ -365,6 +387,11 @@ def _materialize_visual_target(
         tool_key=target.tool_key,
         tool_kind=entry.kind,
         component_keys=target.component_keys,
+        display_component_key=(
+            entry.structure.center_component_key
+            if entry.kind is ToolConfigurationKind.PROCESS
+            else target.display_component_key
+        ),
         subcomponents=tuple(
             ResolvedVisualSubcomponentTarget(
                 owner_component_key=subcomponent.owner_component_key,

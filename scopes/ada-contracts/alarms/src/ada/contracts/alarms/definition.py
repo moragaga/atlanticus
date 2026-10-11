@@ -155,6 +155,7 @@ class AlarmVisualTarget:
     component_keys: tuple[str, ...] = ()
     subcomponents: tuple[AlarmVisualSubcomponentTarget, ...] = ()
     process_projection_mode: ProcessAlarmProjectionMode | None = None
+    display_component_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.tool_key, 'tool_key')
@@ -166,6 +167,10 @@ class AlarmVisualTarget:
             if component_key in seen_components:
                 raise ValueError('component_keys must not contain duplicates')
             seen_components.add(component_key)
+        if self.display_component_key is not None:
+            _require_non_empty_string(self.display_component_key, 'display_component_key')
+            if self.display_component_key not in seen_components:
+                raise ValueError('display_component_key must belong to component_keys')
         if not isinstance(self.subcomponents, tuple):
             raise TypeError('subcomponents must be a tuple')
         seen_subcomponents: set[tuple[str, str]] = set()

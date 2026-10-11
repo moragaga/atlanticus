@@ -79,6 +79,7 @@ class ResolvedVisualTarget:
     component_keys: tuple[str, ...] = ()
     subcomponents: tuple[ResolvedVisualSubcomponentTarget, ...] = ()
     process_projection_mode: ProcessAlarmProjectionMode | None = None
+    display_component_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.tool_key, 'tool_key')
@@ -92,6 +93,21 @@ class ResolvedVisualTarget:
             if component_key in seen_components:
                 raise ValueError('component_keys must not contain duplicates')
             seen_components.add(component_key)
+        # La materialización resuelta nunca admite una ubicación ajena ni ambigüedad por tipo.
+        if self.tool_kind in (
+            ToolConfigurationKind.PROCESS,
+            ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        ):
+            if self.display_component_key is None:
+                raise ValueError('Process and Integrated Operations require display_component_key')
+            _require_non_empty_string(self.display_component_key, 'display_component_key')
+            if (
+                self.tool_kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
+                and self.display_component_key not in seen_components
+            ):
+                raise ValueError('display_component_key must belong to component_keys')
+        elif self.display_component_key is not None:
+            raise ValueError('Strategic must not define display_component_key')
         if not isinstance(self.subcomponents, tuple):
             raise TypeError('subcomponents must be a tuple')
         seen_subcomponents: set[ResolvedVisualSubcomponentTarget] = set()

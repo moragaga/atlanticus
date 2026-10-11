@@ -89,6 +89,7 @@ def create_fixture(*, fixture_root: Path, distributed_count: int) -> dict[str, b
                 'tool_key': PROCESS_TOOL,
                 'tool_kind': 'process',
                 'component_keys': ['component-process-m21'],
+                'display_component_key': 'component-process-m21',
                 'subcomponents': [
                     {
                         'owner_component_key': 'component-process-m21',

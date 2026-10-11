@@ -184,6 +184,7 @@ def modeler_from_document(document: Mapping[str, object]) -> ModelerAlarmConfigu
                         tool_key=target['tool_key'],
                         tool_kind=ToolConfigurationKind(target['tool_kind']),
                         component_keys=tuple(target['component_keys']),
+                        display_component_key=target.get('display_component_key'),
                         subcomponents=tuple(
                             ResolvedVisualSubcomponentTarget(
                                 owner_component_key=subcomponent['owner_component_key'],
