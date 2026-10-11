@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from ada.processes.alarm_modeler.presentation_policy import (
+    CAROUSEL_ROTATION_SECONDS,
+    CAROUSEL_VISIBLE_SLOTS,
+)
 from ada.processes.alarm_modeler.processor import AlarmModelerProcessor
 from ada.processes.alarm_modeler.settings import AlarmModelerSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -57,8 +61,8 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmModelerCo
     processor = AlarmModelerProcessor(
         runtime_root=producer_root,
         output_root=runtime.application_root / 'alarms' / 'modeler' / 'output',
-        rotation_seconds=settings.rotation_seconds,
-        max_visible_slots=settings.max_visible_slots,
+        rotation_seconds=CAROUSEL_ROTATION_SECONDS,
+        max_visible_slots=CAROUSEL_VISIBLE_SLOTS,
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_modeler',

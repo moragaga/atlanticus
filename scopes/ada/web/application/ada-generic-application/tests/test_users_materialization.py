@@ -10,7 +10,7 @@ from ada.web.application.generic.users_materialization import (
     UsersMaterializationError,
 )
 from ada.web.operational.identification import OperationalAssignment, OperationalCatalog, Position
-from atlanticus.web.profiles.models import ProfileCatalog
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import (
     ToolMembershipSnapshot,
@@ -95,7 +95,12 @@ def _setup(*, profile_ref='profiles-1', access_ref='access-1', catalog_ref='cata
         profile_access=(ProfileAccessGrant(profile_key='basic', access_keys=('reports.read', 'dashboard.view')),),
     )
     catalog = OperationalCatalog(positions=(Position(id='operator', label='Operator'),))
-    profiles_record = SimpleNamespace(source_release=profile_ref, target='profiles-target', payload=profiles)
+    profiles_record = SimpleNamespace(
+        source_release=profile_ref,
+        target='profiles-target',
+        projected_at_utc='profiles-projected-at',
+        payload=profiles,
+    )
     access_record = SimpleNamespace(
         source_release=access_ref,
         dependencies=('profiles-target',),
@@ -129,6 +134,82 @@ def _setup(*, profile_ref='profiles-1', access_ref='access-1', catalog_ref='cata
     materializer = AdaUsersRuntimeMaterializer(stores=stores)
     materializer._operational_source = ops
     return materializer, stores, ops, identities
+
+
+
+
+def test_rehydrated_profiles_projection_with_equal_content_does_not_fail_concurrency_check():
+    service, stores, _ops, identities = _setup()
+
+    class RehydratingProfilesProjection(_Projection):
+        def get_active(self, key):
+            record = super().get_active(key)
+            return SimpleNamespace(
+                source_release=record.source_release,
+                target=record.target,
+                projected_at_utc=record.projected_at_utc,
+                payload=ProfileCatalog(),
+            )
+
+    stores.profiles = RehydratingProfilesProjection(stores.profiles.record)
+    assert service.materialize_user(identities[0].user_id).profile.id == 'basic'
+
+
+def test_changed_profiles_content_with_same_source_version_fails_closed():
+    service, stores, _ops, identities = _setup()
+
+    class ChangingProfilesProjection(_Projection):
+        def __init__(self, record):
+            super().__init__(record)
+            self.reads = 0
+
+        def get_active(self, key):
+            record = super().get_active(key)
+            self.reads += 1
+            payload = (
+                ProfileCatalog()
+                if self.reads == 1
+                else ProfileCatalog(
+                    profiles=(
+                        ProfileDefinition(
+                            key='test-extra', label='Extra', background_color='#123456'
+                        ),
+                    )
+                )
+            )
+            return SimpleNamespace(
+                source_release=record.source_release,
+                target=record.target,
+                projected_at_utc=record.projected_at_utc,
+                payload=payload,
+            )
+
+    stores.profiles = ChangingProfilesProjection(stores.profiles.record)
+    with pytest.raises(UsersMaterializationError, match='sources changed during resolution'):
+        service.materialize_user(identities[0].user_id)
+
+
+def test_reprojected_profiles_with_same_payload_during_resolution_fails_closed():
+    service, stores, _ops, identities = _setup()
+
+    class ReprojectingProfilesProjection(_Projection):
+        def __init__(self, record):
+            super().__init__(record)
+            self.reads = 0
+
+        def get_active(self, key):
+            record = super().get_active(key)
+            self.reads += 1
+            return SimpleNamespace(
+                source_release=record.source_release,
+                target=record.target,
+                projected_at_utc=('profiles-projected-at' if self.reads == 1 else 'later'),
+                payload=ProfileCatalog(),
+            )
+
+    stores.profiles = ReprojectingProfilesProjection(stores.profiles.record)
+    with pytest.raises(UsersMaterializationError, match='sources changed during resolution'):
+        service.materialize_user(identities[0].user_id)
 
 
 def test_materialization_resolves_access_and_operational_references_from_current_sources():

@@ -191,7 +191,10 @@ class AdaUsersRuntimeMaterializer:
             != context.profiles_snapshot
             or stores.access_source.get_current(ADA_ACCESS_SOURCE_KEY) != context.access_snapshot
             or self._operational_source.snapshot(CATALOG_SOURCE_KEY) != context.catalog_snapshot
-            or stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY) != context.profiles_record
+            or not _profiles_projection_unchanged(
+                stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY),
+                context.profiles_record,
+            )
             or stores.access.get_active(ADA_ACCESS_SOURCE_KEY) != context.access_record
             or stores.operational.get_active(CATALOG_SOURCE_KEY) != context.catalog_record
         ):
@@ -203,6 +206,21 @@ class AdaUsersRuntimeMaterializer:
                 or stores.operational.get_active(source_key) != record
             ):
                 raise UsersMaterializationError('Operational assignment changed during resolution')
+
+
+# La carga desde Cosmos reconstruye ProfileCatalog en cada lectura; comparar su valor, no la identidad.
+# Mantener además la referencia Source, dependencias y fecha de proyección para detectar carreras.
+def _profiles_projection_unchanged(
+    current: ProjectionRecord[ProfileCatalog] | None,
+    expected: ProjectionRecord[ProfileCatalog],
+) -> bool:
+    return (
+        current is not None
+        and current.target == expected.target
+        and current.projected_at_utc == expected.projected_at_utc
+        and isinstance(current.payload, ProfileCatalog)
+        and current.payload.all() == expected.payload.all()
+    )
 
 
 def _resolve_operational(

@@ -10,8 +10,6 @@ from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfigur
 class AlarmModelerSettings:
     runtime_application: str
     poll_seconds: float
-    rotation_seconds: float
-    max_visible_slots: int
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmModelerSettings:
@@ -29,20 +27,11 @@ class AlarmModelerSettings:
             raise ValueError('ALARM_RUNTIME_APPLICATION must be a normalized application name')
         if application == own_application:
             raise ValueError('Modeler and Runtime must use different APPLICATION names')
-        poll = _positive_float(configuration.require('ALARM_MODELER_POLL_SECONDS'), 'ALARM_MODELER_POLL_SECONDS')
-        rotation = _positive_float(
-            configuration.require('ALARM_MODELER_ROTATION_SECONDS'), 'ALARM_MODELER_ROTATION_SECONDS'
+        poll = _positive_float(
+            configuration.require('ALARM_MODELER_POLL_SECONDS'),
+            'ALARM_MODELER_POLL_SECONDS',
         )
-        slots = _positive_int(
-            configuration.require('ALARM_MODELER_MAX_VISIBLE_SLOTS'),
-            'ALARM_MODELER_MAX_VISIBLE_SLOTS',
-        )
-        return cls(
-            runtime_application=application,
-            poll_seconds=poll,
-            rotation_seconds=rotation,
-            max_visible_slots=slots,
-        )
+        return cls(runtime_application=application, poll_seconds=poll)
 
 
 def _positive_float(value: str, label: str) -> float:
@@ -55,24 +44,12 @@ def _positive_float(value: str, label: str) -> float:
     return number
 
 
-def _positive_int(value: str, label: str) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f'{label} must be a positive integer') from error
-    if number <= 0:
-        raise ValueError(f'{label} must be a positive integer')
-    return number
-
-
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ALARM_RUNTIME_APPLICATION'),
         ConfigurationVariableSpec(key='ALARM_MODELER_POLL_SECONDS', default='1'),
-        ConfigurationVariableSpec(key='ALARM_MODELER_ROTATION_SECONDS', default='30'),
-        ConfigurationVariableSpec(key='ALARM_MODELER_MAX_VISIBLE_SLOTS', default='6'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),

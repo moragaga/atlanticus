@@ -1,4 +1,4 @@
-# Declara variables de configuración y comprueba que sus límites son operables.
+# Configura únicamente la operación del proceso, no la presentación de alarmas.
 from __future__ import annotations
 
 import math
@@ -8,15 +8,12 @@ from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfigur
 
 
 @dataclass(frozen=True, slots=True)
-# Responsabilidad de AlarmModelerSettings: ejecutar el contrato local sin efectos implícitos.
 class AlarmModelerSettings:
     runtime_application: str
     poll_seconds: float
-    rotation_seconds: float
-    max_visible_slots: int
 
     @classmethod
-    # Convierte valores efectivos y valida identidades y cadencias de configuración.
+    # Valida la identidad del Runtime origen y el intervalo de sondeo del Job.
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmModelerSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be ResolvedConfiguration')
@@ -32,23 +29,14 @@ class AlarmModelerSettings:
             raise ValueError('ALARM_RUNTIME_APPLICATION must be a normalized application name')
         if application == own_application:
             raise ValueError('Modeler and Runtime must use different APPLICATION names')
-        poll = _positive_float(configuration.require('ALARM_MODELER_POLL_SECONDS'), 'ALARM_MODELER_POLL_SECONDS')
-        rotation = _positive_float(
-            configuration.require('ALARM_MODELER_ROTATION_SECONDS'), 'ALARM_MODELER_ROTATION_SECONDS'
+        poll = _positive_float(
+            configuration.require('ALARM_MODELER_POLL_SECONDS'),
+            'ALARM_MODELER_POLL_SECONDS',
         )
-        slots = _positive_int(
-            configuration.require('ALARM_MODELER_MAX_VISIBLE_SLOTS'),
-            'ALARM_MODELER_MAX_VISIBLE_SLOTS',
-        )
-        return cls(
-            runtime_application=application,
-            poll_seconds=poll,
-            rotation_seconds=rotation,
-            max_visible_slots=slots,
-        )
+        return cls(runtime_application=application, poll_seconds=poll)
 
 
-# Responsabilidad de _positive_float: ejecutar el contrato local sin efectos implícitos.
+# Rechaza intervalos de sondeo inválidos sin aceptar NaN o infinitos.
 def _positive_float(value: str, label: str) -> float:
     try:
         number = float(value)
@@ -59,26 +47,13 @@ def _positive_float(value: str, label: str) -> float:
     return number
 
 
-# Responsabilidad de _positive_int: ejecutar el contrato local sin efectos implícitos.
-def _positive_int(value: str, label: str) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f'{label} must be a positive integer') from error
-    if number <= 0:
-        raise ValueError(f'{label} must be a positive integer')
-    return number
-
-
-# Enumera cada variable necesaria, incluyendo su valor por defecto.
+# Las duraciones de carousel/queue-in-queue y las capacidades no son variables ambientales.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ALARM_RUNTIME_APPLICATION'),
         ConfigurationVariableSpec(key='ALARM_MODELER_POLL_SECONDS', default='1'),
-        ConfigurationVariableSpec(key='ALARM_MODELER_ROTATION_SECONDS', default='30'),
-        ConfigurationVariableSpec(key='ALARM_MODELER_MAX_VISIBLE_SLOTS', default='6'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
