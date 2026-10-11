@@ -45,4 +45,5 @@ def test_observability_reports_unhandled_request_failure(caplog):
     assert response.status_code == 500
     messages = [record.getMessage() for record in caplog.records]
     assert any('event=web.request.failed' in message for message in messages)
-    assert any('RuntimeError: boom' in message for message in messages)
+    assert any('RuntimeError: RuntimeError raised' in message for message in messages)
+    assert all('boom' not in message for message in messages)

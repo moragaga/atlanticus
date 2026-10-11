@@ -7,14 +7,12 @@ import pytest
 
 from ada.web.application.generic import __main__ as cli, host
 from ada.web.application.generic.settings import AdaPersistenceMode
+from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.users.local import LOCAL_USERS
 
 
-def _environment(value: str):
-    return SimpleNamespace(
-        is_local=value == 'local',
-        is_production=value == 'production',
-    )
+def _environment(value: str) -> WebEnvironment:
+    return WebEnvironment(value)
 
 
 def _local_settings(tmp_path):
@@ -22,6 +20,9 @@ def _local_settings(tmp_path):
         persistence_mode=AdaPersistenceMode.LOCAL,
         environment=_environment('local'),
         master_projection_local_path=lambda: (tmp_path / 'material.zip').resolve(),
+        azure_observability_mode='off',
+        azure_observability_profile='slim',
+        application_insights_connection_string=None,
     )
 
 
@@ -117,6 +118,9 @@ def test_durable_local_host_keeps_resources_open_and_uses_application_artifacts(
         persistence_mode=AdaPersistenceMode.DURABLE,
         environment=_environment('local'),
         master_projection_blob_name=lambda: 'app/master-projection/material.zip',
+        azure_observability_mode='off',
+        azure_observability_profile='slim',
+        application_insights_connection_string=None,
     )
     resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(
@@ -178,6 +182,9 @@ def test_production_host_requires_injected_identity(monkeypatch) -> None:
         persistence_mode=AdaPersistenceMode.DURABLE,
         environment=_environment('production'),
         master_projection_blob_name=lambda: 'app/master-projection/material.zip',
+        azure_observability_mode='off',
+        azure_observability_profile='slim',
+        application_insights_connection_string=None,
     )
     resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(

@@ -11,6 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
+OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE = 'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED'
 _MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
 
 
@@ -37,6 +38,10 @@ class WebSettings(BaseSettings):
         validate_default=True,
     )
 
+    observability_file_logs_enabled: bool = Field(
+        default=False,
+        validation_alias=OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE,
+    )
     environment: WebEnvironment = Field(
         default=WebEnvironment.LOCAL,
         validation_alias=ATLANTICUS_ENVIRONMENT_VARIABLE,
@@ -49,6 +54,7 @@ class WebSettings(BaseSettings):
     )
     application_insights_connection_string: str | None = Field(
         default=None,
+        repr=False,
         validation_alias=APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     )
 
@@ -64,6 +70,13 @@ class WebSettings(BaseSettings):
         if _MAPPING_ONLY.get():
             return (init_settings,)
         return init_settings, env_settings, dotenv_settings, file_secret_settings
+
+    @field_validator('observability_file_logs_enabled')
+    @classmethod
+    def reject_web_file_logging(cls, value: bool) -> bool:
+        if value:
+            raise ValueError('Web file logs must remain disabled')
+        return value
 
     @field_validator('environment', mode='before')
     @classmethod

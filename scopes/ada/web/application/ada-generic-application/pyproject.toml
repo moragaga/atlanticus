@@ -56,6 +56,7 @@ dependencies = [
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
     "atlanticus-web-pwa==0.1.0",
+    "atlanticus-web-observability-azure==0.1.0",
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
@@ -127,6 +128,7 @@ atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", ed
 atlanticus-web-pwa = { path = "../../../../../web/framework/pwa", editable = true }
 atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
+atlanticus-web-observability-azure = { path = "../../../../../web/framework/observability-azure", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }

@@ -41,6 +41,8 @@ KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
 MASTER_PROJECTION_RELATIVE_PATH = 'master-projection/material.zip'
+AZURE_OBSERVABILITY_MODE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_MODE'
+AZURE_OBSERVABILITY_PROFILE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE'
 
 
 class AdaPersistenceMode(StrEnum):
@@ -59,6 +61,16 @@ class AdaGenericSettings(WebSettings):
         validate_default=True,
     )
 
+    azure_observability_mode: str = Field(
+        default='off',
+        validation_alias=AZURE_OBSERVABILITY_MODE_VARIABLE,
+        pattern='^(off|export)$',
+    )
+    azure_observability_profile: str = Field(
+        default='slim',
+        validation_alias=AZURE_OBSERVABILITY_PROFILE_VARIABLE,
+        pattern='^slim$',
+    )
     application_namespace: str = Field(
         default='conciencia_situacional',
         validation_alias=APPLICATION_NAMESPACE_VARIABLE,

@@ -75,6 +75,7 @@ from atlanticus.web.master_projection.web import (
     MasterProjectionWebBinding,
 )
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
+from atlanticus.web.observability import WebEventSink
 from atlanticus.web.navigation.api import (
     NavigationDefinition,
     NavigationDefinitionProvider,
@@ -118,6 +119,7 @@ def create_operational_application_runtime(
     application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
     master_material_reader: MasterMaterialReader | None = None,
+    web_event_sink: WebEventSink | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
@@ -256,7 +258,7 @@ def create_operational_application_runtime(
                 executor=backend.executor if backend is not None else None,
             ).module()
             definition = replace(definition, modules=(master_module, *definition.modules))
-        return create_web_application(definition)
+        return create_web_application(definition, external_sink=web_event_sink)
     except Exception:
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
         raise

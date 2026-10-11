@@ -10,7 +10,10 @@ from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
-from ada.web.application.generic.descriptor import AdaApplicationDescriptor
+from ada.web.application.generic.descriptor import (
+    GENERIC_APPLICATION_DESCRIPTOR,
+    AdaApplicationDescriptor,
+)
 from ada.web.application.generic.extension import AdaApplicationExtensionFactory
 from ada.web.application.generic.manager_deployment import open_durable_manager
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
@@ -24,6 +27,7 @@ from atlanticus.web.master_projection.reader import (
     LocalMasterMaterialReader,
 )
 from atlanticus.web.models import WebApplicationRuntime
+from atlanticus.web.observability_azure import create_web_azure_event_sink
 from atlanticus.web.users.local import select_local_user
 
 ProductionIdentityFactory = Callable[[], IdentityProvider]
@@ -67,6 +71,15 @@ def create_worker_runtime(
     settings = settings if settings is not None else AdaGenericSettings()
     resources = ExitStack()
     try:
+        azure_sink = create_web_azure_event_sink(
+            application=(application_descriptor or GENERIC_APPLICATION_DESCRIPTOR).application_id,
+            mode=settings.azure_observability_mode,
+            profile=settings.azure_observability_profile,
+            environment=settings.environment,
+            connection_string=settings.application_insights_connection_string,
+        )
+        if azure_sink is not None:
+            resources.callback(azure_sink.close)
         if settings.persistence_mode is AdaPersistenceMode.LOCAL:
             if not settings.environment.is_local:
                 raise IdentityConfigurationError('Local persistence is unavailable in production')
@@ -77,6 +90,7 @@ def create_worker_runtime(
                 identity_provider=_local_identity(),
                 manager_source_name='Local Source',
                 manager_projection_name='Local Projection',
+                web_event_sink=azure_sink,
                 application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
                 master_material_reader=material_reader,
@@ -101,6 +115,7 @@ def create_worker_runtime(
                 identity_provider=identity,
                 manager_source_name='Blob Storage',
                 manager_projection_name='Cosmos DB',
+                web_event_sink=azure_sink,
                 application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
                 master_material_reader=material_reader,

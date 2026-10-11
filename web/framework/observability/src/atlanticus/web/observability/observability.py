@@ -105,7 +105,10 @@ class WebObservability:
     ) -> None:
         error = None
         if exception is not None:
-            error = WebErrorInfo(type=type(exception).__name__, message=str(exception))
+            error = WebErrorInfo(
+                type=type(exception).__name__,
+                message=f'{type(exception).__name__} raised',
+            )
         event = WebEvent(
             name=name,
             severity=severity,

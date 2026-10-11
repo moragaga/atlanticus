@@ -17,6 +17,7 @@ from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntim
 from atlanticus.web.modules import WebModule
 from atlanticus.web.observability import (
     WEB_OBSERVABILITY_SERVICE_KEY,
+    WebEventSink,
     WebObservability,
     configure_web_observability,
 )
@@ -48,12 +49,17 @@ BASE_ASSET_LAYER = AssetLayer(
 )
 
 
-def create_web_application(definition: WebApplicationDefinition) -> WebApplicationRuntime:
+def create_web_application(
+    definition: WebApplicationDefinition,
+    *,
+    external_sink: WebEventSink | None = None,
+) -> WebApplicationRuntime:
     _validate_definition(definition)
     environment = WebSettings().environment
     observability = configure_web_observability(
         application=definition.metadata.application_id,
         json_output=environment.is_production,
+        external_sink=external_sink,
     )
 
     try:
