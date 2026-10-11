@@ -53,13 +53,20 @@ def create_web_application(
     definition: WebApplicationDefinition,
     *,
     external_sink: WebEventSink | None = None,
+    slow_request_threshold_ms: int | None = None,
 ) -> WebApplicationRuntime:
     _validate_definition(definition)
-    environment = WebSettings().environment
+    web_settings = WebSettings()
+    environment = web_settings.environment
     observability = configure_web_observability(
         application=definition.metadata.application_id,
         json_output=environment.is_production,
         external_sink=external_sink,
+        slow_request_threshold_ms=(
+            web_settings.slow_request_threshold_ms
+            if slow_request_threshold_ms is None
+            else slow_request_threshold_ms
+        ),
     )
 
     try:

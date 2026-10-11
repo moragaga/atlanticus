@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 from dataclasses import asdict
+from time import perf_counter_ns
 from typing import Any
 
 from flask import Flask, g, got_request_exception, request
@@ -14,6 +15,9 @@ from atlanticus.web.observability.ports import WebEventSink
 from atlanticus.web.observability.sanitization import sanitize
 
 _EXCEPTION_FLAG = '_atlanticus_web_exception_observed'
+_REQUEST_STARTED_NS = '_atlanticus_web_request_started_ns'
+_TECHNICAL_PATHS = frozenset(('/assets', '/health', '/favicon.ico', '/manifest.webmanifest', '/service-worker.js'))
+_TECHNICAL_PREFIXES = ('/assets/', '/health/', '/_dash-component-suites/')
 
 
 class WebObservability:
@@ -24,6 +28,7 @@ class WebObservability:
         logger: logging.Logger,
         json_output: bool,
         external_sink: WebEventSink | None = None,
+        slow_request_threshold_ms: int = 2000,
     ) -> None:
         self._application = application
         self._logger = logger
@@ -31,6 +36,13 @@ class WebObservability:
         if external_sink is not None and not callable(getattr(external_sink, 'emit', None)):
             raise TypeError('external_sink must implement emit()')
         self._external_sink = external_sink
+        if (
+            isinstance(slow_request_threshold_ms, bool)
+            or not isinstance(slow_request_threshold_ms, int)
+            or slow_request_threshold_ms <= 0
+        ):
+            raise ValueError('slow_request_threshold_ms must be a positive integer')
+        self._slow_request_threshold_ns = slow_request_threshold_ms * 1_000_000
 
     def warning(self, name: str, message: str, **context: Any) -> None:
         self._emit(WebSeverity.WARNING, name, message, context=context)
@@ -68,6 +80,12 @@ class WebObservability:
         )
 
     def attach_flask(self, app: Flask) -> None:
+        @app.before_request
+        def start_request_measurement() -> None:
+            path = request.path
+            if path not in _TECHNICAL_PATHS and not path.startswith(_TECHNICAL_PREFIXES):
+                setattr(g, _REQUEST_STARTED_NS, perf_counter_ns())
+
         def observe_exception(sender: Flask, exception: BaseException, **_: Any) -> None:
             g.__setattr__(_EXCEPTION_FLAG, True)
             self.error(
@@ -92,6 +110,23 @@ class WebObservability:
                     endpoint=request.endpoint,
                     status_code=response.status_code,
                 )
+            elif response.status_code < 500 and not getattr(g, _EXCEPTION_FLAG, False):
+                started_ns = getattr(g, _REQUEST_STARTED_NS, None)
+                if started_ns is not None:
+                    elapsed_ns = max(0, perf_counter_ns() - started_ns)
+                    if elapsed_ns > self._slow_request_threshold_ns:
+                        self.warning(
+                            'web.request.slow',
+                            'Web request exceeded the configured duration threshold',
+                            method=request.method,
+                            status_code=response.status_code,
+                            duration_ms=round(elapsed_ns / 1_000_000, 3),
+                            request_kind=(
+                                'dash_callback'
+                                if request.path == '/_dash-update-component'
+                                else 'http'
+                            ),
+                        )
             return response
 
     def _emit(
@@ -161,6 +196,7 @@ def configure_web_observability(
     application: str,
     json_output: bool,
     external_sink: WebEventSink | None = None,
+    slow_request_threshold_ms: int = 2000,
 ) -> WebObservability:
     logger = logging.getLogger(f'atlanticus.web.{application}')
     logger.handlers.clear()
@@ -173,6 +209,7 @@ def configure_web_observability(
         application=application,
         logger=logger,
         json_output=json_output,
+        slow_request_threshold_ms=slow_request_threshold_ms,
         external_sink=(
             external_sink if external_sink is not None else get_bound_web_external_sink()
         ),

@@ -2,6 +2,7 @@
 # Nunca crea un ObservabilitySettings de procesos ni convierte production en prd.
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Callable
 from threading import Lock
@@ -45,7 +46,7 @@ class WebAzureEventSink:
         if event.application != self._application:
             raise ValueError('Web event application does not match the Azure sink application')
         # La allowlist descarta mensajes, rutas dinámicas, body, usuario y atributos externos.
-        payload: dict[str, str | int] = {
+        payload: dict[str, str | int | float] = {
             'time': event.timestamp.isoformat(),
             'application': self._application,
             'environment': self._environment.value,
@@ -62,6 +63,19 @@ class WebAzureEventSink:
         method = event.context.get('method')
         if isinstance(method, str) and method in _ALLOWED_HTTP_METHODS:
             payload['http_method'] = method
+        # Para lentitud sólo se permite duración finita y categoría técnica acotada.
+        if event.name == 'web.request.slow':
+            duration = event.context.get('duration_ms')
+            if (
+                isinstance(duration, int | float)
+                and not isinstance(duration, bool)
+                and math.isfinite(duration)
+                and duration >= 0
+            ):
+                payload['duration_ms'] = round(duration, 3)
+            request_kind = event.context.get('request_kind')
+            if request_kind in ('http', 'dash_callback'):
+                payload['request_kind'] = request_kind
         if event.error is not None and _ERROR_TYPE_PATTERN.fullmatch(event.error.type):
             payload['web_error_type'] = event.error.type
         # El mismo lock protege emisión y cierre del exportador por worker.

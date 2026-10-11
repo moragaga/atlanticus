@@ -76,7 +76,6 @@ from atlanticus.web.master_projection.web import (
     MasterProjectionWebBinding,
 )
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
-from atlanticus.web.observability import WebEventSink
 from atlanticus.web.navigation.api import (
     NavigationDefinition,
     NavigationDefinitionProvider,
@@ -86,6 +85,7 @@ from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     create_projected_navigation_definition_provider,
 )
+from atlanticus.web.observability import WebEventSink
 from atlanticus.web.projection.errors import ProjectionStoreError
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.errors import SourceUnavailableError
@@ -263,7 +263,12 @@ def create_operational_application_runtime(
                 executor=backend.executor if backend is not None else None,
             ).module()
             definition = replace(definition, modules=(master_module, *definition.modules))
-        return create_web_application(definition, external_sink=web_event_sink)
+        # El umbral de AdaGenericSettings llega al framework, no se relee desde os.environ.
+        return create_web_application(
+            definition,
+            external_sink=web_event_sink,
+            slow_request_threshold_ms=resolved_settings.slow_request_threshold_ms,
+        )
     except Exception:
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
         raise

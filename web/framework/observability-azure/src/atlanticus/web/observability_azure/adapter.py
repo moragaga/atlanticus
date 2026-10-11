@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Callable
 from threading import Lock
@@ -42,7 +43,7 @@ class WebAzureEventSink:
             raise TypeError('event must be WebEvent')
         if event.application != self._application:
             raise ValueError('Web event application does not match the Azure sink application')
-        payload: dict[str, str | int] = {
+        payload: dict[str, str | int | float] = {
             'time': event.timestamp.isoformat(),
             'application': self._application,
             'environment': self._environment.value,
@@ -59,6 +60,18 @@ class WebAzureEventSink:
         method = event.context.get('method')
         if isinstance(method, str) and method in _ALLOWED_HTTP_METHODS:
             payload['http_method'] = method
+        if event.name == 'web.request.slow':
+            duration = event.context.get('duration_ms')
+            if (
+                isinstance(duration, int | float)
+                and not isinstance(duration, bool)
+                and math.isfinite(duration)
+                and duration >= 0
+            ):
+                payload['duration_ms'] = round(duration, 3)
+            request_kind = event.context.get('request_kind')
+            if request_kind in ('http', 'dash_callback'):
+                payload['request_kind'] = request_kind
         if event.error is not None and _ERROR_TYPE_PATTERN.fullmatch(event.error.type):
             payload['web_error_type'] = event.error.type
         with self._lock:

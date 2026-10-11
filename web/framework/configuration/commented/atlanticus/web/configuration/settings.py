@@ -12,6 +12,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 # Puerto configurable para el servidor Flask local; sin variable, el valor es 8000.
 ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
+# Umbral de lentitud del servidor configurable por destino, en milisegundos.
+ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE = 'ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
 OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE = 'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED'
 # Contexto por ejecución que permite aislar una composición explícita de fuentes externas.
@@ -60,6 +62,12 @@ class WebSettings(BaseSettings):
         validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
     )
     # La connection string queda disponible para la integración Web de Application Insights.
+    # Umbral entero positivo; 2000 ms son 2 segundos.
+    slow_request_threshold_ms: int = Field(
+        default=2000,
+        gt=0,
+        validation_alias=ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE,
+    )
     application_insights_connection_string: str | None = Field(
         default=None,
         repr=False,

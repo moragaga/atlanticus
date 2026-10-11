@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
+ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE = 'ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
 OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE = 'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED'
 _MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
@@ -51,6 +52,11 @@ class WebSettings(BaseSettings):
         ge=1,
         le=65535,
         validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
+    )
+    slow_request_threshold_ms: int = Field(
+        default=2000,
+        gt=0,
+        validation_alias=ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE,
     )
     application_insights_connection_string: str | None = Field(
         default=None,
