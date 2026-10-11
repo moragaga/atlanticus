@@ -13,7 +13,13 @@ from atlanticus.web.manager import (
 )
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.administration import UsersAdministrationService
+from atlanticus.web.users.reconstruction import UsersReconstructionWorkflow
 from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
+from atlanticus.web.users.web.reconstruction import (
+    UsersReconstructionWebContext,
+    build_users_reconstruction_configuration,
+    create_users_reconstruction_web_module,
+)
 from atlanticus.web.users.web import (
     UsersAdminWebContext,
     build_users_admin_configuration,
@@ -108,5 +114,33 @@ def compose_users_projection_manager(
         layout=lambda _services: build_users_projection_configuration(context),
         access_key=access_key,
         web_module=create_users_projection_web_module(context),
+    )
+    return entry
+
+
+# Entrada genérica: reutiliza la ruta de Users Projection pero no usa capturas históricas.
+def compose_users_reconstruction_manager(
+    *,
+    reconstruction: UsersReconstructionWorkflow,
+    principal_provider: UsersPrincipalProvider,
+    group_key: str,
+    access_key: str,
+    authorization: ManagerAuthorizationPolicy | None = None,
+) -> ManagerEntry:
+    policy = authorization or DefaultManagerAuthorizationPolicy()
+    context = UsersReconstructionWebContext(
+        workflow=reconstruction,
+        can_manage=lambda: policy.can_view(principal_provider(), entry),
+    )
+    entry = ManagerEntry(
+        key='users-projection',
+        group_key=group_key,
+        title='Reconstrucción de usuarios',
+        route='/users-projection',
+        order=11,
+        description='Reconstrucción controlada desde Registry, Memberships y Profiles vigentes.',
+        layout=lambda _services: build_users_reconstruction_configuration(context),
+        access_key=access_key,
+        web_module=create_users_reconstruction_web_module(context),
     )
     return entry

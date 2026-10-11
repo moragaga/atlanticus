@@ -53,7 +53,7 @@ from atlanticus.web.compositions.profiles_manager import (
 )
 from atlanticus.web.compositions.users_manager import (
     compose_users_manager,
-    compose_users_projection_manager,
+    compose_users_reconstruction_manager,
 )
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import (
@@ -69,6 +69,7 @@ from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
 from atlanticus.web.users.models import RuntimeUser
+from atlanticus.web.users.reconstruction import UsersReconstructionWorkflow
 from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.store import (
     ToolMembershipStore,
@@ -290,16 +291,19 @@ def compose_configuration_manager_dependencies(
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
     users_projection_entry = (
-        compose_users_projection_manager(
-            recovery=stores.users_recovery,
-            snapshot_ids=stores.users_snapshot_ids,
-            snapshot_summaries=stores.users_snapshot_summaries,
-            read_snapshot=stores.users_read_snapshot,
+        compose_users_reconstruction_manager(
+            reconstruction=UsersReconstructionWorkflow(
+                registry=stores.users_registry,
+                memberships=stores.users_memberships,
+                profiles=profiles_provider,
+                runtime=stores.users_runtime,
+                writer=stores.users_runtime,
+            ),
             principal_provider=principal_provider,
             group_key='administration',
             access_key=USERS_MANAGER_ACCESS_KEY,
         )
-        if stores.users_recovery is not None and stores.users_snapshot_ids is not None
+        if callable(getattr(stores.users_runtime, 'upsert_base_user', None))
         else None
     )
     return ConfigurationManagerDependencies(

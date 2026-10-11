@@ -3,6 +3,7 @@ from __future__ import annotations
 # Local usa los mismos contratos identity/membership/runtime; Jane y John sólo se seed-ean en runtime.
 import os
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Generic, TypeVar
 
@@ -151,6 +152,23 @@ class InProcessUsersRuntimeStore(UsersRuntimeStore):
             previous.issuer != user.issuer or previous.subject_id != user.subject_id
         ):
             raise ValueError('Runtime user identity cannot be changed')
+        self._users[user.user_id] = user
+        return user
+
+# Sólo identity, enabled y profile son ownership base de Users.
+    def upsert_base_user(self, user: RuntimeUser) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Users base publication requires RuntimeUser')
+        current = self._users.get(user.user_id)
+        if current is not None:
+            if current.issuer != user.issuer or current.subject_id != user.subject_id:
+                raise ValueError('Runtime user identity cannot be changed')
+            user = replace(
+                current,
+                identity=user.identity,
+                enabled=user.enabled,
+                profile=user.profile,
+            )
         self._users[user.user_id] = user
         return user
 

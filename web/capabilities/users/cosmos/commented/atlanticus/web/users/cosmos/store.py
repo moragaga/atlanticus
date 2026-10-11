@@ -118,6 +118,69 @@ class CosmosUsersRuntimeStore(UsersRuntimeStore):
         users = tuple(_user_from_document(document) for document in documents)
         return tuple(sorted(users, key=lambda user: user.user_id))
 
+    # Publicación de campos base con ETag; preserva los campos de ADA.
+    def upsert_base_user(self, user: RuntimeUser) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Users base publication requires RuntimeUser')
+        for _attempt in range(4):
+            try:
+                existing = self._client.find_item(
+                    container_name=self._container_name,
+                    item_id=user.user_id,
+                    partition_key=user.user_id,
+                    include_metadata=True,
+                )
+                if existing is None:
+                    try:
+                        self._client.create_item(
+                            container_name=self._container_name,
+                            item=_user_to_document(user),
+                        )
+                    except CosmosConflictError:
+                        continue
+                else:
+                    previous = _user_from_document(existing)
+                    if previous.issuer != user.issuer or previous.subject_id != user.subject_id:
+                        raise UsersIdentityConflictError('Runtime user identity cannot be changed')
+                    if (
+                        previous.identity == user.identity
+                        and previous.enabled == user.enabled
+                        and previous.profile == user.profile
+                    ):
+                        return previous
+                    try:
+                        self._client.patch_item(
+                            container_name=self._container_name,
+                            item_id=user.user_id,
+                            partition_key=user.user_id,
+                            operations=(
+                                CosmosPatchOperation('set', '/user/identity', user.identity.to_document()),
+                                CosmosPatchOperation('set', '/user/enabled', user.enabled),
+                                CosmosPatchOperation('set', '/user/profile', user.profile.to_document()),
+                            ),
+                            if_match_etag=_etag(existing),
+                        )
+                    except (CosmosConflictError, CosmosItemNotFoundError):
+                        continue
+                persisted = self._client.find_item(
+                    container_name=self._container_name,
+                    item_id=user.user_id,
+                    partition_key=user.user_id,
+                )
+                if persisted is not None:
+                    result = _user_from_document(persisted)
+                    if (
+                        result.identity == user.identity
+                        and result.enabled == user.enabled
+                        and result.profile == user.profile
+                    ):
+                        return result
+            except (UsersIdentityConflictError, UsersDefinitionError):
+                raise
+            except CosmosError as error:
+                raise UsersStoreUnavailableError('Could not publish users base') from error
+        raise UsersStoreUnavailableError('Users base publication changed concurrently')
+
     # Actualiza una sola partición. Nunca utiliza replace_all para cambios individuales.
     def upsert_user(self, user: RuntimeUser) -> RuntimeUser:
         if not isinstance(user, RuntimeUser):
