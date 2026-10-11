@@ -53,7 +53,9 @@ class AlarmModelerProcessor:
 
     def recover(self, context: object) -> None:
         context.assert_lease_current()
-        previous = AtomicJsonStore(root_path=self.output_root, max_document_bytes=None).read(_CURRENT)
+        previous = AtomicJsonStore(root_path=self.output_root, max_document_bytes=None).read(
+            _CURRENT
+        )
         if previous is not None:
             validate_document(previous)
 
@@ -84,7 +86,11 @@ class AlarmModelerProcessor:
         if previous is not None:
             previous = validate_document(previous)
         now = self.clock()
-        if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() != UTC.utcoffset(now):
+        if (
+            not isinstance(now, datetime)
+            or now.tzinfo is None
+            or now.utcoffset() != UTC.utcoffset(now)
+        ):
             raise AlarmModelerProjectionError('Modeler clock must be UTC')
         rotation_phase = floor(now.timestamp() / self.rotation_seconds)
         if (
@@ -144,6 +150,5 @@ class AlarmModelerProcessor:
         self._last_output_digest = document['sha256']
         self._last_rotation_phase = phase
         self._rotation_pending = any(
-            len(tool['operator_pool']) > self.max_visible_slots
-            for tool in document['tools'].values()
+            tool['meta']['rotation_pending'] for tool in document['tools'].values()
         )

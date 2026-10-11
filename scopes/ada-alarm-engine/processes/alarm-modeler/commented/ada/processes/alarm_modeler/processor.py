@@ -1,4 +1,3 @@
-# Lee CURRENT y materialización fijados por EFFECTIVE, y publica solo cambios reales.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -27,7 +26,7 @@ _EFFECTIVE = 'runtime/state/effective-head.json'
 
 
 @dataclass(frozen=True, slots=True)
-# Responsabilidad de AlarmModelerCycleResult: ejecutar el contrato local sin efectos implícitos.
+# Resultado operativo de cada iteración, desacoplado del payload publicado.
 class AlarmModelerCycleResult:
     status: str
     live_alarms: int = 0
@@ -36,7 +35,7 @@ class AlarmModelerCycleResult:
 
 
 @dataclass(slots=True)
-# Responsabilidad de AlarmModelerProcessor: ejecutar el contrato local sin efectos implícitos.
+# Mantiene estado local de la última publicación y aplica el fence del Job al escribir.
 class AlarmModelerProcessor:
     runtime_root: Path
     output_root: Path
@@ -48,21 +47,23 @@ class AlarmModelerProcessor:
     _last_rotation_phase: int | None = field(default=None, init=False, repr=False)
     _rotation_pending: bool = field(default=False, init=False, repr=False)
 
-    # Responsabilidad de __post_init__: ejecutar el contrato local sin efectos implícitos.
+    # Verifica las precondiciones del procesador sin abrir recursos globales.
     def __post_init__(self) -> None:
         if not self.runtime_root.is_absolute() or not self.output_root.is_absolute():
             raise ValueError('Modeler roots must be absolute paths')
         if not callable(self.clock):
             raise TypeError('Modeler clock must be callable')
 
-    # Comprueba el último documento publicado; no genera historial ni replay.
+    # Rechaza un snapshot de salida corrupto o incompatible antes de recuperar la ejecución.
     def recover(self, context: object) -> None:
         context.assert_lease_current()
-        previous = AtomicJsonStore(root_path=self.output_root, max_document_bytes=None).read(_CURRENT)
+        previous = AtomicJsonStore(root_path=self.output_root, max_document_bytes=None).read(
+            _CURRENT
+        )
         if previous is not None:
             validate_document(previous)
 
-    # Comprueba fuentes, filtra cambios y publica solo bajo el fence del Job.
+    # Espera las referencias efectivas, proyecta los cambios y publica con protección de concurrencia.
     def run_iteration(self, context: object) -> AlarmModelerCycleResult:
         context.assert_lease_current()
         runtime_store = AtomicJsonStore(
@@ -85,13 +86,16 @@ class AlarmModelerProcessor:
         pin = AlarmArtifactRefSnapshot.from_document(source['artifact_ref'])
         if pin != reference:
             return AlarmModelerCycleResult(status='WAITING_CURRENT')
-        # El camino rápido evita recargar la materialización cuando CURRENT y la rotación no cambian.
         output = AtomicJsonStore(root_path=self.output_root, max_document_bytes=None)
         previous = output.read(_CURRENT)
         if previous is not None:
             previous = validate_document(previous)
         now = self.clock()
-        if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() != UTC.utcoffset(now):
+        if (
+            not isinstance(now, datetime)
+            or now.tzinfo is None
+            or now.utcoffset() != UTC.utcoffset(now)
+        ):
             raise AlarmModelerProjectionError('Modeler clock must be UTC')
         rotation_phase = floor(now.timestamp() / self.rotation_seconds)
         if (
@@ -146,12 +150,12 @@ class AlarmModelerProcessor:
             tools=len(document['tools']),
         )
 
-    # Recuerda solo huellas en memoria; no mantiene cursores, journals ni nueva metadata en disco.
+    # Evita reprocesar fases del reloj cuando no hay slots normales pendientes de rotación.
     def _remember(self, source: dict, document: dict, phase: int) -> None:
         self._last_source_digest = source['sha256']
         self._last_output_digest = document['sha256']
         self._last_rotation_phase = phase
+        # El procesador utiliza el estado calculado por la proyección, sin duplicar las reglas de distribución.
         self._rotation_pending = any(
-            len(tool['operator_pool']) > self.max_visible_slots
-            for tool in document['tools'].values()
+            tool['meta']['rotation_pending'] for tool in document['tools'].values()
         )
