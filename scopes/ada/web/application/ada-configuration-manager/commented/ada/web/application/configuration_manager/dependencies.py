@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Operational recibe ManagedUser de authoring; RuntimeUser pertenece al runtime de sesión.
-
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -11,7 +10,10 @@ from ada.web.application.configuration_manager.operational_catalog_workflows imp
 )
 from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
-from ada.web.kpis.registry.configuration import KpiDestinationCatalogProvider, KpiRegistrySourceService
+from ada.web.kpis.registry.configuration import (
+    KpiDestinationCatalogProvider,
+    KpiRegistrySourceService,
+)
 from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
@@ -20,7 +22,7 @@ from atlanticus.web.navigation.configuration import NavigationConfigurationCatal
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.users.models import ManagedUser
+from atlanticus.web.users.models import ManagedUser, RuntimeUser
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,7 @@ class ConfigurationManagerDependencies:
     operational_service: OperationalIdentificationService | None = None
     operational_users: Callable[[], tuple[ManagedUser, ...]] | None = None
     operational_catalog_contracts: OperationalCatalogManagerContracts | None = None
+    operational_runtime_publisher: Callable[[str], RuntimeUser] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
     kpi_registry_destinations: KpiDestinationCatalogProvider | None = None
@@ -57,6 +60,12 @@ class ConfigurationManagerDependencies:
     kpi_definitions_projection_name: str = 'Projection'
 
     def __post_init__(self) -> None:
+        if self.operational_runtime_publisher is not None and not callable(
+            self.operational_runtime_publisher
+        ):
+            raise TypeError('Operational runtime publisher must be callable')
+        if self.operational_runtime_publisher is not None and self.operational_service is None:
+            raise ValueError('Operational runtime publisher requires an operational service')
         if (self.operational_service is None) != (self.operational_users is None):
             raise ValueError('Operational service and managed users must be injected together')
         if self.operational_catalog_contracts is not None and self.operational_service is None:

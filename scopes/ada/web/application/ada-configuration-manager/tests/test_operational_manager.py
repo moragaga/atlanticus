@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 from dash import no_update
@@ -306,3 +307,78 @@ def test_manager_does_not_assign_unknown_user(tmp_path):
     )
     assert revision is no_update
     assert result is not None
+
+
+def test_operational_save_publishes_runtime_after_projection(tmp_path):
+    catalog, assignment_context, _contracts, service = _contexts(tmp_path)
+    published = []
+
+    def publish_runtime(user_id):
+        assert service.assignment_for_read(user_id).area_id == 'mina'
+        assert service.assignment_for_edit(user_id)[0].current is not None
+        published.append(user_id)
+
+    assignment_context = replace(assignment_context, publish_runtime=publish_runtime)
+    app = FakeApp()
+    register_operational_callbacks(app, catalog, assignment_context)
+    revision, result = app.registered['save_assignment'](1, USER_ID, 'mina', None, 2, None)
+    assert revision is not no_update
+    assert published == [USER_ID]
+    assert 'usuario actualizado' in result.children
+
+
+def test_failed_projection_never_publishes_runtime(tmp_path):
+    catalog, assignment_context, _contracts, service = _contexts(tmp_path)
+    published = []
+    assignment_context = replace(assignment_context, publish_runtime=published.append)
+
+    def fail_projection(_source_key):
+        raise RuntimeError('Cosmos projection unavailable')
+
+    service.project_current = fail_projection
+    app = FakeApp()
+    register_operational_callbacks(app, catalog, assignment_context)
+    revision, result = app.registered['save_assignment'](1, USER_ID, 'mina', None, 2, None)
+    assert revision is not no_update
+    assert published == []
+    assert 'Reintentar proyección' in result.children
+    assert 'warning' in result.className
+
+
+def test_runtime_retry_does_not_rewrite_source(tmp_path):
+    catalog, assignment_context, _contracts, service = _contexts(tmp_path)
+    attempts = []
+    state = {'fail': True}
+
+    def publish_runtime(user_id):
+        attempts.append(user_id)
+        if state['fail']:
+            raise RuntimeError('Private Cosmos error')
+        assert service.assignment_for_read(user_id).area_id == 'mina'
+
+    assignment_context = replace(assignment_context, publish_runtime=publish_runtime)
+    app = FakeApp()
+    register_operational_callbacks(app, catalog, assignment_context)
+    revision, result = app.registered['save_assignment'](1, USER_ID, 'mina', None, 2, None)
+    assert revision is not no_update
+    assert 'users-runtime' in result.children
+    assert 'Private Cosmos error' not in result.children
+    assert 'warning' in result.className
+    source_before, _ = service.assignment_for_edit(USER_ID)
+    state['fail'] = False
+    retried = app.registered['reproject_assignment'](1, USER_ID)
+    source_after, _ = service.assignment_for_edit(USER_ID)
+    assert source_before == source_after
+    assert attempts == [USER_ID, USER_ID]
+    assert 'usuario actualizado' in retried.children
+
+
+def test_reproject_with_no_source_does_not_publish_runtime(tmp_path):
+    catalog, assignment_context, _contracts, _service = _contexts(tmp_path)
+    calls = []
+    assignment_context = replace(assignment_context, publish_runtime=calls.append)
+    app = FakeApp()
+    register_operational_callbacks(app, catalog, assignment_context)
+    result = app.registered['reproject_assignment'](1, USER_ID)
+    assert result.children == 'No hay publicación.'
+    assert calls == []

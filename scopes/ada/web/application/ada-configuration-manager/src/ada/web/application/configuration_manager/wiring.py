@@ -310,6 +310,9 @@ def compose_configuration_manager_dependencies(
         operational_service=operational_service,
         operational_catalog_contracts=operational_catalog_contracts,
         operational_users=users_administration.managed_users if operational_service is not None else None,
+        operational_runtime_publisher=(
+            users_runtime_publisher if operational_service is not None else None
+        ),
         kpi_registry_source=kpi_registry_source,
         kpi_registry_projection=kpi_registry_projection,
         kpi_registry_destinations=kpi_destinations,

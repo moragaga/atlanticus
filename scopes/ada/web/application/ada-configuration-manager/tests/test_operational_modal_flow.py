@@ -70,7 +70,7 @@ def test_assignment_completion_handles_dash_serialization_without_closing_on_err
             'className': 'ada-operational-admin__result ada-operational-admin__result--warning',
         },
     }
-    assert finish(warning) == (modal_class(False), warning)
+    assert finish(warning) == (no_update, warning)
     assert finish(None) == (no_update, no_update)
 
 

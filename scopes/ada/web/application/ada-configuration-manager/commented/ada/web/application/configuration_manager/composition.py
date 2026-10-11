@@ -232,6 +232,7 @@ def _operational_module(
         service=dependencies.operational_service,
         promoted_users=dependencies.operational_users,
         principal=dependencies.principal_provider,
+        publish_runtime=dependencies.operational_runtime_publisher,
     )
     return create_operational_manager_module(
         catalog_context=catalog_context,

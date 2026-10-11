@@ -59,18 +59,20 @@ class AdaUsersRuntimeMaterializer:
         context = self._context()
         if context.memberships.get(user_id) is None:
             raise UsersMaterializationError('User does not have a Tool membership')
-        user, assignment_snapshot = self._build_user(context, user_id)
-        self._verify(context, {user_id: assignment_snapshot})
+        user, assignment_state = self._build_user(context, user_id)
+        self._verify(context, {user_id: assignment_state})
         return user
 
     def materialize_all(self) -> tuple[RuntimeUser, ...]:
         context = self._context()
-        assignments: dict[str, SourceSnapshot] = {}
+        assignments: dict[
+            str, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]
+        ] = {}
         users: list[RuntimeUser] = []
         for membership in context.memberships.memberships:
-            user, assignment_snapshot = self._build_user(context, membership.user_id)
+            user, assignment_state = self._build_user(context, membership.user_id)
             users.append(user)
-            assignments[membership.user_id] = assignment_snapshot
+            assignments[membership.user_id] = assignment_state
         self._verify(context, assignments)
         return tuple(sorted(users, key=lambda item: item.user_id))
 
@@ -131,7 +133,9 @@ class AdaUsersRuntimeMaterializer:
             catalog=catalog,
         )
 
-    def _build_user(self, context: _Context, user_id: str) -> tuple[RuntimeUser, SourceSnapshot]:
+    def _build_user(
+        self, context: _Context, user_id: str
+    ) -> tuple[RuntimeUser, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]]:
         membership = context.memberships.get(user_id)
         identity = context.registry.get(user_id)
         if membership is None or identity is None:
@@ -139,13 +143,23 @@ class AdaUsersRuntimeMaterializer:
         profile = require_managed_profile(membership.profile_key, profiles=context.profiles_record.payload)
         access = context.access_record.payload.resolve(profile.key, profiles=context.profiles_record.payload)
         source_key = assignment_source_key(user_id)
-        snapshot, payload = self._operational_source.current(source_key)
-        if payload is None:
+        snapshot = self._operational_source.snapshot(source_key)
+        record = self._stores.operational.get_active(source_key)
+        if snapshot.current is None:
+            if record is not None:
+                raise UsersMaterializationError('Operational assignment projection has no source')
             assignment = OperationalAssignment(user_id=user_id)
-        elif isinstance(payload, OperationalAssignment) and payload.user_id == user_id:
-            assignment = payload
         else:
-            raise UsersMaterializationError('Operational assignment does not match the user')
+            if record is None or record.source_release != snapshot.current.release_ref:
+                raise UsersMaterializationError(
+                    'A current Operational assignment projection is required'
+                )
+            if (
+                not isinstance(record.payload, OperationalAssignment)
+                or record.payload.user_id != user_id
+            ):
+                raise UsersMaterializationError('Operational assignment projection is invalid')
+            assignment = record.payload
         operational = _resolve_operational(assignment, context.catalog)
         user = build_runtime_user(
             identity=identity,
@@ -154,9 +168,15 @@ class AdaUsersRuntimeMaterializer:
             access_keys=tuple(sorted(access.access_keys)),
             operational=operational,
         )
-        return user, snapshot
+        return user, (snapshot, record)
 
-    def _verify(self, context: _Context, assignments: dict[str, SourceSnapshot]) -> None:
+    def _verify(
+        self,
+        context: _Context,
+        assignments: dict[
+            str, tuple[SourceSnapshot, ProjectionRecord[OperationalAssignment] | None]
+        ],
+    ) -> None:
         stores = self._stores
         if (
             stores.users_registry.load() != context.registry
@@ -170,8 +190,12 @@ class AdaUsersRuntimeMaterializer:
             or stores.operational.get_active(CATALOG_SOURCE_KEY) != context.catalog_record
         ):
             raise UsersMaterializationError('Users materialization sources changed during resolution')
-        for user_id, snapshot in assignments.items():
-            if self._operational_source.snapshot(assignment_source_key(user_id)) != snapshot:
+        for user_id, (snapshot, record) in assignments.items():
+            source_key = assignment_source_key(user_id)
+            if (
+                self._operational_source.snapshot(source_key) != snapshot
+                or stores.operational.get_active(source_key) != record
+            ):
                 raise UsersMaterializationError('Operational assignment changed during resolution')
 
 

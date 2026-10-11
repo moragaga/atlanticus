@@ -29,7 +29,7 @@ from atlanticus.web.manager import (
     manager_access_granted,
 )
 from atlanticus.web.modules import WebModule
-from atlanticus.web.users.models import ManagedUser
+from atlanticus.web.users.models import ManagedUser, RuntimeUser
 
 OPERATIONAL_MANAGER_ACCESS_KEY = 'operational.manage'
 OPERATIONAL_MANAGER_ASSETS = AssetLayer(
@@ -45,6 +45,7 @@ class OperationalAssignmentContext:
     service: OperationalIdentificationService
     promoted_users: Callable[[], tuple[ManagedUser, ...]]
     principal: Callable[[], ManagerPrincipal]
+    publish_runtime: Callable[[str], RuntimeUser] | None = None
 
     def can_manage(self) -> bool:
         return manager_access_granted(self.principal(), OPERATIONAL_MANAGER_ACCESS_KEY)

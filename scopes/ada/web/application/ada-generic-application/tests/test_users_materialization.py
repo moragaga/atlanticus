@@ -38,10 +38,13 @@ class _Source:
 
 
 class _Projection:
-    def __init__(self, record) -> None:
+    def __init__(self, record, *, assignments=None) -> None:
         self.record = record
+        self.assignments = assignments or {}
 
-    def get_active(self, _key):
+    def get_active(self, key):
+        if key.value.startswith('ada-operational-user:'):
+            return self.assignments.get(key.value)
         return self.record
 
 
@@ -56,16 +59,19 @@ class _Value:
 class _Operations:
     def __init__(self, assignments: dict[str, OperationalAssignment]) -> None:
         self.assignments = assignments
-        self.snapshots = {key: object() for key in assignments}
+        self.snapshots = {
+            key: SimpleNamespace(current=SimpleNamespace(release_ref='assignment-1'))
+            for key in assignments
+        }
         self.catalog_snapshot = SimpleNamespace(current=SimpleNamespace(release_ref='catalog-1'))
 
     def snapshot(self, key):
         if key.value == 'ada-operational-catalog':
             return self.catalog_snapshot
-        return self.snapshots.setdefault(key.value, object())
+        return self.snapshots.setdefault(key.value, SimpleNamespace(current=None))
 
     def current(self, key):
-        return self.snapshot(key), self.assignments.get(key.value)
+        raise AssertionError('Materialization must use the projected assignment')
 
 
 class _Writer:
@@ -112,7 +118,13 @@ def _setup(*, profile_ref='profiles-1', access_ref='access-1', catalog_ref='cata
         access_source=_Source(access_ref),
         access=_Projection(access_record),
         operational_source=object(),
-        operational=_Projection(catalog_record),
+        operational=_Projection(
+            catalog_record,
+            assignments={
+                key: SimpleNamespace(source_release='assignment-1', payload=value)
+                for key, value in ops.assignments.items()
+            },
+        ),
     )
     materializer = AdaUsersRuntimeMaterializer(stores=stores)
     materializer._operational_source = ops
@@ -189,6 +201,56 @@ def test_operational_catalog_behind_source_fails_closed():
     service, stores, _ops, identities = _setup()
     stores.operational.record.source_release = 'catalog-older'
     with pytest.raises(UsersMaterializationError, match='Operational catalog'):
+        service.materialize_user(identities[0].user_id)
+
+
+def test_stale_operational_assignment_projection_fails_closed():
+    service, stores, _ops, identities = _setup()
+    key = f'ada-operational-user:{identities[0].user_id}'
+    stores.operational.assignments[key].source_release = 'outdated'
+    with pytest.raises(
+        UsersMaterializationError, match='current Operational assignment projection'
+    ):
+        service.materialize_user(identities[0].user_id)
+
+
+def test_missing_operational_assignment_projection_fails_closed():
+    service, stores, _ops, identities = _setup()
+    stores.operational.assignments.clear()
+    with pytest.raises(
+        UsersMaterializationError, match='current Operational assignment projection'
+    ):
+        service.materialize_user(identities[0].user_id)
+
+
+def test_orphan_operational_assignment_projection_fails_closed():
+    service, _stores, ops, identities = _setup()
+    ops.snapshots[f'ada-operational-user:{identities[0].user_id}'] = SimpleNamespace(current=None)
+    with pytest.raises(UsersMaterializationError, match='projection has no source'):
+        service.materialize_user(identities[0].user_id)
+
+
+def test_projected_assignment_change_during_materialization_fails_closed():
+    service, stores, _ops, identities = _setup()
+    key = f'ada-operational-user:{identities[0].user_id}'
+    projection = stores.operational
+    before = projection.assignments[key]
+
+    class ChangingProjection(_Projection):
+        def __init__(self):
+            super().__init__(projection.record, assignments=dict(projection.assignments))
+            self.reads = 0
+
+        def get_active(self, source_key):
+            result = super().get_active(source_key)
+            if source_key.value == key:
+                self.reads += 1
+                if self.reads == 2:
+                    return SimpleNamespace(source_release='assignment-2', payload=before.payload)
+            return result
+
+    stores.operational = ChangingProjection()
+    with pytest.raises(UsersMaterializationError, match='changed during resolution'):
         service.materialize_user(identities[0].user_id)
 
 

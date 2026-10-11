@@ -503,13 +503,30 @@ def _register_assignment_callbacks(
                 error=True,
             )
         try:
-            context.service.project_current(assignment_source_key(user_id))
-            result = _message('Asignación guardada y proyectada.')
+            projected = context.service.project_current(assignment_source_key(user_id))
+            if projected is None:
+                raise ValueError('Assignment projection is missing')
         except Exception:
             result = _message(
                 'Asignación guardada en Source. Usa Reintentar proyección.',
                 warning=True,
             )
+        else:
+            try:
+                if context.publish_runtime is not None:
+                    context.publish_runtime(user_id)
+                message = (
+                    'Asignación guardada, proyectada y usuario actualizado.'
+                    if context.publish_runtime is not None
+                    else 'Asignación guardada y proyectada.'
+                )
+                result = _message(message)
+            except Exception:
+                result = _message(
+                    'Asignación guardada y proyectada. Actualización de users-runtime '
+                    'pendiente; usa Reintentar proyección.',
+                    warning=True,
+                )
         return _revision(updated_snapshot), result
 
     @app.callback(
@@ -520,9 +537,11 @@ def _register_assignment_callbacks(
     )
     def finish_assignment_operation(message):
         kind = _operation_result_kind(message)
-        if kind not in {'success', 'warning'}:
-            return no_update, no_update
-        return modal_class(False), message if kind == 'warning' else None
+        if kind == 'success':
+            return modal_class(False), None
+        if kind == 'warning':
+            return no_update, message
+        return no_update, no_update
 
     @app.callback(
         Output(ids.ASSIGNMENT_RESULT, 'children', allow_duplicate=True),
@@ -535,11 +554,24 @@ def _register_assignment_callbacks(
             return no_update
         try:
             result = context.service.project_current(assignment_source_key(user_id))
-            return _message(
-                'Asignación proyectada.' if result is not None else 'No hay publicación.'
-            )
         except Exception:
             return _message('Assignment could not be projected.', error=True)
+        if result is None:
+            return _message('No hay publicación.')
+        try:
+            if context.publish_runtime is not None:
+                context.publish_runtime(user_id)
+        except Exception:
+            return _message(
+                'Asignación proyectada. Actualización de users-runtime pendiente; '
+                'usa Reintentar proyección.',
+                warning=True,
+            )
+        return _message(
+            'Asignación proyectada y usuario actualizado.'
+            if context.publish_runtime is not None
+            else 'Asignación proyectada.'
+        )
 
 
 def _catalog(document: dict[str, object] | None) -> OperationalCatalog:
