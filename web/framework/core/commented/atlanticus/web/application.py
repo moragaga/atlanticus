@@ -77,8 +77,9 @@ def run_web_application(
     runtime: WebApplicationRuntime,
     *,
     host: str = '0.0.0.0',
-    port: int = 8050,
+    port: int = 8000,
 ) -> None:
+    # La aplicación entrega su puerto validado antes de arrancar; Gunicorn usa su propio bind.
     runtime.server.run(
         host=host,
         port=port,

@@ -59,8 +59,9 @@ def create_worker_runtime(
     application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
     production_identity_provider_factory: ProductionIdentityFactory | None = None,
+    settings: AdaGenericSettings | None = None,
 ) -> AdaWorkerRuntime:
-    settings = AdaGenericSettings()
+    settings = settings if settings is not None else AdaGenericSettings()
     resources = ExitStack()
     try:
         if settings.persistence_mode is AdaPersistenceMode.LOCAL:
@@ -113,12 +114,14 @@ def run_operational_application(
     extension_factory: AdaApplicationExtensionFactory | None = None,
     production_identity_provider_factory: ProductionIdentityFactory | None = None,
 ) -> None:
+    settings = AdaGenericSettings()
     worker = create_worker_runtime(
         application_descriptor=application_descriptor,
         extension_factory=extension_factory,
         production_identity_provider_factory=production_identity_provider_factory,
+        settings=settings,
     )
     try:
-        run_web_application(worker.application)
+        run_web_application(worker.application, port=settings.web_port)
     finally:
         worker.close()

@@ -205,8 +205,10 @@ def test_run_closes_worker_after_server_failure(monkeypatch) -> None:
         close=lambda: events.append('closed'),
     )
     monkeypatch.setattr(host, 'create_worker_runtime', lambda **_kwargs: worker)
+    monkeypatch.setattr(host, 'AdaGenericSettings', lambda: SimpleNamespace(web_port=8000))
 
-    def failed(_application):
+    def failed(_application, *, port):
+        assert port == 8000
         raise RuntimeError('stop')
 
     monkeypatch.setattr(host, 'run_web_application', failed)

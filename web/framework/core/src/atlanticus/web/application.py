@@ -75,7 +75,7 @@ def run_web_application(
     runtime: WebApplicationRuntime,
     *,
     host: str = '0.0.0.0',
-    port: int = 8050,
+    port: int = 8000,
 ) -> None:
     runtime.server.run(
         host=host,

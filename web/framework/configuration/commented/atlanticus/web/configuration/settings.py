@@ -10,6 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Variables públicas que forman el contrato tipado del environment del runtime Web.
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
+# Puerto configurable para el servidor Flask local; sin variable, el valor es 8000.
+ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
 # Contexto por ejecución que permite aislar una composición explícita de fuentes externas.
 _MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
@@ -44,6 +46,13 @@ class WebSettings(BaseSettings):
     environment: WebEnvironment = Field(
         default=WebEnvironment.LOCAL,
         validation_alias=ATLANTICUS_ENVIRONMENT_VARIABLE,
+    )
+    # Pydantic convierte el valor textual del .env y rechaza puertos fuera del rango TCP.
+    web_port: int = Field(
+        default=8000,
+        ge=1,
+        le=65535,
+        validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
     )
     # La connection string queda disponible para la integración Web de Application Insights.
     application_insights_connection_string: str | None = Field(

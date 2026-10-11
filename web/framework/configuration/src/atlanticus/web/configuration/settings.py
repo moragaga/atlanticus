@@ -9,6 +9,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
+ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
 _MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
 
@@ -39,6 +40,12 @@ class WebSettings(BaseSettings):
     environment: WebEnvironment = Field(
         default=WebEnvironment.LOCAL,
         validation_alias=ATLANTICUS_ENVIRONMENT_VARIABLE,
+    )
+    web_port: int = Field(
+        default=8000,
+        ge=1,
+        le=65535,
+        validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
     )
     application_insights_connection_string: str | None = Field(
         default=None,

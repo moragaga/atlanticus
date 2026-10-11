@@ -1,6 +1,7 @@
 from atlanticus.web.configuration.settings import (
     APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     ATLANTICUS_ENVIRONMENT_VARIABLE,
+    ATLANTICUS_WEB_PORT_VARIABLE,
     WebEnvironment,
     WebSettings,
 )
@@ -8,6 +9,7 @@ from atlanticus.web.configuration.settings import (
 __all__ = [
     'APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE',
     'ATLANTICUS_ENVIRONMENT_VARIABLE',
+    'ATLANTICUS_WEB_PORT_VARIABLE',
     'WebEnvironment',
     'WebSettings',
 ]
