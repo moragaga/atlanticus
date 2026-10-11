@@ -6,6 +6,7 @@
     const OVERVIEW_CONTROLS_SELECTOR = '.ada-io-dashboard__overview-controls';
     const BASELINE_SELECTOR = '.ada-alarm-baseline-surface';
     const BASELINE_POINT_SELECTOR = '.ada-alarm-baseline-surface__point';
+    const GLOBAL_INDICATORS_GRID_SELECTOR = '.ada-io-global-indicators';
     const VALID_PRESENTATIONS = new Set(['overview', 'mine', 'plant']);
     const TABLET_MIN_WIDTH = 1280;
     const DESKTOP_MIN_WIDTH = 1366;
@@ -28,6 +29,11 @@
 
     function resolveApplication(dashboard) {
         return dashboard.closest('#ada-generic-application');
+    }
+
+    function resolveGlobalIndicatorsGrid(dashboard) {
+        const application = resolveApplication(dashboard);
+        return application ? application.querySelector(GLOBAL_INDICATORS_GRID_SELECTOR) : null;
     }
 
     function resolveAlarmBaseline(dashboard) {
@@ -132,7 +138,19 @@
         synchronizeOverviewControls(dashboard, mode, presentation);
     }
 
+    function animateGlobalIndicatorsFallback(dashboard) {
+        const grid = resolveGlobalIndicatorsGrid(dashboard);
+        if (!grid || typeof grid.animate !== 'function') {
+            return;
+        }
+        grid.animate(
+            [{ opacity: 0.35 }, { opacity: 1 }],
+            { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+    }
+
     function animatePresentationFallback(dashboard, presentation) {
+        animateGlobalIndicatorsFallback(dashboard);
         const scopes = presentation === 'overview'
             ? dashboard.querySelectorAll('.ada-io-scope')
             : dashboard.querySelectorAll(`.ada-io-scope--${presentation}`);
