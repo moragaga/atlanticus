@@ -25,6 +25,9 @@ from ada.web.application.configuration_manager.operational_catalog_workflows imp
 from ada.web.application.configuration_manager.tool_kpi_registry_destinations import (
     ToolConfigurationKpiDestinationCatalogProvider,
 )
+from ada.web.application.configuration_manager.users_publication import (
+    AdaUsersAdministrationService,
+)
 from ada.web.kpis.definition.configuration import (
     KPI_DEFINITION_SOURCE_KEY,
     KpiDefinitionSourceService,
@@ -67,6 +70,7 @@ from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
+from atlanticus.web.users.models import RuntimeUser
 from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.store import (
     ToolMembershipStore,
@@ -152,6 +156,7 @@ def compose_configuration_manager_dependencies(
     projection_name: str = 'Projection',
     profiles_projection_name: str | None = None,
     kpi_projection_name: str | None = None,
+    users_runtime_publisher: Callable[[str], RuntimeUser] | None = None,
 ) -> ConfigurationManagerDependencies:
     if not isinstance(stores, ConfigurationManagerStores):
         raise TypeError('Configuration Manager stores are invalid')
@@ -257,12 +262,22 @@ def compose_configuration_manager_dependencies(
         profile_options_provider=navigation_profile_options,
     )
 
-    users_administration = UsersAdministrationService(
-        registry=stores.users_registry,
-        memberships=stores.users_memberships,
-        profiles=profiles_provider,
-        directory=stores.users_directory,
-    )
+    # El manager sin publicador mantiene el contrato Source-only original.
+    if users_runtime_publisher is None:
+        users_administration = UsersAdministrationService(
+            registry=stores.users_registry,
+            memberships=stores.users_memberships,
+            profiles=profiles_provider,
+            directory=stores.users_directory,
+        )
+    else:
+        users_administration = AdaUsersAdministrationService(
+            registry=stores.users_registry,
+            memberships=stores.users_memberships,
+            profiles=profiles_provider,
+            directory=stores.users_directory,
+            publish_runtime=users_runtime_publisher,
+        )
     users_manager = compose_users_manager(
         administration=users_administration,
         principal_provider=principal_provider,

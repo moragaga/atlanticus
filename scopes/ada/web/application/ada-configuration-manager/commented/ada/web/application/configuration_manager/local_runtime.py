@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 # Local usa los mismos contratos identity/membership/runtime; Jane y John sólo se seed-ean en runtime.
-
 import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Generic, TypeVar
 
 from ada.web.access.configuration import AdaAccessConfiguration
-from ada.web.application.configuration_manager.application import create_configuration_manager_application
+from ada.web.application.configuration_manager.application import (
+    create_configuration_manager_application,
+)
 from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
 from ada.web.application.configuration_manager.wiring import (
     ADA_ACCESS_SOURCE_KEY,
@@ -140,6 +141,18 @@ class InProcessUsersRuntimeStore(UsersRuntimeStore):
 
     def list_users(self) -> tuple[RuntimeUser, ...]:
         return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
+
+    # Publicación individual de la Tool; no reemplaza el conjunto de usuarios.
+    def upsert_user(self, user: RuntimeUser) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Users runtime upsert requires RuntimeUser')
+        previous = self._users.get(user.user_id)
+        if previous is not None and (
+            previous.issuer != user.issuer or previous.subject_id != user.subject_id
+        ):
+            raise ValueError('Runtime user identity cannot be changed')
+        self._users[user.user_id] = user
+        return user
 
     def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
         self._users = {user.user_id: user for user in users}
