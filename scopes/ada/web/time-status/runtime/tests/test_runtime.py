@@ -77,17 +77,20 @@ def _store(values: dict[str, object], *, tool_key: str = 'process', destination=
 
 
 def _ok(timestamp: datetime):
+    value = timestamp.isoformat().replace('+00:00', 'Z')
     return {
         'status': 'ok',
         'value_kind': 'value',
-        'value': timestamp.isoformat().replace('+00:00', 'Z'),
+        'value_type': 'text',
+        'value': value,
+        'parsed_value': value,
     }
 
 
 def test_pi_only_binding_is_valid_and_dispatch_is_absent() -> None:
     binding = _binding()
     summary = resolve_time_status_summary(
-        _store({'pi': _ok(_NOW - timedelta(seconds=10))}),
+        _store({'pi_last_update': _ok(_NOW - timedelta(seconds=10))}),
         binding=binding,
         now_utc=_NOW,
     )
@@ -101,8 +104,8 @@ def test_pi_and_dispatch_use_independent_control_thresholds() -> None:
     summary = resolve_time_status_summary(
         _store(
             {
-                'pi': _ok(_NOW - timedelta(seconds=250)),
-                'dispatch': _ok(_NOW - timedelta(seconds=450)),
+                'pi_last_update': _ok(_NOW - timedelta(seconds=250)),
+                'dispatch_last_update': _ok(_NOW - timedelta(seconds=450)),
             }
         ),
         binding=_binding(with_dispatch=True),
@@ -112,13 +115,17 @@ def test_pi_and_dispatch_use_independent_control_thresholds() -> None:
     assert summary.pi.condition is TimeStatusSourceCondition.PREVENTIVE
     assert summary.dispatch is not None
     assert summary.dispatch.condition is TimeStatusSourceCondition.PREVENTIVE
+    assert summary.pi.key == 'pi'
+    assert summary.dispatch.key == 'dispatch'
+    assert summary.pi.timestamp_utc == _NOW - timedelta(seconds=250)
+    assert summary.dispatch.timestamp_utc == _NOW - timedelta(seconds=450)
     assert summary.pi.policy.warning_after_seconds == 200
     assert summary.dispatch.policy.warning_after_seconds == 400
 
 
 def test_configured_dispatch_missing_from_store_is_data_error() -> None:
     summary = resolve_time_status_summary(
-        _store({'pi': _ok(_NOW)}),
+        _store({'pi_last_update': _ok(_NOW)}),
         binding=_binding(with_dispatch=True),
         now_utc=_NOW,
     )
@@ -130,16 +137,31 @@ def test_configured_dispatch_missing_from_store_is_data_error() -> None:
 @pytest.mark.parametrize(
     'entry',
     [
-        {'status': 'missing', 'value_kind': None, 'value': None},
-        {'status': 'error', 'value_kind': 'value', 'value': None},
-        {'status': 'ok', 'value_kind': 'json', 'value': {'timestamp': '2026-10-06T22:00:00Z'}},
-        {'status': 'ok', 'value_kind': 'value', 'value': 'not-a-timestamp'},
-        {'status': 'ok', 'value_kind': 'value', 'value': '2026-10-06T22:00:00'},
+        {
+            'status': 'missing', 'value_kind': None, 'value_type': None,
+            'value': None, 'parsed_value': None,
+        },
+        {
+            'status': 'error', 'value_kind': 'value', 'value_type': 'text',
+            'value': None, 'parsed_value': None,
+        },
+        {
+            'status': 'ok', 'value_kind': 'json', 'value_type': None,
+            'value': {'timestamp': '2026-10-06T22:00:00Z'}, 'parsed_value': None,
+        },
+        {
+            'status': 'ok', 'value_kind': 'value', 'value_type': 'text',
+            'value': 'not-a-timestamp', 'parsed_value': 'not-a-timestamp',
+        },
+        {
+            'status': 'ok', 'value_kind': 'value', 'value_type': 'text',
+            'value': '2026-10-06T22:00:00', 'parsed_value': '2026-10-06T22:00:00',
+        },
     ],
 )
 def test_degraded_or_invalid_pi_value_becomes_data_error(entry: dict[str, object]) -> None:
     summary = resolve_time_status_summary(
-        _store({'pi': entry}),
+        _store({'pi_last_update': entry}),
         binding=_binding(),
         now_utc=_NOW,
     )
@@ -147,14 +169,16 @@ def test_degraded_or_invalid_pi_value_becomes_data_error(entry: dict[str, object
     assert summary.pi.condition is TimeStatusSourceCondition.DATA_ERROR
 
 
-def test_source_key_is_the_time_status_kpi_key_without_alias_mapping() -> None:
+def test_legacy_control_keys_are_not_timestamp_kpi_aliases() -> None:
     summary = resolve_time_status_summary(
-        _store({'pi_timestamp': _ok(_NOW)}),
-        binding=_binding(),
+        _store({'pi': _ok(_NOW), 'dispatch': _ok(_NOW)}),
+        binding=_binding(with_dispatch=True),
         now_utc=_NOW,
     )
 
     assert summary.pi.condition is TimeStatusSourceCondition.DATA_ERROR
+    assert summary.dispatch is not None
+    assert summary.dispatch.condition is TimeStatusSourceCondition.DATA_ERROR
 
 
 @pytest.mark.parametrize(
@@ -162,8 +186,8 @@ def test_source_key_is_the_time_status_kpi_key_without_alias_mapping() -> None:
     [
         None,
         {},
-        _store({'pi': _ok(_NOW)}, tool_key='other'),
-        _store({'pi': _ok(_NOW)}, destination='global_indicators'),
+        _store({'pi_last_update': _ok(_NOW)}, tool_key='other'),
+        _store({'pi_last_update': _ok(_NOW)}, destination='global_indicators'),
         {'tool_key': 'process', 'destination_key': 'time_status', 'latest': None},
     ],
 )
@@ -175,7 +199,7 @@ def test_missing_or_wrong_system_store_degrades_without_raising(store: object) -
 
 def test_valid_old_timestamp_is_hard_stale_not_data_error() -> None:
     summary = resolve_time_status_summary(
-        _store({'pi': _ok(_NOW - timedelta(seconds=360))}),
+        _store({'pi_last_update': _ok(_NOW - timedelta(seconds=360))}),
         binding=_binding(),
         now_utc=_NOW,
     )
@@ -263,7 +287,7 @@ def test_runtime_component_renders_detail_without_own_polling() -> None:
         sources=(TimeStatusDetailSourceState('blockgrade', 'BlockGrade', 'Error'),)
     )
     component = build_time_status_runtime_component(
-        _store({'pi': _ok(_NOW)}),
+        _store({'pi_last_update': _ok(_NOW)}),
         binding=_binding(detail=detail),
         now_utc=_NOW,
     )
@@ -306,7 +330,7 @@ def test_runtime_callback_consumes_browser_system_store_without_polling() -> Non
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    rendered = dash_app.callback_function(_store({'pi': _ok(_NOW)}))
+    rendered = dash_app.callback_function(_store({'pi_last_update': _ok(_NOW)}))
     source = next(
         component
         for component in _walk(rendered)

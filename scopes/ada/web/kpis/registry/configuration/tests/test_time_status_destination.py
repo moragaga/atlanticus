@@ -22,7 +22,13 @@ def test_time_status_destination_accepts_latest_only_binding() -> None:
     registry = KpiRegistry(
         bindings=(
             KpiRegistryBinding(
-                kpi_key='pi',
+                kpi_key='pi_last_update',
+                destination_keys=('time_status',),
+                latest_enabled=True,
+                series_enabled=False,
+            ),
+            KpiRegistryBinding(
+                kpi_key='dispatch_last_update',
                 destination_keys=('time_status',),
                 latest_enabled=True,
                 series_enabled=False,
@@ -37,7 +43,7 @@ def test_time_status_destination_rejects_series_delivery() -> None:
     registry = KpiRegistry(
         bindings=(
             KpiRegistryBinding(
-                kpi_key='pi',
+                kpi_key='pi_last_update',
                 destination_keys=('time_status',),
                 latest_enabled=True,
                 series_enabled=True,

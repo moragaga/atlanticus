@@ -19,6 +19,7 @@ from .binding import TimeStatusRuntimeBinding
 
 _TIME_STATUS_DESTINATION_KEY = 'time_status'
 _SOURCE_LABELS = {'pi': 'PI', 'dispatch': 'Dispatch'}
+_SOURCE_LAST_UPDATE_KPI_KEYS = {'pi': 'pi_last_update', 'dispatch': 'dispatch_last_update'}
 
 
 def resolve_time_status_summary(
@@ -65,8 +66,9 @@ def _resolve_source(
     policy: SourceControlPolicy,
     now_utc: datetime | None,
 ) -> TimeStatusSourceState:
-    present = values is not None and policy.source_key in values
-    entry = None if values is None else values.get(policy.source_key)
+    kpi_key = _SOURCE_LAST_UPDATE_KPI_KEYS[policy.source_key]
+    present = values is not None and kpi_key in values
+    entry = None if values is None else values.get(kpi_key)
     decoded = decode_kpi_latest_value(entry, present=present)
     timestamp = _decoded_timestamp(decoded.state, decoded.value_kind, decoded.value)
     return resolve_time_status_source_state(
