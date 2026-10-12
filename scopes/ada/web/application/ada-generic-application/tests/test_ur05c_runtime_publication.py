@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
-from ada.web.application.generic import users_runtime_publication
-from ada.web.application.generic.users_runtime_publication import AdaCosmosRuntimeUserWriter
+from ada.web.application.generic.users import publication as users_runtime_publication
+from ada.web.application.generic.users.publication import AdaCosmosRuntimeUserWriter
 from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import (
@@ -142,8 +142,8 @@ def test_base_publication_does_not_need_operational_or_access(monkeypatch, tmp_p
     from ada.web.application.configuration_manager.local_runtime import (
         create_local_configuration_manager_stores,
     )
-    from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
-    from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
+    from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer
+    from ada.web.application.generic.users.publication import AdaLocalRuntimeUserWriter
     from atlanticus.web.users.models import ToolUserMembership
 
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')

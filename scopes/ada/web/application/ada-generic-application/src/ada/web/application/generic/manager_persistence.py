@@ -10,7 +10,7 @@ from ada.web.access.projection.cosmos import (
     CosmosAdaAccessProjectionStoreSettings,
 )
 from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
-from ada.web.application.generic.users_runtime_publication import AdaCosmosRuntimeUserWriter
+from ada.web.application.generic.users.publication import AdaCosmosRuntimeUserWriter
 from ada.web.kpis.definition.projection.cosmos import (
     KPI_DEFINITION_PROJECTION_STORAGE_RESOURCE,
     CosmosKpiDefinitionProjectionStore,

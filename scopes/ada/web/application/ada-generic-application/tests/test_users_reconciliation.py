@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from ada.web.application.generic.users_reconciliation import AdaUsersReconciliationWorkflow
+from ada.web.application.generic.users.reconciliation import AdaUsersReconciliationWorkflow
 from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import (

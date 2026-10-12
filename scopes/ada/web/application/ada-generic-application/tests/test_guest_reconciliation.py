@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ada.web.application.generic.users_reconciliation import AdaUsersReconciliationWorkflow
+from ada.web.application.generic.users.reconciliation import AdaUsersReconciliationWorkflow
 from ada.web.application.configuration_manager.local_runtime import InProcessUsersRuntimeStore
 from atlanticus.web.profiles.models import BASIC_PROFILE, GUEST_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.identity import build_user_key

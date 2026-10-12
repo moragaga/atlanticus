@@ -6,7 +6,7 @@ from flask import Flask
 
 from ada.web.access.configuration import AdaAccessConfiguration
 from ada.web.access.models import ProfileAccessGrant
-from ada.web.application.generic.users_access import AdaInitialUsersStore
+from ada.web.application.generic.users.access import AdaInitialUsersStore
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity

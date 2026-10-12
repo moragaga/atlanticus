@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.profiles.models import GUEST_PROFILE_KEY
 from atlanticus.web.users.errors import UsersIdentityConflictError
@@ -14,7 +14,6 @@ from atlanticus.web.users.reconstruction import (
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
-# Reconcilia el RuntimeUser completo desde las autoridades de ADA, no desde snapshots de runtime.
 class AdaUsersReconciliationWorkflow:
     def __init__(
         self, *, materializer: AdaUsersRuntimeMaterializer, runtime: UsersRuntimeStore
@@ -22,7 +21,6 @@ class AdaUsersReconciliationWorkflow:
         self._materializer = materializer
         self._runtime = runtime
 
-    # La inspección no escribe datos; detecta diferencias y bajas lógicas.
     def inspect(self) -> UsersReconstructionPreview:
         desired = tuple(sorted(self._materializer.materialize_all(), key=lambda user: user.user_id))
         if len({user.user_id for user in desired}) != len(desired):
@@ -48,7 +46,6 @@ class AdaUsersReconciliationWorkflow:
             )),
         )
 
-    # La confirmación vuelve a inspeccionar, publica por usuario y comprueba la convergencia.
     def apply(self, preview: UsersReconstructionPreview) -> UsersReconstructionPreview:
         if not isinstance(preview, UsersReconstructionPreview):
             raise TypeError('ADA users reconciliation preview is required')
@@ -71,7 +68,6 @@ class AdaUsersReconciliationWorkflow:
         current = self._resolve(desired)
         return self._publish(desired, current)
 
-    # Protege cambios concurrentes visibles y evita borrar una asignación operacional sin prueba.
     def _publish(self, desired: RuntimeUser, expected: RuntimeUser | None) -> RuntimeUser:
         current = self._resolve(desired)
         if current != expected:

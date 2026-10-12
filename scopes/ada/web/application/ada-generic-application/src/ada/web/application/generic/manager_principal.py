@@ -7,9 +7,9 @@ from ada.web.application.configuration_manager.wiring import (
     ConfigurationManagerStores,
     compose_configuration_manager_dependencies,
 )
-from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
-from ada.web.application.generic.users_reconciliation import AdaUsersReconciliationWorkflow
-from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
+from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users.reconciliation import AdaUsersReconciliationWorkflow
+from ada.web.application.generic.users.publication import AdaLocalRuntimeUserWriter
 from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.identity.access import AccessRuntime, AccessSnapshot, AccessStatus

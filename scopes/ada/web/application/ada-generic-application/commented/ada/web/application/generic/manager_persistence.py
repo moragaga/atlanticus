@@ -28,7 +28,7 @@ from ada.web.tools.projection.cosmos import (
     CosmosToolProjectionStore,
     CosmosToolProjectionStoreSettings,
 )
-from ada.web.application.generic.users_runtime_publication import AdaCosmosRuntimeUserWriter
+from ada.web.application.generic.users.publication import AdaCosmosRuntimeUserWriter
 from atlanticus.connectivity.cosmos import CosmosClient
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.navigation.projection.cosmos import (

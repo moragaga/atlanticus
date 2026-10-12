@@ -5,7 +5,7 @@ import pytest
 
 from ada.web.access.configuration import AdaAccessConfiguration
 from ada.web.access.models import ProfileAccessGrant
-from ada.web.application.generic.users_materialization import (
+from ada.web.application.generic.users.materialization import (
     AdaUsersRuntimeMaterializer,
     UsersMaterializationError,
 )

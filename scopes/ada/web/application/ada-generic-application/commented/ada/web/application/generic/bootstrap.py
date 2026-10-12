@@ -45,7 +45,7 @@ from ada.web.application.generic.operational_tool import (
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.application.generic.users_access import AdaInitialUsersStore
+from ada.web.application.generic.users.access import AdaInitialUsersStore
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,

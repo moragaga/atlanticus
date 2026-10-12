@@ -21,8 +21,8 @@ from ada.web.application.generic.manager_deployment import (
 )
 from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.application.generic.users_access import AdaInitialUsersStore
-from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users.access import AdaInitialUsersStore
+from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,

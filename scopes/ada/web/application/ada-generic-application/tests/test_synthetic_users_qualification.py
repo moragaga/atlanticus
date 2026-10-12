@@ -23,9 +23,9 @@ from ada.web.application.configuration_manager.users_publication import (
 from ada.web.application.generic import bootstrap
 from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.application.generic.users_access import AdaInitialUsersStore
-from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
-from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
+from ada.web.application.generic.users.access import AdaInitialUsersStore
+from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users.publication import AdaLocalRuntimeUserWriter
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
