@@ -72,6 +72,7 @@ def test_integrated_location_materializes_and_roundtrips() -> None:
     assert materialized is not None
     actual = materialized.alarms[0].visual_targets[0]
     assert actual.display_component_key == 'general_mine'
+    assert actual.display_scope is ToolScope.MINE
     assert actual.component_keys == ('general_mine', 'haulage')
     assert actual.subcomponents[0].owner_component_key == 'haulage'
     assert modeler_from_document(modeler_to_document(materialized)) == materialized
@@ -115,3 +116,4 @@ def test_process_center_is_not_necessarily_an_affected_component() -> None:
     resolved = result.modeler_configuration.alarms[0].visual_targets[0]
     assert resolved.component_keys == ()
     assert resolved.display_component_key == 'main'
+    assert resolved.display_scope is None

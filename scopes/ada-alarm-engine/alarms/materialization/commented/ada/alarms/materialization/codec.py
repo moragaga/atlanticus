@@ -37,7 +37,7 @@ from ada.contracts.alarms import (
     ProcessAlarmProjectionMode,
     VisibilityMode,
 )
-from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 
 
 def _json_value(value: object) -> object:
@@ -185,6 +185,10 @@ def modeler_from_document(document: Mapping[str, object]) -> ModelerAlarmConfigu
                         tool_kind=ToolConfigurationKind(target['tool_kind']),
                         component_keys=tuple(target['component_keys']),
                         display_component_key=target.get('display_component_key'),
+                        display_scope=(
+                            ToolScope(target['display_scope'])
+                            if target.get('display_scope') is not None else None
+                        ),
                         subcomponents=tuple(
                             ResolvedVisualSubcomponentTarget(
                                 owner_component_key=subcomponent['owner_component_key'],

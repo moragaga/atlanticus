@@ -158,6 +158,22 @@ def _collect_reference_findings(
                         reference_key=target.display_component_key,
                     )
                 )
+            if (
+                entry.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
+                and target.display_component_key is not None
+            ):
+                try:
+                    entry.structure.effective_component_scope(target.display_component_key)
+                except ToolConfigurationValidationError:
+                    findings.append(
+                        _blocking_finding(
+                            code='display_component_scope_unresolved',
+                            message='Integrated Operations display component scope is unresolved',
+                            rule=rule,
+                            field_path=f'{base_path}.display_component_key',
+                            reference_key=target.display_component_key,
+                        )
+                    )
             for component_key in target.component_keys:
                 try:
                     entry.structure.component(component_key)
@@ -380,6 +396,12 @@ def _materialize_visual_target(
             entry.structure.center_component_key
             if entry.kind is ToolConfigurationKind.PROCESS
             else target.display_component_key
+        ),
+        display_scope=(
+            entry.structure.effective_component_scope(target.display_component_key)
+            if entry.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
+            and target.display_component_key is not None
+            else None
         ),
         subcomponents=tuple(
             ResolvedVisualSubcomponentTarget(

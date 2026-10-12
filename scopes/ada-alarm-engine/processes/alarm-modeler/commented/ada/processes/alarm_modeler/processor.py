@@ -20,6 +20,7 @@ from ada.processes.alarm_modeler.projection import (
     validate_document,
 )
 from ada.processes.alarm_modeler.distributed_rotation import plan_distributed_rotation
+from ada.processes.alarm_modeler.integrated_selection import is_integrated_tool
 from ada.processes.alarm_modeler.presentation_policy import (
     QUEUE_IN_QUEUE_ROTATION_SECONDS,
     QUEUE_IN_QUEUE_SLOTS_PER_AREA,
@@ -136,6 +137,8 @@ class AlarmModelerProcessor:
         prepared = {}
         due_times = []
         for tool_key, tool in document['tools'].items():
+            if is_integrated_tool(tool):
+                continue
             old_tool = None if previous is None else previous['tools'].get(tool_key)
             old_state = memory.read(tool_key=tool_key, previous_tool=old_tool)
             if is_grouped(tool):

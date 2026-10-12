@@ -16,7 +16,7 @@ from ada.contracts.alarms import (
     ProcessAlarmProjectionMode,
     VisibilityMode,
 )
-from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +74,7 @@ class ResolvedVisualTarget:
     subcomponents: tuple[ResolvedVisualSubcomponentTarget, ...] = ()
     process_projection_mode: ProcessAlarmProjectionMode | None = None
     display_component_key: str | None = None
+    display_scope: ToolScope | None = None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.tool_key, 'tool_key')
@@ -101,6 +102,11 @@ class ResolvedVisualTarget:
                 raise ValueError('display_component_key must belong to component_keys')
         elif self.display_component_key is not None:
             raise ValueError('Strategic must not define display_component_key')
+        if self.tool_kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
+            if not isinstance(self.display_scope, ToolScope):
+                raise ValueError('Integrated Operations require display_scope')
+        elif self.display_scope is not None:
+            raise ValueError('Only Integrated Operations can define display_scope')
         if not isinstance(self.subcomponents, tuple):
             raise TypeError('subcomponents must be a tuple')
         seen_subcomponents: set[ResolvedVisualSubcomponentTarget] = set()

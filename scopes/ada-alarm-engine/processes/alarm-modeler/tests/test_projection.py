@@ -57,7 +57,9 @@ def model(*names, visibility='VISIBLE'):
                     'enabled': False, 'max_duration_hours': None, 'approval_required': False,
                 },
                 'visual_targets': [
-                    {'tool_key': 'tool-a', 'component_keys': ['main'], 'subcomponents': [],
+                    {'tool_key': 'tool-a', 'tool_kind': 'process',
+                     'component_keys': ['main'], 'display_component_key': 'main',
+                     'display_scope': None, 'subcomponents': [],
                      'process_projection_mode': None},
                 ],
             }

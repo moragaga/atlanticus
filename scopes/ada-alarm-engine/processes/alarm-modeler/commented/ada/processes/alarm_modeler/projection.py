@@ -7,6 +7,12 @@ from collections.abc import Mapping
 from datetime import datetime
 from string import Formatter
 
+from ada.processes.alarm_modeler.integrated_selection import (
+    is_integrated_tool,
+    project_integrated_slots,
+    validate_integrated_slots,
+)
+
 DOCUMENT_TYPE = 'ada_alarm_modeler_live_projection'
 SCHEMA_VERSION = 3
 SOURCE_DOCUMENT_TYPE = 'ada_alarm_engine_resolved_current_state'
@@ -180,6 +186,7 @@ def _validate_operator_view(tool: dict) -> None:
         raise AlarmModelerProjectionError('Modeler distributed group is incomplete')
     if groups > 1 or meta.get('operator_count') != len(tool['operator_view']):
         raise AlarmModelerProjectionError('Modeler operator view metadata is invalid')
+    validate_integrated_slots(tool)
 
 
 # Exige claves canónicas no vacías para evitar identidades inconsistentes.
@@ -239,6 +246,22 @@ def _tool_projection(
     if len(records) != len(ordered):
         raise AlarmModelerProjectionError('Duplicate occurrence in tool projection')
     pool = [item['occurrence_id'] for item in ordered if item['attention_required']]
+    if is_integrated_tool({'alarms': records}):
+        view = project_integrated_slots(pool, records, max_visible_slots=max_visible_slots)
+        return {
+            'tool_key': tool_key,
+            'retired': not active,
+            'alarms': records,
+            'operator_pool': pool,
+            'operator_view': view,
+            'meta': {
+                'live_count': len(records),
+                'attention_count': len(pool),
+                'operator_count': len(view),
+                'max_visible_slots': max_visible_slots,
+                'rotation_pending': False,
+            },
+        }
     distributed = []
     for occurrence_id in pool:
         mode = records[occurrence_id]['visual_target'].get('process_projection_mode')
