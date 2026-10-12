@@ -125,13 +125,41 @@ def test_evaluation_context_accepts_only_static_parameter_types() -> None:
         )
 
 
-def test_active_evaluation_requires_evidence_and_forbids_error() -> None:
-    with pytest.raises(ValueError, match='evidence_snapshot'):
-        AlarmEvaluation(
-            alarm_identity=identity(),
-            status=AlarmStatus.ACTIVE,
-            evaluated_at=NOW,
-        )
+@pytest.mark.parametrize('status', (AlarmStatus.ACTIVE, AlarmStatus.INACTIVE))
+def test_physical_evaluations_allow_missing_evidence(status: AlarmStatus) -> None:
+    evaluation = AlarmEvaluation(
+        alarm_identity=identity(),
+        status=status,
+        evaluated_at=NOW,
+    )
+    assert evaluation.evidence_snapshot is None
+    assert evaluation.cause_values == {}
+
+
+def test_cause_values_are_optional_and_copied() -> None:
+    values = {'pressure': 125.5, 'limit': 100.0}
+    evaluation = AlarmEvaluation(
+        alarm_identity=identity(),
+        status=AlarmStatus.ACTIVE,
+        evaluated_at=NOW,
+        cause_values=values,
+    )
+    values['pressure'] = 150.0
+    assert dict(evaluation.cause_values) == {'pressure': 125.5, 'limit': 100.0}
+    with pytest.raises(TypeError):
+        evaluation.cause_values['pressure'] = 150.0
+
+
+@pytest.mark.parametrize('values', (None, ['pressure']))
+def test_invalid_cause_values_container_does_not_change_physical_state(values: object) -> None:
+    evaluation = AlarmEvaluation(
+        alarm_identity=identity(),
+        status=AlarmStatus.ACTIVE,
+        evaluated_at=NOW,
+        cause_values=values,
+    )
+    assert evaluation.status is AlarmStatus.ACTIVE
+    assert dict(evaluation.cause_values) == {}
 
 
 def test_error_evaluation_requires_error_and_forbids_physical_evidence() -> None:

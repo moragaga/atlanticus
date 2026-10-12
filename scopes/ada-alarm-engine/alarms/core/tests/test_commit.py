@@ -6,6 +6,7 @@ import pytest
 
 from ada.alarms.core import (
     AlarmContractError,
+    AlarmEvaluation,
     AlarmRuntimeState,
     AlarmStatus,
     AssignmentChangeKind,
@@ -130,6 +131,52 @@ def test_occurrence_start_materializes_initial_evidence_and_next_due() -> None:
     }
     assert materialized.commit.affected_alarms == (alarm.identity,)
     assert alarm.identity in materialized.commit.runtime_state_updates
+
+
+def test_snapshotless_initial_evidence_is_durable_without_invented_measurements() -> None:
+    alarm = plan('risk')
+    previous = GroupLifecycleState(priority_group='mill-feed')
+    evaluation = AlarmEvaluation(
+        alarm_identity=alarm.identity,
+        status=AlarmStatus.ACTIVE,
+        evaluated_at=NOW,
+        cause_values={'pressure': 125.5},
+    )
+    decision = _reduce(previous, (alarm,), (evaluation,))
+    materialized = _materialize(previous, decision, (evaluation,))
+    assert materialized is not None
+    record = materialized.records.evidence_records[0]
+    document = record.as_document()
+    assert document['status'] == 'ACTIVE'
+    assert document['contract_key'] == 'alarm-evaluation-result'
+    assert document['contract_version'] == 'v1'
+    assert document['payload'] == {}
+    assert document['alarm_key'] == alarm.identity.canonical_key
+    assert document['recorded_at'] == '2026-08-24T14:00:00Z'
+    assert len(materialized.records.as_document()['evidence_records']) == 1
+
+
+def test_snapshotless_closure_keeps_final_evidence() -> None:
+    alarm, ids, started = _started()
+    at = NOW + timedelta(minutes=1)
+    evaluation = AlarmEvaluation(
+        alarm_identity=alarm.identity,
+        status=AlarmStatus.INACTIVE,
+        evaluated_at=at,
+    )
+    decision = _reduce(started.state, (alarm,), (evaluation,), at=at, ids=ids)
+    materialized = _materialize(
+        started.state,
+        decision,
+        (evaluation,),
+        at=at,
+        previous_commit_id=started.commit.commit_id,
+    )
+    assert materialized is not None
+    record = materialized.records.evidence_records[0]
+    assert ':final:' in record.evidence_id
+    assert record.as_document()['status'] == 'INACTIVE'
+    assert record.as_document()['payload'] == {}
 
 
 def test_steady_active_without_due_work_produces_no_commit() -> None:

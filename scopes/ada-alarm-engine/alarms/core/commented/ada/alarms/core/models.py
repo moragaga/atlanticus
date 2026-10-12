@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from types import MappingProxyType
@@ -359,6 +359,8 @@ class AlarmEvaluation:
     evaluated_at: datetime
     evidence_snapshot: EvidenceSnapshot | None = None
     error: EvaluationError | None = None
+    # Datos dinámicos opcionales; Modeler decidirá si son válidos para representar la causa.
+    cause_values: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.alarm_identity, AlarmIdentity):
@@ -366,6 +368,9 @@ class AlarmEvaluation:
         if not isinstance(self.status, AlarmStatus):
             raise TypeError('status must be an AlarmStatus')
         _require_utc_datetime(self.evaluated_at, 'evaluated_at')
+        # Aislamos el diccionario para impedir cambios externos después de crear el resultado.
+        values = self.cause_values if isinstance(self.cause_values, Mapping) else {}
+        object.__setattr__(self, 'cause_values', MappingProxyType(dict(values)))
         if self.status is AlarmStatus.ERROR:
             if self.error is None:
                 raise ValueError('ERROR evaluation requires error')
@@ -374,9 +379,10 @@ class AlarmEvaluation:
             if self.evidence_snapshot is not None:
                 raise ValueError('ERROR evaluation must not contain physical evidence_snapshot')
             return
-        if self.evidence_snapshot is None:
-            raise ValueError('ACTIVE and INACTIVE evaluations require evidence_snapshot')
-        if not isinstance(self.evidence_snapshot, EvidenceSnapshot):
+        # La ausencia de snapshot no transforma una evaluación física válida en ERROR.
+        if self.evidence_snapshot is not None and not isinstance(
+            self.evidence_snapshot, EvidenceSnapshot
+        ):
             raise TypeError('evidence_snapshot must be an EvidenceSnapshot')
         if self.error is not None:
             raise ValueError('ACTIVE and INACTIVE evaluations must not contain error')

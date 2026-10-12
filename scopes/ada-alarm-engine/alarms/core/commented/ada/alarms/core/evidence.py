@@ -67,6 +67,11 @@ class EvidenceRecord:
             contract_key = snapshot.contract_key
             contract_version = snapshot.contract_version
             payload = _json_value(snapshot.payload)
+        # Si el evaluador no aporta mediciones, preservamos solamente el hecho operacional.
+        elif self.evaluation.status in (AlarmStatus.ACTIVE, AlarmStatus.INACTIVE):
+            contract_key = 'alarm-evaluation-result'
+            contract_version = 'v1'
+            payload = {}
         else:
             error = self.evaluation.error
             if error is None or self.technical_contract is None:
