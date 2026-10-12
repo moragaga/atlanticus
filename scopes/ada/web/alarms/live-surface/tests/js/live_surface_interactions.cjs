@@ -43,3 +43,20 @@ test('the preview visits each available occurrence and pauses before the next cy
         mode: 'pause', key: null,
     });
 });
+
+test('distributed carousel preserves an active occurrence when the store reorders members', () => {
+    const {groupChoice} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    assert.equal(groupChoice(['MINE:a', 'PLANT:b'], 'PLANT:b'), 1);
+    assert.equal(groupChoice(['PLANT:b', 'MINE:a'], 'PLANT:b'), 0);
+    assert.equal(groupChoice(['MINE:a'], 'PLANT:b'), 0);
+});
+
+test('distributed carousel navigates in the projected order and wraps without re-ranking', () => {
+    const {nextGroupIndex} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    assert.equal(nextGroupIndex(3, 0, 'next'), 1);
+    assert.equal(nextGroupIndex(3, 2, 'next'), 0);
+    assert.equal(nextGroupIndex(3, 0, 'previous'), 2);
+    assert.equal(nextGroupIndex(1, 0, 'next'), 0);
+});

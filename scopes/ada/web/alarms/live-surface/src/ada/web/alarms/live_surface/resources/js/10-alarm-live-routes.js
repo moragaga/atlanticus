@@ -7,6 +7,9 @@
     const POINT = '.ada-alarm-baseline-surface__point';
     const ROUTES = '.ada-alarm-live-routes';
     const COMPONENT = '.ada-card-display[data-ada-subcomponent-key]';
+    const GROUP = '.ada-alarm-live-group';
+    const GROUP_ITEM = '[data-ada-alarm-group-item="true"]';
+    const GROUP_NAV = '[data-ada-alarm-group-navigation]';
     const NS = 'http://www.w3.org/2000/svg';
     const PREVIEW = Object.freeze({
         revealMs: 4000,
@@ -16,6 +19,7 @@
         cyclePauseMs: 1500,
         maxCycleSize: 6,
     });
+    const GROUP_ROTATION_MS = PREVIEW.revealMs + PREVIEW.holdMs + PREVIEW.fadeMs + PREVIEW.betweenMs;
     const controllers = new WeakMap();
     const scheduled = new WeakSet();
 
@@ -60,13 +64,98 @@
         return current === clicked ? null : clicked;
     }
 
+    function groupItemKey(card) {
+        return `${card.dataset.adaAlarmGroupArea}:${card.dataset.adaAlarmOccurrenceId}`;
+    }
+
+    function groupChoice(choices, preferred) {
+        const position = choices.indexOf(preferred);
+        return position < 0 ? 0 : position;
+    }
+
+    function nextGroupIndex(count, position, direction) {
+        if (count < 2) {
+            return 0;
+        }
+        return (position + (direction === 'previous' ? count - 1 : 1)) % count;
+    }
+
+    function synchronizeGroups(controller, board) {
+        const slots = new Set();
+        board.querySelectorAll(GROUP).forEach((group) => {
+            const slot = group.dataset.adaAlarmGroupSlot;
+            const items = Array.from(group.querySelectorAll(GROUP_ITEM));
+            if (!items.length) {
+                return;
+            }
+            slots.add(slot);
+            const choices = items.map(groupItemKey);
+            const index = groupChoice(choices, controller.groupCurrent.get(slot));
+            items.forEach((item, position) => {
+                if (item.hidden !== (position !== index)) {
+                    item.hidden = position !== index;
+                }
+            });
+            controller.groupCurrent.set(slot, choices[index]);
+            const counter = group.querySelector('.ada-alarm-live-group__counter');
+            const label = `${index + 1}/${items.length}`;
+            if (counter && counter.textContent !== label) {
+                counter.textContent = label;
+            }
+        });
+        Array.from(controller.groupCurrent.keys()).forEach((slot) => {
+            if (!slots.has(slot)) {
+                controller.groupCurrent.delete(slot);
+            }
+        });
+    }
+
+    function moveGroup(controller, group, direction) {
+        const items = Array.from(group.querySelectorAll(GROUP_ITEM));
+        if (items.length < 2) {
+            return false;
+        }
+        const slot = group.dataset.adaAlarmGroupSlot;
+        const keys = items.map(groupItemKey);
+        const current = groupChoice(keys, controller.groupCurrent.get(slot));
+        controller.groupCurrent.set(slot, keys[nextGroupIndex(items.length, current, direction)]);
+        schedule(controller.surface);
+        return true;
+    }
+
+    function stopGroupTimer(controller) {
+        if (controller.groupTimer !== null) {
+            window.clearTimeout(controller.groupTimer);
+            controller.groupTimer = null;
+        }
+    }
+
+    function reconcileGroupTimer(controller) {
+        const group = controller.surface.querySelector(GROUP);
+        if (!group || !visible(group) || controller.selected || motionReduced()
+            || group.querySelectorAll(GROUP_ITEM).length < 2) {
+            stopGroupTimer(controller);
+            return;
+        }
+        if (controller.groupTimer !== null) {
+            return;
+        }
+        controller.groupTimer = window.setTimeout(() => {
+            controller.groupTimer = null;
+            if (controller.surface.isConnected && group.isConnected
+                && !controller.selected && !motionReduced()) {
+                moveGroup(controller, group, 'next');
+            }
+        }, GROUP_ROTATION_MS);
+    }
+
     function updateAffections(surface, cards) {
         const application = surface.closest('#ada-generic-application');
         if (!application) {
             return;
         }
         const palette = new Map();
-        cards.forEach((card) => {
+        cards.filter(visible).forEach((card) => {
             const color = card.dataset.adaAlarmColor;
             if (color !== 'RED' && color !== 'YELLOW') {
                 return;
@@ -114,6 +203,10 @@
         if (!board || !overlay) {
             return;
         }
+        const controller = controllers.get(surface);
+        if (controller) {
+            synchronizeGroups(controller, board);
+        }
         const cards = Array.from(board.querySelectorAll(CARD));
         const origin = surface.getBoundingClientRect();
         const width = Math.max(1, origin.width);
@@ -156,7 +249,6 @@
                 path.style.strokeDasharray = `${length} ${length}`;
             });
         });
-        const controller = controllers.get(surface);
         const signature = [
             width, height,
             ...Array.from(svg.children).map((path) => [
@@ -181,6 +273,7 @@
                 Boolean(baseline && baseline.dataset.adaAlarmBaseline === 'integrated_operations'),
             );
             reconcile(controller);
+            reconcileGroupTimer(controller);
         }
     }
 
@@ -291,7 +384,7 @@
 
     function reconcile(controller) {
         const available = controller.cards
-            .filter((card) => card.dataset.adaAlarmGrouped !== 'true')
+            .filter((card) => visible(card) && card.dataset.adaAlarmGrouped !== 'true')
             .map((card) => card.dataset.adaAlarmOccurrenceId);
         if (controller.selected && !available.includes(controller.selected)) {
             controller.selected = null;
@@ -342,7 +435,7 @@
 
     function select(controller, occurrenceId) {
         const available = controller.cards
-            .filter((card) => card.dataset.adaAlarmGrouped !== 'true')
+            .filter((card) => visible(card) && card.dataset.adaAlarmGrouped !== 'true')
             .map((card) => card.dataset.adaAlarmOccurrenceId);
         const next = toggleSelection(controller.selected, occurrenceId, available);
         if (next === controller.selected) {
@@ -354,6 +447,7 @@
         controller.phase = null;
         controller.completed.clear();
         reconcile(controller);
+        reconcileGroupTimer(controller);
     }
 
     function schedule(surface) {
@@ -378,7 +472,7 @@
         const controller = {
             surface, cards: [], points: [], paths: [], candidates: [],
             selected: null, active: null, phase: null, completed: new Set(),
-            timer: null, generation: 0,
+            timer: null, generation: 0, groupCurrent: new Map(), groupTimer: null,
         };
         controllers.set(surface, controller);
         const boardObserver = new MutationObserver(() => schedule(surface));
@@ -403,8 +497,26 @@
         if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') {
             return;
         }
+        const navigation = event.type === 'click' && event.target.closest
+            ? event.target.closest(GROUP_NAV) : null;
+        if (navigation) {
+            const group = navigation.closest(GROUP);
+            const surface = group && group.closest(SURFACE);
+            const controller = surface && controllers.get(surface);
+            if (!controller) {
+                return;
+            }
+            stopGroupTimer(controller);
+            stopTimer(controller);
+            controller.selected = null;
+            controller.active = null;
+            controller.phase = null;
+            controller.completed.clear();
+            moveGroup(controller, group, navigation.dataset.adaAlarmGroupNavigation);
+            return;
+        }
         const card = event.target.closest && event.target.closest(CARD);
-        if (!card || card.dataset.adaAlarmGrouped === 'true') {
+        if (!card || card.hidden || card.dataset.adaAlarmGrouped === 'true') {
             return;
         }
         const surface = card.closest(SURFACE);
@@ -446,6 +558,6 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {routePath, previewPlan, toggleSelection};
+        module.exports = {routePath, previewPlan, toggleSelection, groupChoice, nextGroupIndex};
     }
 })();

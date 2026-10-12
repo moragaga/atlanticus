@@ -108,5 +108,70 @@ def test_live_cards_are_keyboard_selectable_without_exposing_distributed_group_a
         'total_by_area': {'MINE': 1},
     }}]
     grouped = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
-    assert 'role' not in grouped
+    assert grouped['role'] == 'group'
     assert 'tabIndex' not in grouped
+
+
+def test_distributed_group_respects_projected_area_order_and_targets():
+    data = _data()
+    data['live']['max_visible_slots'] = 6
+    data['live']['operator_view'] = [{'slot': 6, 'group': {
+        'kind': 'DISTRIBUTED',
+        'visible_by_area': {'MINE': ['b', 'a'], 'PLANT': ['a']},
+        'total_by_area': {'MINE': 3, 'PLANT': 2},
+    }}]
+    _, cards = resolve_live_alarm_cards(data, tool_key='io')
+    group = cards[0]
+    assert group.grouped
+    assert group.slot == 6
+    assert group.cause == 'Mina 2/3 · Planta 1/2'
+    assert [(item.area, item.occurrence_id) for item in group.group_members] == [
+        ('MINE', 'b'), ('MINE', 'a'), ('PLANT', 'a'),
+    ]
+    assert [item.color for item in group.group_members] == ['YELLOW', 'RED', 'RED']
+    assert [item.component_keys for item in group.group_members] == [
+        ('cmp_2',), ('cmp_1',), ('cmp_1',),
+    ]
+    assert [item.subcomponent_keys for item in group.group_members] == [
+        ('sub_2',), ('sub_1',), ('sub_1',),
+    ]
+
+
+def test_distributed_carousel_only_renders_selected_members_from_operator_view():
+    data = _data()
+    data['live']['max_visible_slots'] = 6
+    data['live']['alarms']['unselected'] = {
+        'title': 'Should not display', 'color': 'RED',
+        'visual_target': {'tool_key': 'io', 'component_keys': ['not_selected']},
+    }
+    data['live']['operator_view'] = [{'slot': 6, 'group': {
+        'kind': 'DISTRIBUTED',
+        'visible_by_area': {'MINE': ['a'], 'PLANT': ['b']},
+        'total_by_area': {'MINE': 2, 'PLANT': 2},
+    }}]
+    group = build_live_alarm_cards(data, tool_key='io')[0]
+    props = group.to_plotly_json()['props']
+    assert props['role'] == 'group'
+    assert props['style']['gridColumn'] == '6'
+    slides = group.children[1].children
+    assert len(slides) == 2
+    assert [item.to_plotly_json()['props']['data-ada-alarm-occurrence-id']
+            for item in slides] == ['a', 'b']
+    assert [item.to_plotly_json()['props']['hidden'] for item in slides] == [False, True]
+    assert [item.to_plotly_json()['props']['data-ada-alarm-target-components']
+            for item in slides] == ['cmp_1', 'cmp_2']
+
+
+def test_distributed_group_with_no_visible_members_remains_noninteractive():
+    data = _data()
+    data['live']['max_visible_slots'] = 6
+    data['live']['operator_view'] = [{'slot': 6, 'group': {
+        'kind': 'DISTRIBUTED',
+        'visible_by_area': {'MINE': []},
+        'total_by_area': {'MINE': 3},
+    }}]
+    group = build_live_alarm_cards(data, tool_key='io')[0]
+    props = group.to_plotly_json()['props']
+    assert props['data-ada-alarm-grouped'] == 'true'
+    assert 'role' not in props
+    assert props['data-ada-alarm-target-components'] == ''
