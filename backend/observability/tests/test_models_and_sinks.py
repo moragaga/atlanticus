@@ -199,6 +199,32 @@ def test_console_text_renders_skipped_iteration_and_interrupted_execution() -> N
     assert 'daily-job interrupted' in lines[1]
 
 
+def test_console_text_renders_ram_capacity_peak_and_last_usage() -> None:
+    from atlanticus.observability import ConsoleTextSink, OperationalEventProjection
+
+    stdout = StringIO()
+    sink = ConsoleTextSink(projection=OperationalEventProjection(), stdout=stdout)
+    sink.emit(
+        ObservabilityEvent(
+            name='runtime.execution.summary',
+            category=EventCategory.LIFECYCLE,
+            audience=EventAudience.OPERATIONS,
+            metrics={
+                'memory_limit_bytes': 4 * 1024 * 1024 * 1024,
+                'memory_used_bytes_peak': 2 * 1024 * 1024 * 1024,
+                'memory_used_bytes_last': 1024 * 1024 * 1024,
+            },
+        ),
+        _settings(),
+        DataSanitizer(),
+    )
+
+    output = stdout.getvalue()
+    assert 'memory_limit=4096.0MiB' in output
+    assert 'memory_used_peak=2048.0MiB' in output
+    assert 'memory_used_last=1024.0MiB' in output
+
+
 def test_operational_data_event_does_not_require_domain_name_hardcoding() -> None:
     from atlanticus.observability import OperationalEventProjection
 

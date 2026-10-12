@@ -9,7 +9,11 @@ from atlanticus.observability import (
     close_observability,
     configure_observability,
 )
-from atlanticus.runtime._resource_models import ResourceSample, ResourceThresholds
+from atlanticus.runtime._resource_models import (
+    ResourceSample,
+    ResourceStatistics,
+    ResourceThresholds,
+)
 from atlanticus.runtime._resource_monitor import ResourceMonitor
 
 
@@ -85,8 +89,26 @@ def test_checkpoint_updates_peaks_without_emitting_a_log() -> None:
         'memory_limit_bytes': 1000,
         'cpu_peak_percent': 20.0,
         'memory_peak_percent': 40.0,
+        'memory_used_bytes_peak': 400,
+        'memory_used_bytes_last': 400,
         'oom_events': 1,
         'cpu_throttled_seconds': 0.1,
+    }
+
+
+def test_memory_usage_peak_and_last_are_available_without_memory_limit() -> None:
+    statistics = ResourceStatistics()
+    for value in (500, 200):
+        statistics.add(
+            ResourceSample(
+                occurred_at_utc=datetime(2026, 7, 17, tzinfo=UTC),
+                memory_used_bytes=value,
+            )
+        )
+
+    assert statistics.operational_metrics() == {
+        'memory_used_bytes_peak': 500,
+        'memory_used_bytes_last': 200,
     }
 
 

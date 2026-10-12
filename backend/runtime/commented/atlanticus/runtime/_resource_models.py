@@ -266,6 +266,10 @@ class ResourceStatistics:
             values['cpu_peak_percent'] = round(self.cpu_percent.maximum, 3)
         if self.memory_percent.maximum is not None:
             values['memory_peak_percent'] = round(self.memory_percent.maximum, 3)
+        if self.memory_used_bytes.maximum is not None:
+            values['memory_used_bytes_peak'] = int(self.memory_used_bytes.maximum)
+        if self.last_sample is not None and self.last_sample.memory_used_bytes is not None:
+            values['memory_used_bytes_last'] = self.last_sample.memory_used_bytes
         oom_events = self._counter_delta(self.initial_oom_count, self.last_oom_count)
         if oom_events is not None and oom_events > 0:
             values['oom_events'] = int(oom_events)

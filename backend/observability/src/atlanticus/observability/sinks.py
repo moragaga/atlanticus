@@ -287,6 +287,10 @@ class ConsoleTextSink(EventSink):
             return f'cpu_limit={value}'
         if key == 'memory_limit_bytes':
             return f'memory_limit={ConsoleTextSink._format_bytes(value)}'
+        if key == 'memory_used_bytes_peak':
+            return f'memory_used_peak={ConsoleTextSink._format_bytes(value)}'
+        if key == 'memory_used_bytes_last':
+            return f'memory_used_last={ConsoleTextSink._format_bytes(value)}'
         if key == 'work_iterations':
             return f'work={value}'
         if key == 'empty_iterations':

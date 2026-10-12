@@ -48,6 +48,8 @@ _RESERVED_KEYS = frozenset(
         'level',
         'memory_limit_bytes',
         'memory_peak_percent',
+        'memory_used_bytes_last',
+        'memory_used_bytes_peak',
         'message',
         'oom_events',
         'resource_pressure_events',
