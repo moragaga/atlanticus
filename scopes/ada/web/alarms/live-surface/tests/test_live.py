@@ -92,3 +92,21 @@ def test_distributed_group_keeps_slot_without_inventing_rotation():
     assert cards[0].grouped is True
     assert cards[0].component_keys == ()
     assert cards[0].slot == 4
+
+
+def test_live_cards_are_keyboard_selectable_without_exposing_distributed_group_as_action():
+    data = _data()
+    card = build_live_alarm_cards(data, tool_key='io')[0]
+    props = card.to_plotly_json()['props']
+    assert props['role'] == 'button'
+    assert props['tabIndex'] == 0
+    assert props['aria-pressed'] == 'false'
+    assert 'First' in props['aria-label']
+
+    data['live']['operator_view'] = [{'slot': 4, 'group': {
+        'kind': 'DISTRIBUTED', 'visible_by_area': {'MINE': ['a']},
+        'total_by_area': {'MINE': 1},
+    }}]
+    grouped = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
+    assert 'role' not in grouped
+    assert 'tabIndex' not in grouped

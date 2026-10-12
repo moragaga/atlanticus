@@ -119,6 +119,12 @@ def build_live_alarm_cards(data: object, *, tool_key: str) -> tuple[Component, .
                 'data-ada-alarm-target-components': ' '.join(card.component_keys),
                 'data-ada-alarm-target-subcomponents': ' '.join(card.subcomponent_keys),
                 'data-ada-alarm-grouped': str(card.grouped).lower(),
+                **({} if card.grouped else {
+                    'role': 'button',
+                    'tabIndex': 0,
+                    'aria-label': f'Seleccionar alarma: {card.title}',
+                    'aria-pressed': 'false',
+                }),
             },
         )
         for card in cards
