@@ -21,7 +21,7 @@ class CommandCenterAdministrationDependencies:
     profiles_projection_store: ProjectionStore[ProfileCatalog]
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog]
     users_runtime_store: UsersRuntimeStore
-    users_projection_entry: ManagerEntry | None = None
+    users_reconstruction_entry: ManagerEntry | None = None
 
 
 @dataclass(frozen=True, slots=True)

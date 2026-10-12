@@ -134,7 +134,7 @@ def compose_command_center_administration(
         title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
-    users_projection = (
+    users_reconstruction = (
         compose_users_reconstruction_manager(
             reconstruction=UsersReconstructionWorkflow(
                 registry=stores.users_registry,
@@ -157,5 +157,5 @@ def compose_command_center_administration(
         profiles_projection_store=stores.profiles,
         navigation_projection_store=stores.navigation,
         users_runtime_store=stores.users_runtime,
-        users_projection_entry=users_projection,
+        users_reconstruction_entry=users_reconstruction,
     )

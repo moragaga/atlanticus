@@ -276,7 +276,7 @@ def compose_configuration_manager_dependencies(
         title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
-    users_projection_entry = (
+    users_reconstruction_entry = (
         compose_users_reconstruction_manager(
             reconstruction=UsersReconstructionWorkflow(
                 registry=stores.users_registry,
@@ -293,7 +293,7 @@ def compose_configuration_manager_dependencies(
         else None
     )
     return ConfigurationManagerDependencies(
-        users_projection_entry=users_projection_entry,
+        users_reconstruction_entry=users_reconstruction_entry,
         navigation_module=navigation_manager.module,
         navigation_projection_store=stores.navigation,
         tools_source=tools_source,

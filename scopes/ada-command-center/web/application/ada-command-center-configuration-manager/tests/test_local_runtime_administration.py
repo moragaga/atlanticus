@@ -70,7 +70,7 @@ def test_local_runtime_mounts_administration_with_command_center_configuration(
         'alarm-configuration',
     )
     assert tuple(entry.key for entry in definition.entries) == (
-        'users', 'users-projection', 'tool-catalog'
+        'users', 'users-reconstruction', 'tool-catalog'
     )
     assert tuple(user.subject_id for user in runtime_users) == tuple(
         user.subject_id for user in LOCAL_USERS

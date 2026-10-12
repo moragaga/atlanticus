@@ -89,10 +89,10 @@ def compose_users_reconstruction_manager(
         can_manage=lambda: policy.can_view(principal_provider(), entry),
     )
     entry = ManagerEntry(
-        key='users-projection',
+        key='users-reconstruction',
         group_key=group_key,
         title='Reconstrucción de usuarios',
-        route='/users-projection',
+        route='/users-reconstruction',
         order=11,
         description='Reconstrucción controlada desde Registry, Memberships y Profiles vigentes.',
         layout=lambda _services: build_users_reconstruction_configuration(context),

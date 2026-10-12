@@ -37,7 +37,7 @@ class ConfigurationManagerDependencies:
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
-    users_projection_entry: ManagerEntry | None = None
+    users_reconstruction_entry: ManagerEntry | None = None
     operational_service: OperationalIdentificationService | None = None
     operational_users: Callable[[], tuple[ManagedUser, ...]] | None = None
     operational_catalog_contracts: OperationalCatalogManagerContracts | None = None

@@ -66,7 +66,7 @@ def build_configuration_manager_surface(
     administration_entries = (
         (
             administration.users_entry,
-            *((administration.users_projection_entry,) if administration.users_projection_entry else ()),
+            *((administration.users_reconstruction_entry,) if administration.users_reconstruction_entry else ()),
         )
         if administration is not None
         else ()

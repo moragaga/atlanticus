@@ -175,8 +175,8 @@ def build_configuration_manager_surface(
         entries=(
             dependencies.users_entry,
             *(
-                (dependencies.users_projection_entry,)
-                if dependencies.users_projection_entry is not None
+                (dependencies.users_reconstruction_entry,)
+                if dependencies.users_reconstruction_entry is not None
                 else ()
             ),
         ),

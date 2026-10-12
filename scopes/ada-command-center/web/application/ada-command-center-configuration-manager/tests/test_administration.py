@@ -57,8 +57,8 @@ def test_administration_composes_generic_users_profiles_and_navigation(tmp_path:
     assert administration.navigation_module.access_key == NAVIGATION_MANAGER_ACCESS_KEY
     assert administration.navigation_module.source_key == NAVIGATION_SOURCE_KEY
     assert administration.users_runtime_store is runtime
-    assert administration.users_projection_entry is not None
-    assert administration.users_projection_entry.route == '/users-projection'
+    assert administration.users_reconstruction_entry is not None
+    assert administration.users_reconstruction_entry.route == '/users-reconstruction'
 
 
 def test_command_center_runtime_base_publication_preserves_domain_extensions():

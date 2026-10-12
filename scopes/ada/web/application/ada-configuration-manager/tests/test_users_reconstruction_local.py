@@ -63,8 +63,8 @@ def test_local_manager_exposes_reconstruction_and_can_publish(tmp_path, monkeypa
     dependencies = compose_configuration_manager_dependencies(
         stores=stores, principal_provider=lambda: principal,
     )
-    entry = dependencies.users_projection_entry
-    assert entry is not None and entry.route == '/users-projection'
+    entry = dependencies.users_reconstruction_entry
+    assert entry is not None and entry.route == '/users-reconstruction'
     entry.layout(None)
     app = FakeDash()
     entry.web_module.register_callbacks(app, None)

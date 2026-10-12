@@ -280,7 +280,7 @@ def compose_configuration_manager_dependencies(
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
     # La vista activa usa fuentes durables actuales, sin seleccionar snapshots de recuperación.
-    users_projection_entry = (
+    users_reconstruction_entry = (
         compose_users_reconstruction_manager(
             reconstruction=UsersReconstructionWorkflow(
                 registry=stores.users_registry,
@@ -297,7 +297,7 @@ def compose_configuration_manager_dependencies(
         else None
     )
     return ConfigurationManagerDependencies(
-        users_projection_entry=users_projection_entry,
+        users_reconstruction_entry=users_reconstruction_entry,
         navigation_module=navigation_manager.module,
         navigation_projection_store=stores.navigation,
         tools_source=tools_source,

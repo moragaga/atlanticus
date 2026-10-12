@@ -75,7 +75,7 @@ def test_durable_runtime_mounts_administration_with_command_center_topology(
     )
     assert tuple(entry.key for entry in definition.entries) == (
         'users',
-        'users-projection',
+        'users-reconstruction',
         'tool-catalog',
     )
     assert dependencies.source_name == 'Blob Storage'
