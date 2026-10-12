@@ -53,7 +53,7 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
                 'role': 'button',
                 'tabIndex': 0,
                 'aria-expanded': 'false',
-                'aria-label': 'Ver fuentes de datos adicionales',
+                'aria-label': 'Ver última actualización y fuentes adicionales',
             }
         )
 
@@ -80,13 +80,23 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     )
 
 
-def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
+def build_time_status_detail(
+    *,
+    state: TimeStatusDetailState | None,
+    control_sources: tuple[TimeStatusSourceState, ...] = (),
+) -> Component:
+    children: list[Component] = []
+    if control_sources:
+        children.append(
+            html.P(className='ada-time-status-detail__heading', children='Última actualización')
+        )
+        children.extend(_build_detail_control_source(source) for source in control_sources)
+    if state is not None:
+        children.append(_build_detail_heading())
+        children.extend(_build_detail_source(source) for source in state.sources)
     return html.Div(
         className='ada-time-status-detail__content',
-        children=[
-            _build_detail_heading(),
-            *[_build_detail_source(source) for source in state.sources],
-        ],
+        children=children,
         **{'data-ada-time-status-detail-content': 'true'},
     )
 
@@ -100,6 +110,34 @@ def _build_detail_surface(detail: Component | None) -> Component:
             'data-ada-time-status-detail-surface': 'true',
             'data-ada-time-status-detail-placement': 'bottom',
             'aria-hidden': 'true',
+        },
+    )
+
+
+def _build_detail_control_source(source: TimeStatusSourceState) -> Component:
+    timestamp = (
+        None
+        if source.condition is TimeStatusSourceCondition.DATA_ERROR
+        else source.timestamp_iso
+    )
+    return html.Div(
+        className='ada-time-status-detail__source',
+        children=[
+            html.Span(className='ada-time-status-detail__source-label', children=source.label),
+            html.Span(
+                className='ada-time-status-detail__source-value',
+                children=(
+                    '----/--/-- --:--:--'
+                    if timestamp is not None
+                    else 'Sin información temporal disponible'
+                ),
+                **{'data-ada-time-status-detail-timestamp-utc': timestamp or ''},
+            ),
+        ],
+        **{
+            'data-ada-time-status-detail-control': 'true',
+            'data-source-key': source.key,
+            'data-source-role': 'control',
         },
     )
 

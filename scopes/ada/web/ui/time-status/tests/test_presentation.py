@@ -112,7 +112,7 @@ def test_pi_and_dispatch_sources_are_the_only_detail_trigger() -> None:
     assert sources['role'] == 'button'
     assert sources['tabIndex'] == 0
     assert sources['aria-expanded'] == 'false'
-    assert sources['aria-label'] == 'Ver fuentes de datos adicionales'
+    assert sources['aria-label'] == 'Ver última actualización y fuentes adicionales'
     assert 'data-ada-time-status-detail-trigger' not in current
     assert (
         sum(1 for item in _walk(component) if _props(item).get('data-source-key') is not None) == 2
@@ -373,3 +373,55 @@ def test_summary_source_exposes_stable_client_freshness_markers() -> None:
         _props(child).get('data-ada-time-status-source-value') == 'true'
         for child in content_props['children']
     )
+
+
+def test_control_detail_precedes_extra_sources_and_exposes_utc_timestamps() -> None:
+    from ada.web.ui.time_status import (
+        TimeStatusDetailSourceState, TimeStatusDetailState, build_time_status_detail,
+    )
+
+    detail = build_time_status_detail(
+        state=TimeStatusDetailState(
+            sources=(TimeStatusDetailSourceState('blockgrade', 'BlockGrade', 'Manual'),)
+        ),
+        control_sources=(
+            _source('pi', condition=TimeStatusSourceCondition.FRESH, warning=200, stale=300),
+            _source(
+                'dispatch', condition=TimeStatusSourceCondition.HARD_STALE,
+                warning=400, stale=600,
+            ),
+        ),
+    )
+    rows = [
+        _props(item) for item in _walk(detail)
+        if _props(item).get('data-source-role') in {'control', 'informational'}
+    ]
+    assert [(row['data-source-key'], row['data-source-role']) for row in rows] == [
+        ('pi', 'control'), ('dispatch', 'control'), ('blockgrade', 'informational'),
+    ]
+    assert [
+        _props(row['children'][1])['data-ada-time-status-detail-timestamp-utc']
+        for row in rows[:2]
+    ] == ['2026-08-28T22:00:00Z', '2026-08-28T22:00:00Z']
+    assert 'Última actualización' in _text_content(detail)
+    assert 'Fuentes adicionales' in _text_content(detail)
+
+
+def test_control_detail_hides_timestamp_when_state_is_data_error() -> None:
+    from ada.web.ui.time_status import build_time_status_detail
+
+    invalid = TimeStatusSourceState(
+        key='pi', label='PI',
+        policy=TimeStatusFreshnessPolicy(200, 300),
+        condition=TimeStatusSourceCondition.DATA_ERROR,
+        relative_age_text=None,
+        timestamp_utc=datetime(2026, 10, 20, 22, 0, tzinfo=UTC),
+    )
+    detail = build_time_status_detail(state=None, control_sources=(invalid,))
+    row = next(
+        _props(item) for item in _walk(detail)
+        if _props(item).get('data-ada-time-status-detail-control') == 'true'
+    )
+    value = _props(row['children'][1])
+    assert value['data-ada-time-status-detail-timestamp-utc'] == ''
+    assert value['children'] == 'Sin información temporal disponible'

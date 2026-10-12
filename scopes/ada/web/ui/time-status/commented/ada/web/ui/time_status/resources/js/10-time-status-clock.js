@@ -7,6 +7,7 @@
   const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
   const SOURCE_VALUE_SELECTOR = "[data-ada-time-status-source-value='true']";
   const SOURCE_ICON_SELECTOR = "[data-ada-time-status-source-icon='true']";
+  const DETAIL_TIMESTAMP_SELECTOR = "[data-ada-time-status-detail-timestamp-utc]";
   const MODULE_NAME = 'ada-time-status';
   // Contrato neutral para publicar cambios de salud temporal sin conocer consumidores.
   const SOURCE_FRESHNESS_EVENT = 'ada:source-freshness';
@@ -185,6 +186,15 @@
     summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false');
   }
 
+  // Convierte fechas CONTROL con el mismo formato y zona horaria del reloj.
+  function updateDetailTimestamp(node) {
+    const value = node.getAttribute('data-ada-time-status-detail-timestamp-utc') || '';
+    const timestampMs = Date.parse(value);
+    node.textContent = value && Number.isFinite(timestampMs)
+      ? formatTimestamp(timestampMs)
+      : 'Sin información temporal disponible';
+  }
+
   function setClockNode(node, text) {
     node.textContent = text;
     node.title = text;
@@ -195,6 +205,10 @@
       setClockNode(element, text);
     }
     element.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
+    if (element.matches(DETAIL_TIMESTAMP_SELECTOR)) {
+      updateDetailTimestamp(element);
+    }
+    element.querySelectorAll(DETAIL_TIMESTAMP_SELECTOR).forEach(updateDetailTimestamp);
     if (element.matches(SUMMARY_SELECTOR)) {
       updateSummary(element, nowMs);
     }
@@ -218,6 +232,7 @@
     const text = formatTimestamp(nowMs);
     document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
     document.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
+    document.querySelectorAll(DETAIL_TIMESTAMP_SELECTOR).forEach(updateDetailTimestamp);
     return nowMs;
   }
 

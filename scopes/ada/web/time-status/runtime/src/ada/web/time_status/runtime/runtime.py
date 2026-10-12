@@ -45,7 +45,10 @@ def build_time_status_runtime_component(
 ) -> Component:
     _require_binding(binding)
     summary = resolve_time_status_summary(store_data, binding=binding, now_utc=now_utc)
-    detail = None if binding.detail is None else build_time_status_detail(state=binding.detail)
+    detail = build_time_status_detail(
+        state=binding.detail,
+        control_sources=summary.required_sources,
+    )
     return build_time_status(
         tool_key=binding.tool_key,
         state=summary,

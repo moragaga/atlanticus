@@ -339,3 +339,39 @@ def test_runtime_callback_consumes_browser_system_store_without_polling() -> Non
 
     assert source.to_plotly_json()['props']['data-source-timestamp-utc'] == '2026-10-06T22:00:00Z'
     assert dash_app.callback_args
+
+
+def test_runtime_detail_uses_existing_pi_timestamp_without_dispatch() -> None:
+    rendered = build_time_status_runtime_component(
+        _store({'pi_last_update': _ok(_NOW)}),
+        binding=_binding(), now_utc=_NOW,
+    )
+    rows = [
+        node.to_plotly_json()['props'] for node in _walk(rendered)
+        if node.to_plotly_json()['props'].get('data-ada-time-status-detail-control') == 'true'
+    ]
+    assert [row['data-source-key'] for row in rows] == ['pi']
+    assert rows[0]['children'][1].to_plotly_json()['props'][
+        'data-ada-time-status-detail-timestamp-utc'
+    ] == '2026-10-06T22:00:00Z'
+
+
+def test_runtime_detail_marks_missing_dispatch_and_keeps_extra_source() -> None:
+    detail = TimeStatusDetailState(
+        sources=(TimeStatusDetailSourceState('blockgrade', 'BlockGrade', 'Observado'),)
+    )
+    rendered = build_time_status_runtime_component(
+        _store({'pi_last_update': _ok(_NOW)}),
+        binding=_binding(with_dispatch=True, detail=detail),
+        now_utc=_NOW,
+    )
+    rows = [
+        node.to_plotly_json()['props'] for node in _walk(rendered)
+        if node.to_plotly_json()['props'].get('data-source-role') in {'control', 'informational'}
+    ]
+    assert [(row['data-source-key'], row['data-source-role']) for row in rows] == [
+        ('pi', 'control'), ('dispatch', 'control'), ('blockgrade', 'informational'),
+    ]
+    invalid = rows[1]['children'][1].to_plotly_json()['props']
+    assert invalid['data-ada-time-status-detail-timestamp-utc'] == ''
+    assert invalid['children'] == 'Sin información temporal disponible'
