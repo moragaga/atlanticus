@@ -1,10 +1,11 @@
-# Espejo comentado: superficie pública de la capability PWA.
-from atlanticus.web.pwa.models import WebPwaDefinition, WebPwaDisplay, WebPwaIcon
+# El paquete expone también el contrato específico del favicon del navegador.
+from atlanticus.web.pwa.models import WebFavicon, WebPwaDefinition, WebPwaDisplay, WebPwaIcon
 from atlanticus.web.pwa.module import PWA_ASSET_LAYER, create_web_pwa_module
 from atlanticus.web.pwa.routes import register_pwa_routes
 
 __all__ = [
     'PWA_ASSET_LAYER',
+    'WebFavicon',
     'WebPwaDefinition',
     'WebPwaDisplay',
     'WebPwaIcon',

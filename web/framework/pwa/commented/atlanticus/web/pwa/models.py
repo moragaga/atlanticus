@@ -1,4 +1,3 @@
-# Espejo comentado: contrato tipado de metadata PWA independiente de una Tool.
 from __future__ import annotations
 
 import re
@@ -53,6 +52,24 @@ class WebPwaIcon:
 
 
 @dataclass(frozen=True, slots=True)
+# El favicon del navegador no forma parte del listado de iconos instalables PWA.
+class WebFavicon:
+    src: str
+    mime_type: str = 'image/png'
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.src, str)
+            or not self.src.startswith('/')
+            or self.src.startswith('//')
+            or any(character.isspace() for character in self.src)
+        ):
+            raise WebDefinitionError('Browser favicon src must be an absolute application path')
+        if not isinstance(self.mime_type, str) or not self.mime_type.strip():
+            raise WebDefinitionError('Browser favicon mime type must not be empty')
+
+
+@dataclass(frozen=True, slots=True)
 class WebPwaDefinition:
     application_id: str
     version: str
@@ -64,6 +81,8 @@ class WebPwaDefinition:
     scope: str = '/'
     display: WebPwaDisplay = WebPwaDisplay.STANDALONE
     icons: tuple[WebPwaIcon, ...] = ()
+    # Referencia opcional de la aplicación; no se serializa en el manifest PWA.
+    browser_favicon: WebFavicon | None = None
 
     def __post_init__(self) -> None:
         if not self.application_id.strip():
@@ -84,6 +103,8 @@ class WebPwaDefinition:
             raise WebDefinitionError('PWA theme color must use #RRGGBB format')
         if not _HEX_COLOR_PATTERN.fullmatch(self.background_color):
             raise WebDefinitionError('PWA background color must use #RRGGBB format')
+        if self.browser_favicon is not None and not isinstance(self.browser_favicon, WebFavicon):
+            raise WebDefinitionError('Browser favicon must be a WebFavicon value')
 
     @classmethod
     def from_application(
@@ -97,6 +118,7 @@ class WebPwaDefinition:
         start_url: str = '/',
         scope: str = '/',
         display: WebPwaDisplay = WebPwaDisplay.STANDALONE,
+        browser_favicon: WebFavicon | None = None,
     ) -> WebPwaDefinition:
         return cls(
             application_id=metadata.application_id,
@@ -109,8 +131,10 @@ class WebPwaDefinition:
             scope=scope,
             display=display,
             icons=icons,
+            browser_favicon=browser_favicon,
         )
 
+    # Solo los iconos de instalación PWA forman parte del manifest.
     def to_manifest(self) -> dict[str, object]:
         manifest: dict[str, object] = {
             'id': self.application_id,

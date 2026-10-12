@@ -1,4 +1,3 @@
-# Espejo comentado: composición del módulo Web PWA y sus assets.
 from __future__ import annotations
 
 from html import escape
@@ -21,14 +20,19 @@ def create_web_pwa_module(definition: WebPwaDefinition) -> WebModule:
     def register_routes(app, _services) -> None:
         register_pwa_routes(app, definition)
 
-    favicon = (
+    # La identidad visual del navegador tiene prioridad sobre el fallback heredado de PWA.
+    favicon = definition.browser_favicon
+    if favicon is None and definition.icons:
+        favicon = definition.icons[0]
+    # Se construye un único enlace HTML para el navegador, escapando atributos.
+    favicon_fragment = (
         ()
-        if not definition.icons
+        if favicon is None
         else (
             '<link rel="icon" type="'
-            + escape(definition.icons[0].mime_type, quote=True)
+            + escape(favicon.mime_type, quote=True)
             + '" href="'
-            + escape(definition.icons[0].src, quote=True)
+            + escape(favicon.src, quote=True)
             + '">',
         )
     )
@@ -41,7 +45,7 @@ def create_web_pwa_module(definition: WebPwaDefinition) -> WebModule:
             head_fragments=(
                 '<link rel="manifest" href="/manifest.webmanifest">',
                 f'<meta name="theme-color" content="{definition.theme_color}">',
-                *favicon,
+                *favicon_fragment,
             ),
             runtime_config={
                 'service_worker_url': '/service-worker.js',

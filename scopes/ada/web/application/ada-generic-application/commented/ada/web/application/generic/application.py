@@ -1,11 +1,12 @@
-# Composition root: valida contratos y monta el runtime de Time Status sin leer Delivery.
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import replace
 from functools import partial
 from importlib.metadata import version
+from importlib.resources import files
 from pathlib import Path
 
 from ada.contracts.tools.sources import (
@@ -42,11 +43,11 @@ from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.assets import AssetLayer
+from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
-from atlanticus.web.pwa import WebPwaDefinition, WebPwaIcon, create_web_pwa_module
+from atlanticus.web.pwa import WebFavicon, WebPwaDefinition, WebPwaIcon, create_web_pwa_module
 
 _LOGGER = logging.getLogger(__name__)
-# Los iconos pertenecen a la aplicación, no al branding de la Tool.
 _PWA_ICON_LAYER = AssetLayer(
     name='ada_application_pwa',
     load_order=205,
@@ -66,6 +67,31 @@ def _pwa_icons() -> tuple[WebPwaIcon, ...]:
             purpose=('maskable',),
         ),
     )
+
+
+# Lee solo el recurso empaquetado y lo versiona según su contenido para evitar caché obsoleta.
+def _resolve_browser_favicon(layer: AssetLayer | None) -> WebFavicon | None:
+    if layer is None:
+        return None
+    try:
+        resource = files(layer.package).joinpath(layer.resource_directory, 'img', 'favicon.png')
+    except (ModuleNotFoundError, TypeError) as error:
+        raise WebDefinitionError('Application favicon package could not be resolved') from error
+    if not resource.is_file():
+        raise WebDefinitionError('Application favicon resource img/favicon.png does not exist')
+    content = resource.read_bytes()
+    # Validación mínima de firma e IHDR PNG de 32x32; un recurso declarado faltante falla temprano.
+    if (
+        len(content) < 33
+        or int.from_bytes(content[8:12], 'big') != 13
+        or content[:8] != b'\x89PNG\r\n\x1a\n'
+        or content[12:16] != b'IHDR'
+        or int.from_bytes(content[16:20], 'big') != 32
+        or int.from_bytes(content[20:24], 'big') != 32
+    ):
+        raise WebDefinitionError('Application favicon must be a 32x32 PNG image')
+    revision = hashlib.sha256(content).hexdigest()[:12]
+    return WebFavicon(src=f'/assets/{layer.target_name}/img/favicon.png?v={revision}')
 
 
 def _resolve_publications_root(descriptor: AdaApplicationDescriptor) -> Path:
@@ -98,7 +124,8 @@ def create_application_definition(
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
     if application_descriptor is not None and not isinstance(
-        application_descriptor, AdaApplicationDescriptor
+        application_descriptor,
+        AdaApplicationDescriptor,
     ):
         raise TypeError('application_descriptor must be AdaApplicationDescriptor')
     if alarm_baseline_projection is not None and not isinstance(
@@ -146,7 +173,7 @@ def create_application_definition(
         display_name=resolved_descriptor.display_name,
         version=application_version,
     )
-    # La identidad PWA depende del descriptor y la versión de distribución.
+    # Se mantiene el manifest PWA independiente del favicon opcional del navegador.
     pwa = WebPwaDefinition.from_application(
         metadata,
         short_name=resolved_descriptor.pwa_short_name or metadata.display_name,
@@ -155,6 +182,13 @@ def create_application_definition(
         icons=_pwa_icons(),
         start_url='/',
         scope='/',
+        browser_favicon=_resolve_browser_favicon(resolved_descriptor.favicon_asset_layer),
+    )
+    # La capa solo se publica cuando la distribución declara un recurso propio.
+    favicon_layers = (
+        ()
+        if resolved_descriptor.favicon_asset_layer is None
+        else (resolved_descriptor.favicon_asset_layer,)
     )
     return WebApplicationDefinition(
         import_name=resolved_descriptor.import_name,
@@ -182,7 +216,7 @@ def create_application_definition(
             operational_body_factory=resolved_composition.operational_body_factory,
         ),
         modules=(*resolved_composition.modules, *runtime_modules, create_web_pwa_module(pwa)),
-        asset_layers=(_PWA_ICON_LAYER,),
+        asset_layers=(_PWA_ICON_LAYER, *favicon_layers),
         page_packages=resolved_composition.page_packages,
     )
 
@@ -200,9 +234,7 @@ def _resolve_time_status_binding(
             )
         return None
     if source_consumption is None:
-        raise ToolSourceConsumptionValidationError(
-            'Time Status runtime requires ToolSourceConsumption'
-        )
+        raise ToolSourceConsumptionValidationError('Time Status runtime requires ToolSourceConsumption')
     return TimeStatusRuntimeBinding(
         consumption=source_consumption,
         participation=source_operational_participation,
