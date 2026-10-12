@@ -35,7 +35,9 @@ class _AtlanticusDash(Dash):
         super().__init__(*args, **kwargs)
 
     def _setup_server(self):
-        if request.path.startswith(_DASH_SETUP_DEFERRED_PATH_PREFIXES):
+        if request.path == '/logout' or request.path.startswith(
+            _DASH_SETUP_DEFERRED_PATH_PREFIXES
+        ):
             return None
         with self._atlanticus_setup_lock:
             return super()._setup_server()

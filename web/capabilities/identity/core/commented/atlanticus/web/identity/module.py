@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from flask import Flask, Request, request
+from flask import Flask, Request, redirect, request, session
 
 from atlanticus.web.configuration import WebSettings
 from atlanticus.web.identity.access import (
@@ -98,10 +98,18 @@ def create_identity_module(
                 return user_disabled_response()
             return None
 
+    # El logout limpia la sesión de Flask y delega el cierre de Azure a Easy Auth.
+    def register_routes(server: Flask, _services: ServiceRegistry) -> None:
+        @server.get('/logout')
+        def logout():
+            session.clear()
+            return redirect('/' if WebSettings().environment.is_local else '/.auth/logout')
+
     return WebModule(
         name='identity',
         register_services=register_services,
         register_middlewares=register_middlewares,
+        register_routes=register_routes,
     )
 
 
@@ -119,8 +127,11 @@ def _resolve_request_snapshot(
 
 
 def _is_public_request(independent_routes: tuple[str, ...] = ()) -> bool:
-    return (request.path in independent_routes
-            or request.path.startswith(('/assets/', '/health/', '/.auth/')))
+    return (
+        request.path == '/logout'
+        or request.path in independent_routes
+        or request.path.startswith(('/assets/', '/health/', '/.auth/'))
+    )
 
 
 def _is_page_document_request() -> bool:
