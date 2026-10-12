@@ -15,10 +15,12 @@ from ada.alarms.persistence.operational import (
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_modeler.projection import (
     AlarmModelerProjectionError,
+    digest,
     has_semantic_change,
     project,
     validate_document,
 )
+from ada.processes.alarm_modeler.rotation import ToolRotationMemory, is_grouped, plan_rotation
 from atlanticus.state import AtomicJsonStore
 
 _CURRENT = 'current/latest.json'
@@ -46,6 +48,7 @@ class AlarmModelerProcessor:
     _last_output_digest: str | None = field(default=None, init=False, repr=False)
     _last_rotation_phase: int | None = field(default=None, init=False, repr=False)
     _rotation_pending: bool = field(default=False, init=False, repr=False)
+    _next_rotation_at: datetime | None = field(default=None, init=False, repr=False)
 
     # Verifica las precondiciones del procesador sin abrir recursos globales.
     def __post_init__(self) -> None:
@@ -103,6 +106,7 @@ class AlarmModelerProcessor:
             and self._last_source_digest == source['sha256']
             and self._last_output_digest == previous['sha256']
             and (not self._rotation_pending or self._last_rotation_phase == rotation_phase)
+            and (self._next_rotation_at is None or now < self._next_rotation_at)
         ):
             return AlarmModelerCycleResult(status='SKIPPED')
         ready = LocalAlarmMaterializationStore(
@@ -126,9 +130,29 @@ class AlarmModelerProcessor:
             rotation_seconds=self.rotation_seconds,
             max_visible_slots=self.max_visible_slots,
         )
-        if not has_semantic_change(previous, document):
-            self._remember(source, document, rotation_phase)
-            return AlarmModelerCycleResult(status='SKIPPED')
+        memory = ToolRotationMemory(self.output_root)
+        prepared = {}
+        due_times = []
+        for tool_key, tool in document['tools'].items():
+            if is_grouped(tool):
+                continue
+            old_tool = None if previous is None else previous['tools'].get(tool_key)
+            old_state = memory.read(tool_key=tool_key, previous_tool=old_tool)
+            if old_state is None and old_tool is not None and not is_grouped(old_tool):
+                _, old_state, _ = plan_rotation(
+                    tool=old_tool, previous_tool=old_tool, state=None,
+                    now=now, rotation_seconds=self.rotation_seconds,
+                )
+            planned_tool, planned_state, due_at = plan_rotation(
+                tool=tool, previous_tool=old_tool, state=old_state,
+                now=now, rotation_seconds=self.rotation_seconds,
+            )
+            document['tools'][tool_key] = planned_tool
+            prepared[tool_key] = (old_tool, old_state, planned_tool, planned_state)
+            if due_at is not None:
+                due_times.append(due_at)
+        document['sha256'] = digest({key: value for key, value in document.items() if key != 'sha256'})
+        changed = has_semantic_change(previous, document)
         context.assert_lease_current()
         with context.fenced_mutation():
             if (
@@ -141,8 +165,18 @@ class AlarmModelerProcessor:
                 existing = validate_document(existing)
             if existing != previous:
                 return AlarmModelerCycleResult(status='OUTPUT_CHANGED')
-            output.replace(_CURRENT, document)
-        self._remember(source, document, rotation_phase)
+            for tool_key, (old_tool, old_state, planned_tool, planned_state) in prepared.items():
+                memory.prepare(
+                    tool_key=tool_key, previous_tool=old_tool, old_state=old_state,
+                    next_tool=planned_tool, next_state=planned_state,
+                )
+            if changed:
+                output.replace(_CURRENT, document)
+            for tool_key, (_, _, planned_tool, _) in prepared.items():
+                memory.confirm(tool_key=tool_key, current_tool=planned_tool)
+        self._remember(source, document if changed else previous, rotation_phase, due_times)
+        if not changed:
+            return AlarmModelerCycleResult(status='SKIPPED')
         return AlarmModelerCycleResult(
             status='PUBLISHED',
             live_alarms=sum(len(tool['alarms']) for tool in document['tools'].values()),
@@ -150,12 +184,16 @@ class AlarmModelerProcessor:
             tools=len(document['tools']),
         )
 
-    # Evita reprocesar fases del reloj cuando no hay slots normales pendientes de rotación.
-    def _remember(self, source: dict, document: dict, phase: int) -> None:
+    # Conserva los vencimientos independientes por Tool sin modificar el ciclo durable.
+    def _remember(
+        self, source: dict, document: dict, phase: int, due_times: list[datetime]
+    ) -> None:
         self._last_source_digest = source['sha256']
         self._last_output_digest = document['sha256']
         self._last_rotation_phase = phase
-        # El procesador utiliza el estado calculado por la proyección, sin duplicar las reglas de distribución.
+        # Los grupos DISTRIBUTED mantienen su reloj anterior hasta el incremento 04B.
         self._rotation_pending = any(
-            tool['meta']['rotation_pending'] for tool in document['tools'].values()
+            is_grouped(tool) and tool['meta']['rotation_pending']
+            for tool in document['tools'].values()
         )
+        self._next_rotation_at = min(due_times) if due_times else None
