@@ -25,6 +25,8 @@ class LiveAlarmCard:
     grouped: bool = False
     area: str = ''
     group_members: tuple[LiveAlarmCard, ...] = ()
+    display_component_key: str = ''
+    display_scope: str = ''
 
 
 def resolve_live_alarm_cards(
@@ -185,6 +187,8 @@ def _build_card(
             'data-ada-alarm-color': card.color,
             'data-ada-alarm-target-components': ' '.join(card.component_keys),
             'data-ada-alarm-target-subcomponents': ' '.join(card.subcomponent_keys),
+            'data-ada-alarm-display-component-key': card.display_component_key,
+            'data-ada-alarm-display-scope': card.display_scope,
             'data-ada-alarm-grouped': str(card.grouped).lower(),
             **({} if not grouped else {
                 'data-ada-alarm-group-item': 'true',
@@ -211,6 +215,15 @@ def _resolve_card(
         return None
     target = source.get('visual_target')
     components, subcomponents = _target_keys(target, tool_key=tool_key)
+    display_component = ''
+    display_scope = ''
+    if isinstance(target, Mapping) and target.get('tool_key') == tool_key:
+        if target.get('tool_kind') == 'integrated_operations':
+            candidate = target.get('display_component_key')
+            scope = target.get('display_scope')
+            if isinstance(candidate, str) and candidate in components and scope in ('mine', 'plant'):
+                display_component = candidate
+                display_scope = scope
     color = source.get('color')
     return LiveAlarmCard(
         occurrence_id=occurrence_id,
@@ -226,6 +239,8 @@ def _resolve_card(
         component_keys=components,
         subcomponent_keys=subcomponents,
         area=area,
+        display_component_key=display_component,
+        display_scope=display_scope,
     )
 
 

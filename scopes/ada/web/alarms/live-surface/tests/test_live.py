@@ -175,3 +175,53 @@ def test_distributed_group_with_no_visible_members_remains_noninteractive():
     assert props['data-ada-alarm-grouped'] == 'true'
     assert 'role' not in props
     assert props['data-ada-alarm-target-components'] == ''
+
+
+def test_integrated_cards_keep_display_location_distinct_from_affected_components():
+    data = _data()
+    data['live']['max_visible_slots'] = 6
+    data['live']['operator_view'] = [{'slot': 4, 'occurrence_id': 'a'}]
+    target = data['live']['alarms']['a']['visual_target']
+    target['tool_kind'] = 'integrated_operations'
+    target['component_keys'] = ['cmp_1', 'cmp_2']
+    target['display_component_key'] = 'cmp_2'
+    target['display_scope'] = 'plant'
+    capacity, cards = resolve_live_alarm_cards(data, tool_key='io')
+    assert capacity == 6
+    assert cards[0].slot == 4
+    assert cards[0].display_component_key == 'cmp_2'
+    assert cards[0].display_scope == 'plant'
+    assert cards[0].component_keys == ('cmp_1', 'cmp_2')
+    assert cards[0].subcomponent_keys == ('sub_1',)
+    props = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
+    assert props['data-ada-alarm-display-component-key'] == 'cmp_2'
+    assert props['data-ada-alarm-display-scope'] == 'plant'
+    assert props['data-ada-alarm-target-components'] == 'cmp_1 cmp_2'
+    assert props['style']['gridColumn'] == '4'
+
+
+def test_incomplete_integrated_location_does_not_invent_a_component():
+    data = _data()
+    target = data['live']['alarms']['a']['visual_target']
+    target['tool_kind'] = 'integrated_operations'
+    target['display_component_key'] = 'missing'
+    target['display_scope'] = 'mine'
+    card = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
+    assert card['data-ada-alarm-display-component-key'] == ''
+    assert card['data-ada-alarm-display-scope'] == ''
+    target['display_component_key'] = 'cmp_1'
+    target['display_scope'] = 'unknown'
+    card = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
+    assert card['data-ada-alarm-display-component-key'] == ''
+
+
+def test_process_cards_preserve_original_position_without_integrated_placement():
+    data = _data()
+    target = data['live']['alarms']['a']['visual_target']
+    target['tool_kind'] = 'process'
+    target['display_component_key'] = 'cmp_1'
+    target['display_scope'] = 'plant'
+    props = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
+    assert props['style']['gridColumn'] == '1'
+    assert props['data-ada-alarm-display-component-key'] == ''
+    assert props['data-ada-alarm-target-components'] == 'cmp_1'

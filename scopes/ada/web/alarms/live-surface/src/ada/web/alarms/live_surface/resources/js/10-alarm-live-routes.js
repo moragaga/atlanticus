@@ -194,6 +194,78 @@
             .map((card) => card.dataset.adaAlarmOccurrenceId);
     }
 
+    function planIntegratedPositions(entries, boardWidth) {
+        if (!entries.length || !Number.isFinite(boardWidth) || boardWidth <= 0) {
+            return null;
+        }
+        const ordered = [...entries].sort((a, b) => a.x - b.x);
+        const gap = 4;
+        const maxWidth = boardWidth / 6 - gap;
+        if (maxWidth <= 0) {
+            return null;
+        }
+        const result = [];
+        for (let index = 0; index < ordered.length; index += 1) {
+            const entry = ordered[index];
+            const left = index ? entry.x - ordered[index - 1].x : Number.POSITIVE_INFINITY;
+            const right = index + 1 < ordered.length
+                ? ordered[index + 1].x - entry.x : Number.POSITIVE_INFINITY;
+            const width = Math.min(
+                maxWidth, left - gap, right - gap,
+                2 * entry.x - gap, 2 * (boardWidth - entry.x) - gap,
+            );
+            if (!Number.isFinite(entry.x) || width <= 0) {
+                return null;
+            }
+            result.push({key: entry.key, x: entry.x, width});
+        }
+        return result;
+    }
+
+    function positionIntegratedCards(board, cards, points) {
+        const direct = cards.filter((card) => card.parentElement === board && visible(card));
+        const origin = board.getBoundingClientRect();
+        const placements = direct.map((card) => {
+            const key = card.dataset.adaAlarmDisplayComponentKey;
+            const scope = card.dataset.adaAlarmDisplayScope;
+            const point = points.find((candidate) =>
+                candidate.dataset.adaComponentKey === key
+                && candidate.dataset.adaScope === scope
+            );
+            if (!key || !point) {
+                return null;
+            }
+            return {key: card.dataset.adaAlarmOccurrenceId,
+                x: center(point.getBoundingClientRect(), origin)};
+        });
+        const plan = placements.every(Boolean)
+            ? planIntegratedPositions(placements, origin.width) : null;
+        if (!plan || plan.length !== direct.length) {
+            delete board.dataset.adaAlarmLayout;
+            cards.forEach((card) => {
+                if (card.dataset.adaAlarmPositioned === 'true') {
+                    delete card.dataset.adaAlarmPositioned;
+                    card.style.removeProperty('--ada-alarm-live-display-x');
+                    card.style.removeProperty('--ada-alarm-live-display-width');
+                }
+            });
+            return;
+        }
+        plan.forEach((placement) => {
+            const card = direct.find((item) => item.dataset.adaAlarmOccurrenceId === placement.key);
+            const x = `${placement.x}px`;
+            const width = `${placement.width}px`;
+            if (card.style.getPropertyValue('--ada-alarm-live-display-x') !== x) {
+                card.style.setProperty('--ada-alarm-live-display-x', x);
+            }
+            if (card.style.getPropertyValue('--ada-alarm-live-display-width') !== width) {
+                card.style.setProperty('--ada-alarm-live-display-width', width);
+            }
+            card.dataset.adaAlarmPositioned = 'true';
+        });
+        board.dataset.adaAlarmLayout = 'integrated';
+    }
+
     function render(surface) {
         if (!surface.isConnected) {
             return;
@@ -216,6 +288,10 @@
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('aria-hidden', 'true');
         const points = Array.from(surface.querySelectorAll(POINT)).filter(visible);
+        const baseline = surface.querySelector('.ada-alarm-baseline-surface');
+        if (baseline && baseline.dataset.adaAlarmBaseline === 'integrated_operations') {
+            positionIntegratedCards(board, cards, points);
+        }
         cards.forEach((card) => {
             if (!visible(card) || card.dataset.adaAlarmGrouped === 'true') {
                 return;
@@ -558,6 +634,6 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {routePath, previewPlan, toggleSelection, groupChoice, nextGroupIndex};
+        module.exports = {routePath, previewPlan, toggleSelection, groupChoice, nextGroupIndex, planIntegratedPositions};
     }
 })();

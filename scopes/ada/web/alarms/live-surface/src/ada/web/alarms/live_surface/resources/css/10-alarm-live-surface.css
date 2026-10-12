@@ -212,3 +212,16 @@
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__area,
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__area { display: none; }
 }
+
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'] {
+    position: relative;
+}
+
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'] > .ada-alarm-live-card[data-ada-alarm-positioned='true'] {
+    position: absolute;
+    inset-block: 0;
+    left: var(--ada-alarm-live-display-x);
+    width: var(--ada-alarm-live-display-width);
+    transform: translateX(-50%);
+    box-sizing: border-box;
+}

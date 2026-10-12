@@ -60,3 +60,38 @@ test('distributed carousel navigates in the projected order and wraps without re
     assert.equal(nextGroupIndex(3, 0, 'previous'), 2);
     assert.equal(nextGroupIndex(1, 0, 'next'), 0);
 });
+
+
+test('integrated placement aligns to components without overlapping card bounds', () => {
+    const {planIntegratedPositions} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const positions = planIntegratedPositions([
+        {key: 'plant-a', x: 810}, {key: 'mine-a', x: 75},
+        {key: 'mine-b', x: 150}, {key: 'plant-b', x: 840},
+    ], 1200);
+    assert.deepEqual(positions.map((item) => item.key), [
+        'mine-a', 'mine-b', 'plant-a', 'plant-b',
+    ]);
+    for (let i = 0; i < positions.length; i += 1) {
+        const item = positions[i];
+        assert.ok(item.width > 0 && item.width <= 196);
+        assert.ok(item.x - item.width / 2 >= 0);
+        assert.ok(item.x + item.width / 2 <= 1200);
+        if (i > 0) {
+            const previous = positions[i - 1];
+            assert.ok(previous.x + previous.width / 2 + 4 <= item.x - item.width / 2);
+        }
+    }
+});
+
+test('integrated placement refuses unresolved or colliding geometries', () => {
+    const {planIntegratedPositions} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    assert.equal(planIntegratedPositions([{key: 'a', x: 30}], 0), null);
+    assert.equal(planIntegratedPositions([
+        {key: 'a', x: 20}, {key: 'b', x: 20},
+    ], 600), null);
+    assert.equal(planIntegratedPositions([
+        {key: 'a', x: 0},
+    ], 600), null);
+});
