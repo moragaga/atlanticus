@@ -4,7 +4,7 @@ from ada.web.application.configuration_manager.composition import build_configur
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
-from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
+from ada.web.application.generic.manager.principal import compose_integrated_manager_dependencies
 from atlanticus.web.identity.access import AccessDecision, AccessRuntime, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.manager import ManagerSurface

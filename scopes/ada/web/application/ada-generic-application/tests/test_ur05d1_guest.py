@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada.web.application.generic.manager_principal import resolve_manager_principal
+from ada.web.application.generic.manager.principal import resolve_manager_principal
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,

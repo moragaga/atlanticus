@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 from flask import Flask
 
-from ada.web.application.generic.manager_principal import (
+from ada.web.application.generic.manager.principal import (
     ManagerPrincipalBinding,
     resolve_manager_principal,
 )
@@ -16,7 +16,13 @@ from atlanticus.web.identity.access import (
     AccessStatus,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.profiles.models import BASIC_PROFILE, LOCAL_PROFILE, ROOT_PROFILE, ProfileDefinition
+from atlanticus.web.profiles.models import (
+    BASIC_PROFILE,
+    GUEST_PROFILE_KEY,
+    LOCAL_PROFILE,
+    ROOT_PROFILE,
+    ProfileDefinition,
+)
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.local import LOCAL_ISSUER
 from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
@@ -81,9 +87,9 @@ def test_non_root_runtime_profiles_do_not_get_administrative_override(profile):
     assert principal.administrative_override is False
 
 
-def test_authenticated_identity_without_runtime_user_has_no_manager_profile():
+def test_authenticated_identity_without_runtime_user_receives_guest_profile():
     principal = resolve_manager_principal(access=_access(), user=None)
-    assert principal.profile_keys == ()
+    assert principal.profile_keys == (GUEST_PROFILE_KEY,)
     assert principal.administrative_override is False
 
 

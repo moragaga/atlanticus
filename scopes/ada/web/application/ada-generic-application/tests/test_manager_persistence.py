@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ada.web.access.configuration import ADA_ACCESS_SOURCE_KEY
-from ada.web.application.generic.manager_persistence import (
+from ada.web.application.generic.manager.persistence import (
     ManagerBlobResource,
     ManagerPersistenceConnections,
     ManagerPersistenceResources,

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from ada.web.application.generic import manager_deployment
-from ada.web.application.generic.manager_deployment import (
+from ada.web.application.generic.manager import deployment as manager_deployment
+from ada.web.application.generic.manager.deployment import (
     ManagerStartupOptions,
     open_durable_manager,
     prepare_durable_manager_resources,
     resolve_durable_manager_configuration,
 )
-from ada.web.application.generic.manager_persistence import (
+from ada.web.application.generic.manager.persistence import (
     resolve_manager_cosmos_plan_for_connection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode

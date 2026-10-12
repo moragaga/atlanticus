@@ -10,7 +10,7 @@ from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_dependencies,
 )
 from ada.web.application.generic import bootstrap
-from ada.web.application.generic.manager_integration import (
+from ada.web.application.generic.manager.integration import (
     MANAGER_SURFACE_ID,
     MANAGER_UNAVAILABLE_ID,
     OPERATIONAL_SURFACE_ID,

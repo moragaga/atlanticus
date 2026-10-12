@@ -9,7 +9,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
-from ada.web.application.generic.manager_persistence import (
+from ada.web.application.generic.manager.persistence import (
     ManagerBlobResource,
     ManagerPersistenceConnections,
     ManagerPersistenceResources,

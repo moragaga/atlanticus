@@ -236,7 +236,7 @@ def _load_local_resources(
         return SimpleNamespace(status="COMPLETED", results=())
 
     module(
-        "ada.web.application.generic.manager_deployment",
+        "ada.web.application.generic.manager.deployment",
         open_durable_manager=manager,
         prepare_durable_manager_resources=prepare,
     )

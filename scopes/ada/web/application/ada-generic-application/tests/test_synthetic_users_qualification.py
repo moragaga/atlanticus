@@ -21,7 +21,7 @@ from ada.web.application.configuration_manager.users_publication import (
     AdaUsersAdministrationService,
 )
 from ada.web.application.generic import bootstrap
-from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
+from ada.web.application.generic.manager.principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.application.generic.users.access import AdaInitialUsersStore
 from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer

@@ -15,11 +15,11 @@ from ada.web.access.configuration import (
     create_ada_access_projection_service,
 )
 from ada.web.access.models import ProfileAccessGrant
-from ada.web.application.generic.manager_deployment import (
+from ada.web.application.generic.manager.deployment import (
     open_durable_manager,
     prepare_durable_manager_resources,
 )
-from ada.web.application.generic.manager_principal import compose_integrated_manager_dependencies
+from ada.web.application.generic.manager.principal import compose_integrated_manager_dependencies
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.application.generic.users.access import AdaInitialUsersStore
 from ada.web.application.generic.users.materialization import AdaUsersRuntimeMaterializer

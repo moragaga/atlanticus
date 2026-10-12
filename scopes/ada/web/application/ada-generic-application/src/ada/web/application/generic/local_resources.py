@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
-from ada.web.application.generic.manager_deployment import (
+from ada.web.application.generic.manager.deployment import (
     open_durable_manager,
     prepare_durable_manager_resources,
 )

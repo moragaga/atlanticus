@@ -24,8 +24,8 @@ from ada.web.application.generic.extension import (
     extend_ada_application_definition,
 )
 from ada.web.application.generic.inspection import create_kpi_inspection_modules
-from ada.web.application.generic.manager_integration import integrate_manager_surface
-from ada.web.application.generic.manager_principal import (
+from ada.web.application.generic.manager.integration import integrate_manager_surface
+from ada.web.application.generic.manager.principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )

@@ -1,6 +1,6 @@
 from dash import dcc, html
 
-from ada.web.application.generic.manager_integration import (
+from ada.web.application.generic.manager.integration import (
     MANAGER_SURFACE_ID,
     OPERATIONAL_SURFACE_ID,
     integrate_manager_surface,

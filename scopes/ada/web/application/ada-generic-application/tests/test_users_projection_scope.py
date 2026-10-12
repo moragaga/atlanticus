@@ -1,4 +1,4 @@
-from ada.web.application.generic.manager_deployment import resolve_durable_manager_configuration
+from ada.web.application.generic.manager.deployment import resolve_durable_manager_configuration
 from ada.web.application.generic.settings import AdaGenericSettings
 
 

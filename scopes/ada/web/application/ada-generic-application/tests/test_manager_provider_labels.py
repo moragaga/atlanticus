@@ -5,7 +5,7 @@ import pytest
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
-from ada.web.application.generic.manager_principal import (
+from ada.web.application.generic.manager.principal import (
     compose_integrated_manager_dependencies,
 )
 from atlanticus.web.configuration import WebEnvironment

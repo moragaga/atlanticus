@@ -13,7 +13,7 @@ from ada.web.application.generic.descriptor import (
     AdaApplicationDescriptor,
 )
 from ada.web.application.generic.extension import AdaApplicationExtensionFactory
-from ada.web.application.generic.manager_deployment import open_durable_manager
+from ada.web.application.generic.manager.deployment import open_durable_manager
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.application import run_web_application
 from atlanticus.web.dash_worker import prepare_dash_worker

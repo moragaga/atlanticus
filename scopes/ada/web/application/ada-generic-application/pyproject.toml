@@ -79,7 +79,7 @@ dev = [
 ]
 
 [project.scripts]
-ada-generic-manager-resources = "ada.web.application.generic.manager_deployment:manager_resources_main"
+ada-generic-manager-resources = "ada.web.application.generic.manager.deployment:manager_resources_main"
 ada-generic-local-resources = "ada.web.application.generic.local_resources:main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 

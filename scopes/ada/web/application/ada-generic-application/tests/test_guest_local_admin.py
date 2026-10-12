@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from flask import Flask
 
-from ada.web.application.generic.manager_principal import ManagerPrincipalBinding
+from ada.web.application.generic.manager.principal import ManagerPrincipalBinding
 from atlanticus.web.identity.access import AccessDecision, AccessRuntime, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.profiles.models import GUEST_PROFILE

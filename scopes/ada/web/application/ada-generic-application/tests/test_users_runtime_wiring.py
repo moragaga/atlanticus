@@ -9,7 +9,7 @@ from ada.web.application.configuration_manager.local_runtime import (
 from ada.web.application.configuration_manager.users_publication import (
     AdaUsersAdministrationService,
 )
-from ada.web.application.generic import manager_principal
+from ada.web.application.generic.manager import principal as manager_principal
 from atlanticus.web.compositions.users_manager import USERS_ADMINISTRATION_SERVICE
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.models import AuthenticatedIdentity
