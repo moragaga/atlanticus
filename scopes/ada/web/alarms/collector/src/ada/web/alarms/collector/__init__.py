@@ -12,6 +12,7 @@ from ada.web.alarms.collector.integration import (
     ADA_ALARM_COLLECTOR_SERVICE_KEY,
     AdaAlarmCollectorWebIntegration,
     attach_ada_alarm_collector,
+    attach_ada_alarm_presentation_store,
     create_ada_alarm_collector_web_integration,
 )
 from ada.web.alarms.collector.models import (
@@ -57,6 +58,7 @@ __all__ = [
     'CosmosAlarmLiveReader',
     'alarm_live_store_id',
     'attach_ada_alarm_collector',
+    'attach_ada_alarm_presentation_store',
     'create_ada_alarm_collector_web_integration',
     'project_alarm_live_store',
     'resolve_alarm_live_browser_update',

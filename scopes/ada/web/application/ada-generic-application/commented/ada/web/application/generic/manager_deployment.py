@@ -85,12 +85,13 @@ def resolve_durable_manager_configuration(
     container_name = settings.storage_container_name
     if storage_settings is None or cosmos_settings is None:
         raise ValueError('Durable Manager provider settings are incomplete')
-    delivery_settings = settings.kpi_delivery_cosmos_settings()
-    if delivery_settings is not None and (
-        delivery_settings.endpoint != cosmos_settings.endpoint
-        or delivery_settings.database_name != cosmos_settings.database_name
+    # La conexión de consumo hereda la primaria cuando no existe un override.
+    consumption_settings = settings.consumption_cosmos_settings()
+    if consumption_settings is not None and (
+        consumption_settings.endpoint != cosmos_settings.endpoint
+        or consumption_settings.database_name != cosmos_settings.database_name
     ):
-        raise ValueError('ADA Manager and KPI delivery must share one Cosmos database')
+        raise ValueError('ADA Manager and Cosmos consumption must share one Cosmos database')
     namespace = settings.storage_namespace()
     resource = ManagerBlobResource(
         connection_ref=_STORAGE_CONNECTION,

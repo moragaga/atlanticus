@@ -35,6 +35,8 @@ from ada.web.application.generic.navigation_binding import (
     public_navigation_principal,
 )
 from ada.web.application.generic.operational_collector import (
+    attach_operational_alarm_collector,
+    attach_operational_alarm_presentation_store,
     attach_operational_kpi_collector,
     attach_operational_kpi_presentation_stores,
 )
@@ -92,7 +94,7 @@ from atlanticus.web.users.errors import UsersStoreUnavailableError
 from atlanticus.web.users.module import create_users_module
 from atlanticus.web.users.resolver import UsersAccessResolver
 from atlanticus.web.users.runtime import UsersRuntime
-from atlanticus.web.users.store import UsersRuntimeStore
+from atlanticus.web.users.store import UsersGuestObserver, UsersRuntimeStore
 
 _LOGGER = logging.getLogger(__name__)
 _MANAGER_UNAVAILABLE_ERRORS = (
@@ -218,27 +220,36 @@ def create_operational_application_runtime(
             projection=manager_dependencies.navigation_projection_store,
             allow_local=resolved_settings.environment.is_local,
         )
-    kpi_cosmos_client = None
+    consumption_cosmos_client = None
 
     try:
         if resolution.state is ToolProjectionResolutionState.READY:
             projection = resolution.projection
             if projection is None:
                 raise RuntimeError('READY Tool Projection resolution has no projection')
-            kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
-            if kpi_cosmos_settings is None:
+            consumption_cosmos_settings = resolved_settings.consumption_cosmos_settings()
+            if consumption_cosmos_settings is None:
                 definition = attach_operational_kpi_presentation_stores(
                     definition,
                     tool_projection=projection,
                 )
                 _LOGGER.info('KPI Delivery is not configured; using empty KPI presentation stores')
+                definition = attach_operational_alarm_presentation_store(
+                    definition, tool_projection=projection,
+                )
+                _LOGGER.info('Alarm Live is not configured; using empty Alarm presentation store')
             else:
-                kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
+                consumption_cosmos_client = CosmosClient(settings=consumption_cosmos_settings)
                 definition = attach_operational_kpi_collector(
                     definition,
                     tool_projection=projection,
-                    cosmos_client=kpi_cosmos_client,
+                    cosmos_client=consumption_cosmos_client,
                     reader_settings=resolved_settings.kpi_delivery_reader_settings(),
+                )
+                definition = attach_operational_alarm_collector(
+                    definition,
+                    tool_projection=projection,
+                    cosmos_client=consumption_cosmos_client,
                 )
 
         if manager_dependencies is not None:
@@ -264,7 +275,7 @@ def create_operational_application_runtime(
             slow_request_threshold_ms=resolved_settings.slow_request_threshold_ms,
         )
     except Exception:
-        _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
+        _close_client(consumption_cosmos_client, 'Cosmos Consumption')
         raise
 
 
@@ -303,6 +314,11 @@ def _prepare_manager_identity(
             access=stores.access,
         ),
         runtime=users_runtime,
+        guest_observer=(
+            stores.users_runtime
+            if isinstance(stores.users_runtime, UsersGuestObserver)
+            else None
+        ),
     )
     return resolved_provider, users_runtime, dependencies, resolver
 

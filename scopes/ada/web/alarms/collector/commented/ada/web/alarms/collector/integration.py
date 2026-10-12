@@ -10,6 +10,8 @@ from dash.development.base_component import Component
 from flask import request
 
 from ada.web.alarms.collector.collector import AdaAlarmCollector
+from ada.web.alarms.collector.contracts import required_key
+from ada.web.alarms.collector.models import AlarmCollectorAvailability, AlarmCollectorSnapshot
 from ada.web.alarms.collector.presentation import (
     AlarmCollectorPresentationSettings,
     alarm_live_store_id,
@@ -160,3 +162,39 @@ def attach_ada_alarm_collector(
         modules=(*definition.modules, integration.module),
         layout=integration.wrap_layout(definition.layout),
     )
+
+
+# Incorpora un Store vacío cuando no existe conexión de consumo configurada.
+def attach_ada_alarm_presentation_store(
+    definition: WebApplicationDefinition, *, tool_key: str,
+) -> WebApplicationDefinition:
+    if not isinstance(definition, WebApplicationDefinition):
+        raise TypeError('Alarm presentation store requires WebApplicationDefinition')
+    key = required_key(tool_key, 'tool_key')
+
+    # Conserva el layout existente y añade solo el contrato de Store sin polling.
+    def wrapped_layout(*args: object, **kwargs: object) -> Component:
+        resolved = definition.layout(*args, **kwargs)
+        if not isinstance(resolved, Component):
+            raise TypeError('Alarm presentation store requires a Dash Component layout')
+        snapshot = AlarmCollectorSnapshot(
+            tool_key=key,
+            availability=AlarmCollectorAvailability.WAITING,
+            semantic_sha256=None,
+            document=None,
+        )
+        store = dcc.Store(
+            id=alarm_live_store_id(key),
+            storage_type='memory',
+            data=project_alarm_live_store(snapshot),
+        )
+        children = getattr(resolved, 'children', None)
+        if children is None:
+            resolved.children = [store]
+        elif isinstance(children, (list, tuple)):
+            resolved.children = [*children, store]
+        else:
+            resolved.children = [children, store]
+        return resolved
+
+    return replace(definition, layout=wrapped_layout)

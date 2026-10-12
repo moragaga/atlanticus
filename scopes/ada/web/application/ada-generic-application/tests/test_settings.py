@@ -67,7 +67,7 @@ def test_local_settings_derive_local_tool_persistence(tmp_path: Path) -> None:
     assert persistence.cosmos_container_name is None
     assert settings.storage_settings() is None
     assert settings.cosmos_settings() is None
-    assert settings.kpi_delivery_cosmos_settings() is None
+    assert settings.consumption_cosmos_settings() is None
 
 
 def test_durable_mode_derives_blob_and_cosmos_providers() -> None:
@@ -107,7 +107,38 @@ def test_legacy_provider_variables_do_not_select_persistence(tmp_path: Path) -> 
     assert settings.tool_projection_provider is ToolProjectionProvider.LOCAL
 
 
-def test_kpi_delivery_cosmos_connection_remains_independent(tmp_path: Path) -> None:
+def test_durable_primary_is_default_consumption_connection() -> None:
+    settings = AdaGenericSettings.from_mapping(_durable_values())
+
+    primary = settings.cosmos_settings()
+    consumption = settings.consumption_cosmos_settings()
+
+    assert primary is not None
+    assert consumption is not None
+    assert consumption.endpoint == primary.endpoint
+    assert consumption.database_name == primary.database_name
+    assert consumption.key == primary.key
+
+
+def test_secondary_consumption_connection_overrides_primary() -> None:
+    secondary_settings = AdaGenericSettings.from_mapping(
+        {
+            **_durable_values(),
+            'COSMOS_CONSUMPTION_ENDPOINT': 'https://secondary.example.test',
+            'COSMOS_CONSUMPTION_KEY': 'secondary-key',
+            'COSMOS_CONSUMPTION_DATABASE_NAME': 'secondary',
+        }
+    )
+
+    cosmos = secondary_settings.consumption_cosmos_settings()
+
+    assert cosmos is not None
+    assert cosmos.endpoint == 'https://secondary.example.test'
+    assert cosmos.database_name == 'secondary'
+    assert secondary_settings.cosmos_settings().database_name == 'configuration'
+
+
+def test_explicit_consumption_connection_is_independent(tmp_path: Path) -> None:
     settings = AdaGenericSettings.from_mapping(
         {
             'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
@@ -118,7 +149,7 @@ def test_kpi_delivery_cosmos_connection_remains_independent(tmp_path: Path) -> N
         }
     )
 
-    cosmos = settings.kpi_delivery_cosmos_settings()
+    cosmos = settings.consumption_cosmos_settings()
     reader = settings.kpi_delivery_reader_settings()
 
     assert settings.cosmos_settings() is None
@@ -158,7 +189,7 @@ def test_cosmos_resource_names_are_internal_not_environment_configuration() -> N
 def test_partial_kpi_delivery_cosmos_connection_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(
         ValidationError,
-        match='COSMOS_CONSUMPTION_KEY is required when KPI delivery Cosmos is configured',
+        match='COSMOS_CONSUMPTION_KEY is required when Cosmos Consumption is configured',
     ):
         AdaGenericSettings.from_mapping(
             {

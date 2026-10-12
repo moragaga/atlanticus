@@ -5,7 +5,18 @@ from datetime import UTC, datetime
 import pytest
 
 from ada.web.application.generic.application import create_application_definition
-from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
+from ada.web.application.generic.operational_collector import (
+    attach_operational_alarm_collector,
+    attach_operational_alarm_presentation_store,
+    attach_operational_kpi_collector,
+)
+from ada.web.alarms.collector import (
+    ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY,
+    ADA_ALARM_COLLECTOR_SERVICE_KEY,
+    LIVE_CONTAINER,
+    AdaAlarmCollector,
+    AdaAlarmCollectorPollingRuntime,
+)
 from ada.web.kpis.collector import (
     ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
     ADA_KPI_COLLECTOR_SERVICE_KEY,
@@ -164,3 +175,46 @@ def test_operational_attachment_rejects_cosmos_client_without_find_item() -> Non
             tool_projection=_tool_projection(),
             cosmos_client=object(),
         )
+
+
+def test_operational_alarm_attachment_reads_live_by_exact_tool_key() -> None:
+    projection = _tool_projection()
+    cosmos = CosmosClientStub()
+    definition = attach_operational_alarm_collector(
+        create_application_definition(), tool_projection=projection, cosmos_client=cosmos,
+    )
+    runtime = create_web_application(definition)
+    collector = runtime.services.require(ADA_ALARM_COLLECTOR_SERVICE_KEY, AdaAlarmCollector)
+    polling = runtime.services.require(
+        ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY, AdaAlarmCollectorPollingRuntime,
+    )
+
+    assert collector.tool_key == 'process'
+    assert collector.snapshot.document is None
+    assert polling.is_running is False
+    cycle = polling.poll_due(now=0.0)
+    assert cycle.error is None
+    assert cosmos.calls == [(LIVE_CONTAINER, 'alarm-live:process', 'process')]
+    assert collector.snapshot.availability.value == 'missing'
+
+
+def test_operational_alarm_without_connection_attaches_empty_store_only() -> None:
+    projection = _tool_projection()
+    definition = attach_operational_alarm_presentation_store(
+        create_application_definition(), tool_projection=projection,
+    )
+    runtime = create_web_application(definition)
+
+    assert not runtime.services.contains(ADA_ALARM_COLLECTOR_SERVICE_KEY)
+    layout = definition.layout(runtime.services)
+    alarm_stores = [
+        child for child in layout.children
+        if getattr(child, 'id', None) == {'type': 'ada-alarm-live-store', 'tool': 'process'}
+    ]
+    assert len(alarm_stores) == 1
+    assert alarm_stores[0].data == {
+        'tool_key': 'process',
+        'availability': 'waiting',
+        'semantic_sha256': None,
+        'live': None,
+    }

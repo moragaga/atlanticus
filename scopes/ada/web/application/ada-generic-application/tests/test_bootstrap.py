@@ -6,6 +6,13 @@ from pathlib import Path
 
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
 from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.alarms.collector import (
+    ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY,
+    ADA_ALARM_COLLECTOR_SERVICE_KEY,
+    ALARM_LIVE_STORE_TYPE,
+    AdaAlarmCollector,
+    AdaAlarmCollectorPollingRuntime,
+)
 from ada.web.kpis.collector import (
     ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
     ADA_KPI_COLLECTOR_SERVICE_KEY,
@@ -114,6 +121,7 @@ def test_empty_local_persistence_keeps_base_web_runtime_available(tmp_path: Path
 
     assert isinstance(runtime, WebApplicationRuntime)
     assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
+    assert not runtime.services.contains(ADA_ALARM_COLLECTOR_SERVICE_KEY)
 
 
 def test_active_projection_without_kpi_connection_keeps_web_available(
@@ -128,7 +136,9 @@ def test_active_projection_without_kpi_connection_keeps_web_available(
 
     assert isinstance(runtime, WebApplicationRuntime)
     assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
+    assert not runtime.services.contains(ADA_ALARM_COLLECTOR_SERVICE_KEY)
     assert 'KPI Delivery is not configured; using empty KPI presentation stores' in caplog.text
+    assert 'Alarm Live is not configured; using empty Alarm presentation store' in caplog.text
     response = runtime.server.test_client().get('/_dash-layout')
     payload = json.dumps(response.get_json(), ensure_ascii=False)
     assert response.status_code == 200
@@ -138,6 +148,8 @@ def test_active_projection_without_kpi_connection_keeps_web_available(
     assert 'data-ada-component-key' in payload
     assert f'"type": "{KPI_COMPONENT_STORE_TYPE}"' in payload
     assert f'"type": "{KPI_SYSTEM_STORE_TYPE}"' in payload
+    assert f'"type": "{ALARM_LIVE_STORE_TYPE}"' in payload
+    assert '"availability": "waiting"' in payload
     assert '"destination": "global_indicators"' in payload
     assert '"latest": null' in payload
 
@@ -157,6 +169,12 @@ def test_ready_projection_with_kpi_connection_attaches_lazy_collector(tmp_path: 
     assert collector.tool_projection_revision == 'tool-release-current'
     assert tuple(component.key for component in collector.structure.components) == ('mine', 'plant')
     assert polling_runtime.is_running is False
+    alarm = runtime.services.require(ADA_ALARM_COLLECTOR_SERVICE_KEY, AdaAlarmCollector)
+    alarm_runtime = runtime.services.require(
+        ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY, AdaAlarmCollectorPollingRuntime,
+    )
+    assert alarm.tool_key == 'integrated_operations'
+    assert alarm_runtime.is_running is False
 
 
 def test_corrupt_projection_keeps_base_web_runtime_available_and_logs_invalid(

@@ -37,9 +37,9 @@ STORAGE_SAS_TOKEN_VARIABLE = 'ADA_STORAGE_SAS_TOKEN'
 COSMOS_ENDPOINT_VARIABLE = 'ADA_COSMOS_ENDPOINT'
 COSMOS_KEY_VARIABLE = 'ADA_COSMOS_KEY'
 COSMOS_DATABASE_VARIABLE = 'ADA_COSMOS_DATABASE_NAME'
-KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
-KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
-KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
+CONSUMPTION_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
+CONSUMPTION_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
+CONSUMPTION_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
 MASTER_PROJECTION_RELATIVE_PATH = 'master-projection/material.zip'
 AZURE_OBSERVABILITY_MODE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_MODE'
 AZURE_OBSERVABILITY_PROFILE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE'
@@ -116,17 +116,17 @@ class AdaGenericSettings(WebSettings):
         default=None,
         validation_alias=COSMOS_DATABASE_VARIABLE,
     )
-    kpi_delivery_cosmos_endpoint: str | None = Field(
+    consumption_cosmos_endpoint: str | None = Field(
         default=None,
-        validation_alias=KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE,
+        validation_alias=CONSUMPTION_COSMOS_ENDPOINT_VARIABLE,
     )
-    kpi_delivery_cosmos_key: SecretStr | None = Field(
+    consumption_cosmos_key: SecretStr | None = Field(
         default=None,
-        validation_alias=KPI_DELIVERY_COSMOS_KEY_VARIABLE,
+        validation_alias=CONSUMPTION_COSMOS_KEY_VARIABLE,
     )
-    kpi_delivery_cosmos_database_name: str | None = Field(
+    consumption_cosmos_database_name: str | None = Field(
         default=None,
-        validation_alias=KPI_DELIVERY_COSMOS_DATABASE_VARIABLE,
+        validation_alias=CONSUMPTION_COSMOS_DATABASE_VARIABLE,
     )
 
     @model_validator(mode='before')
@@ -199,15 +199,15 @@ class AdaGenericSettings(WebSettings):
             if missing is not None:
                 raise ValueError(f'{missing} is required')
 
-        kpi_connection = (
-            (KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE, self.kpi_delivery_cosmos_endpoint),
-            (KPI_DELIVERY_COSMOS_KEY_VARIABLE, self.kpi_delivery_cosmos_key),
-            (KPI_DELIVERY_COSMOS_DATABASE_VARIABLE, self.kpi_delivery_cosmos_database_name),
+        consumption_connection = (
+            (CONSUMPTION_COSMOS_ENDPOINT_VARIABLE, self.consumption_cosmos_endpoint),
+            (CONSUMPTION_COSMOS_KEY_VARIABLE, self.consumption_cosmos_key),
+            (CONSUMPTION_COSMOS_DATABASE_VARIABLE, self.consumption_cosmos_database_name),
         )
-        if any(value is not None for _, value in kpi_connection):
-            missing = next((name for name, value in kpi_connection if value is None), None)
+        if any(value is not None for _, value in consumption_connection):
+            missing = next((name for name, value in consumption_connection if value is None), None)
             if missing is not None:
-                raise ValueError(f'{missing} is required when KPI delivery Cosmos is configured')
+                raise ValueError(f'{missing} is required when Cosmos Consumption is configured')
 
         return self
 
@@ -284,14 +284,14 @@ class AdaGenericSettings(WebSettings):
             allow_insecure_http=self.environment.is_local,
         )
 
-    def kpi_delivery_cosmos_settings(self) -> CosmosSettings | None:
-        endpoint = self.kpi_delivery_cosmos_endpoint
-        key = self.kpi_delivery_cosmos_key
-        database_name = self.kpi_delivery_cosmos_database_name
+    def consumption_cosmos_settings(self) -> CosmosSettings | None:
+        endpoint = self.consumption_cosmos_endpoint
+        key = self.consumption_cosmos_key
+        database_name = self.consumption_cosmos_database_name
         if endpoint is None and key is None and database_name is None:
-            return None
+            return self.cosmos_settings()
         if endpoint is None or key is None or database_name is None:
-            raise RuntimeError('KPI Delivery Cosmos settings were not resolved')
+            raise RuntimeError('Cosmos Consumption settings were not resolved')
         return CosmosSettings(
             endpoint=endpoint,
             key=key.get_secret_value(),

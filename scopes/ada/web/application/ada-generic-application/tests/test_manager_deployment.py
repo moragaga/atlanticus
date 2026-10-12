@@ -85,7 +85,7 @@ def test_kpi_consumption_cannot_silently_point_to_another_cosmos(tmp_path):
             'COSMOS_CONSUMPTION_DATABASE_NAME': 'another',
         }
     )
-    assert settings.kpi_delivery_cosmos_settings() is None
+    assert settings.consumption_cosmos_settings() == settings.cosmos_settings()
     with pytest.raises(ValueError, match='one Cosmos database'):
         resolve_durable_manager_configuration(alternate)
 

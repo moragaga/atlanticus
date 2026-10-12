@@ -95,7 +95,7 @@ class ManagerPrincipalBinding:
             user is None
             or (
                 user.issuer == LOCAL_ISSUER
-                and user.profile.id == LOCAL_PROFILE_KEY
+                and user.profile.id in (LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY)
                 and user.enabled
                 and access.identity is not None
                 and user.subject_id == access.identity.subject_id

@@ -98,7 +98,9 @@ class ManagerPrincipalBinding:
             user is None
             or (
                 user.issuer == LOCAL_ISSUER
-                and user.profile.id == LOCAL_PROFILE_KEY
+                # Una identidad local de prueba observada como Guest sigue usando
+                # exclusivamente la lista de sujetos locales confiables.
+                and user.profile.id in (LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY)
                 and user.enabled
                 and access.identity is not None
                 and user.subject_id == access.identity.subject_id
