@@ -2,6 +2,7 @@ import hashlib
 import struct
 import zlib
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -31,14 +32,14 @@ def _png(width: int = 32, height: int = 32, rgb: bytes = b'\x00\x80\xff') -> byt
     )
 
 
-def _descriptor_with_favicon(tmp_path, monkeypatch, *, icon: bytes | None):
+def _descriptor_with_favicon(tmp_path, monkeypatch, *, icon: bytes | None, name='favicon.png'):
     package_name = 'favicon_fixture_' + hashlib.sha256(str(tmp_path).encode()).hexdigest()[:12]
     package = tmp_path / package_name
     resource = package / 'resources' / 'img'
     resource.mkdir(parents=True)
     (package / '__init__.py').write_text('', encoding='utf-8')
     if icon is not None:
-        (resource / 'favicon.png').write_bytes(icon)
+        (resource / name).write_bytes(icon)
     monkeypatch.syspath_prepend(str(tmp_path))
     layer = AssetLayer(
         name='app_favicon_fixture',
@@ -107,3 +108,50 @@ def test_favicon_descriptor_does_not_accept_local_source_directory(tmp_path):
                 source_directory=tmp_path,
             ),
         )
+
+
+def _ico(width: int = 64, height: int = 64) -> bytes:
+    png = _png(width=width, height=height)
+    entry = struct.pack('<BBBBHHII', width, height, 0, 0, 1, 32, len(png), 22)
+    return struct.pack('<HHH', 0, 1, 1) + entry + png
+
+
+def test_packaged_64x64_ico_is_served_and_keeps_pwa_manifest(tmp_path, monkeypatch):
+    content = _ico()
+    descriptor = _descriptor_with_favicon(
+        tmp_path, monkeypatch, icon=content, name='favicon.ico'
+    )
+    definition = create_application_definition(application_descriptor=descriptor)
+    module = next(module for module in definition.modules if module.name == 'pwa')
+    src = '/assets/0206_app_favicon_fixture/img/favicon.ico?v=' + hashlib.sha256(content).hexdigest()[:12]
+    favicon_links = [fragment for fragment in module.index.head_fragments if 'rel="icon"' in fragment]
+    assert favicon_links == [f'<link rel="icon" type="image/x-icon" href="{src}">']
+
+    runtime = create_web_application(definition)
+    client = runtime.server.test_client()
+    response = client.get(src)
+    assert response.status_code == 200
+    assert response.data == content
+    assert response.mimetype in ('image/x-icon', 'image/vnd.microsoft.icon')
+    manifest = client.get('/manifest.webmanifest').get_json()
+    assert len(manifest['icons']) == 3
+    assert all('favicon.ico' not in icon['src'] for icon in manifest['icons'])
+
+
+@pytest.mark.parametrize('icon', [b'bad', _ico(width=32, height=32), _ico()[:23]])
+def test_invalid_ico_is_rejected_before_startup(tmp_path, monkeypatch, icon):
+    descriptor = _descriptor_with_favicon(
+        tmp_path, monkeypatch, icon=icon, name='favicon.ico'
+    )
+    with pytest.raises(WebDefinitionError, match='Application favicon ICO'):
+        create_application_definition(application_descriptor=descriptor)
+
+
+def test_both_icon_formats_are_rejected(tmp_path, monkeypatch):
+    descriptor = _descriptor_with_favicon(tmp_path, monkeypatch, icon=_png())
+    import importlib
+
+    package = importlib.import_module(descriptor.favicon_asset_layer.package)
+    (Path(package.__file__).parent / 'resources/img/favicon.ico').write_bytes(_ico())
+    with pytest.raises(WebDefinitionError, match='exactly one'):
+        create_application_definition(application_descriptor=descriptor)

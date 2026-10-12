@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,7 +14,7 @@ from ada.processes.alarm_runtime.job import AlarmRuntimeIterationResult
 from atlanticus.state import AtomicJsonStore
 
 DOCUMENT_TYPE = 'ada_alarm_engine_resolved_current_state'
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _LATEST = 'current/latest.json'
 
 
@@ -42,11 +43,27 @@ def _utc(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace('+00:00', 'Z')
 
 
+def _cause_values(values: Mapping[object, object]) -> dict[str, str | int | float | bool]:
+    normalized: dict[str, str | int | float | bool] = {}
+    for key, value in values.items():
+        if not isinstance(key, str) or not key.isidentifier():
+            continue
+        if type(value) not in (str, int, float, bool):
+            continue
+        try:
+            json.dumps(value, allow_nan=False, ensure_ascii=False).encode('utf-8')
+        except (TypeError, ValueError, OverflowError, UnicodeEncodeError):
+            continue
+        normalized[key] = value
+    return normalized
+
+
 def _evaluation(value: AlarmEvaluation) -> dict[str, object]:
     evidence = value.evidence_snapshot
     error = value.error
     return {
         'status': value.status.value,
+        'cause_values': _cause_values(value.cause_values),
         'evidence': (
             None
             if evidence is None

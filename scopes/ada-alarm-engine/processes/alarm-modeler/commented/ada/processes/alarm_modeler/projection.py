@@ -5,11 +5,12 @@ import json
 import math
 from collections.abc import Mapping
 from datetime import datetime
+from string import Formatter
 
 DOCUMENT_TYPE = 'ada_alarm_modeler_live_projection'
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SOURCE_DOCUMENT_TYPE = 'ada_alarm_engine_resolved_current_state'
-SOURCE_SCHEMA_VERSION = 1
+SOURCE_SCHEMA_VERSION = 2
 
 
 # Identifica errores del contrato de proyección sin mezclar persistencia o lógica web.
@@ -30,10 +31,10 @@ def digest(document: Mapping[str, object]) -> str:
     ).hexdigest()
 
 
-# La fuente CURRENT conserva schema v1 y la nueva salida de Modeler usa schema v2.
+# Runtime v2 transporta valores internos y Modeler v3 publica únicamente la causa resuelta.
 def validate_document(document: object, *, source: bool = False) -> dict:
     expected_type = SOURCE_DOCUMENT_TYPE if source else DOCUMENT_TYPE
-    # Separar versiones impide forzar cambios de contrato a Runtime.
+    # La validación estricta evita interpretar documentos de una versión anterior.
     expected_version = SOURCE_SCHEMA_VERSION if source else SCHEMA_VERSION
     fields = (
         {'document_type', 'schema_version', 'artifact_ref', 'journal_position', 'state', 'sha256'}
@@ -188,6 +189,33 @@ def _required_text(value: object, label: str) -> str:
     return value
 
 
+# Resuelve únicamente placeholders con nombres simples y valores escalares.
+# Si falta algún valor, el template completo queda literal para diagnóstico visual.
+def _render_cause(template: str, values: object) -> str:
+    if not isinstance(values, Mapping):
+        return template
+    try:
+        for _, field, format_spec, conversion in Formatter().parse(template):
+            if field is None:
+                continue
+            if (
+                not field.isidentifier()
+                or conversion is not None
+                or '{' in format_spec
+                or '}' in format_spec
+                or field not in values
+            ):
+                return template
+            value = values[field]
+            if type(value) not in (str, int, float, bool):
+                return template
+            if type(value) is float and not math.isfinite(value):
+                return template
+        return template.format_map(values)
+    except (KeyError, ValueError, TypeError, IndexError, AttributeError, OverflowError):
+        return template
+
+
 # Ordena una vez y construye los slots del operador sin alterar el lifecycle de alarmas.
 def _tool_projection(
     tool_key: str,
@@ -337,6 +365,7 @@ def project(
             raise AlarmModelerProjectionError('Resolved alarm evaluation or priority is invalid')
         if evaluation.get('status') not in ('ACTIVE', 'ERROR'):
             raise AlarmModelerProjectionError('Open alarm evaluation status is invalid')
+        public_evaluation = {key: value for key, value in evaluation.items() if key != 'cause_values'}
         if priority.get('disposition') not in (
             'PREDOMINANT',
             'ECLIPSED',
@@ -379,7 +408,7 @@ def project(
                     'occurrence_id': occurrence_id,
                     'episode_id': alarm['episode_id'],
                     'started_at': alarm['started_at'],
-                    'evaluation': evaluation,
+                    'evaluation': public_evaluation,
                     'priority': priority,
                     'management_cycle': alarm['management_cycle'],
                     'directly_managed': managed,
@@ -389,7 +418,9 @@ def project(
                     'attention_required': attention,
                     'display_name': model['display_name'],
                     'title': model['title'],
-                    'cause_template': model['cause_template'],
+                    'cause_text': _render_cause(
+                        model['cause_template'], evaluation.get('cause_values')
+                    ),
                     'kind': model['kind'],
                     'criticality': model['criticality'],
                     'business_category': model['business_category'],

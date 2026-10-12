@@ -5,11 +5,12 @@ import json
 import math
 from collections.abc import Mapping
 from datetime import datetime
+from string import Formatter
 
 DOCUMENT_TYPE = 'ada_alarm_modeler_live_projection'
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SOURCE_DOCUMENT_TYPE = 'ada_alarm_engine_resolved_current_state'
-SOURCE_SCHEMA_VERSION = 1
+SOURCE_SCHEMA_VERSION = 2
 
 
 class AlarmModelerProjectionError(ValueError):
@@ -181,6 +182,31 @@ def _required_text(value: object, label: str) -> str:
     return value
 
 
+def _render_cause(template: str, values: object) -> str:
+    if not isinstance(values, Mapping):
+        return template
+    try:
+        for _, field, format_spec, conversion in Formatter().parse(template):
+            if field is None:
+                continue
+            if (
+                not field.isidentifier()
+                or conversion is not None
+                or '{' in format_spec
+                or '}' in format_spec
+                or field not in values
+            ):
+                return template
+            value = values[field]
+            if type(value) not in (str, int, float, bool):
+                return template
+            if type(value) is float and not math.isfinite(value):
+                return template
+        return template.format_map(values)
+    except (KeyError, ValueError, TypeError, IndexError, AttributeError, OverflowError):
+        return template
+
+
 def _tool_projection(
     tool_key: str,
     alarms: list[dict],
@@ -322,6 +348,7 @@ def project(
             raise AlarmModelerProjectionError('Resolved alarm evaluation or priority is invalid')
         if evaluation.get('status') not in ('ACTIVE', 'ERROR'):
             raise AlarmModelerProjectionError('Open alarm evaluation status is invalid')
+        public_evaluation = {key: value for key, value in evaluation.items() if key != 'cause_values'}
         if priority.get('disposition') not in (
             'PREDOMINANT',
             'ECLIPSED',
@@ -364,7 +391,7 @@ def project(
                     'occurrence_id': occurrence_id,
                     'episode_id': alarm['episode_id'],
                     'started_at': alarm['started_at'],
-                    'evaluation': evaluation,
+                    'evaluation': public_evaluation,
                     'priority': priority,
                     'management_cycle': alarm['management_cycle'],
                     'directly_managed': managed,
@@ -374,7 +401,9 @@ def project(
                     'attention_required': attention,
                     'display_name': model['display_name'],
                     'title': model['title'],
-                    'cause_template': model['cause_template'],
+                    'cause_text': _render_cause(
+                        model['cause_template'], evaluation.get('cause_values')
+                    ),
                     'kind': model['kind'],
                     'criticality': model['criticality'],
                     'business_category': model['business_category'],

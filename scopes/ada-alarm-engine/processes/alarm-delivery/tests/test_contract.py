@@ -39,7 +39,7 @@ def _tool(key, *, alarms=None, view=None, retired=False):
 def _source(*, tools=None, at='2026-10-11T12:00:00Z', position=1, revision='r1'):
     document = {
         'document_type': 'ada_alarm_modeler_live_projection',
-        'schema_version': 2,
+        'schema_version': 3,
         'artifact_ref': {
             'source_key': 'alarm-configuration',
             'result_id': 'alarm-materialization-' + 'a' * 64,

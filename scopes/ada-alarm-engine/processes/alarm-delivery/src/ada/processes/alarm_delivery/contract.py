@@ -8,7 +8,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 SOURCE_DOCUMENT_TYPE = 'ada_alarm_modeler_live_projection'
-SOURCE_SCHEMA_VERSION = 2
+SOURCE_SCHEMA_VERSION = 3
 CONFIRMATION_DOCUMENT_TYPE = 'ada_alarm_delivery_confirmation'
 CONFIRMATION_SCHEMA_VERSION = 1
 _SHA256 = re.compile(r'[0-9a-f]{64}\Z')

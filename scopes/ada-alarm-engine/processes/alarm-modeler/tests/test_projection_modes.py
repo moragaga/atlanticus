@@ -33,7 +33,7 @@ def process_projection(modes, *, now=None, slots=6, managed=()):
 def test_generic_process_preserves_normal_carousel():
     result = process_projection({'n1': 'GENERIC', 'n2': 'GENERIC'})
     tool = result['tools']['tool-a']
-    assert result['schema_version'] == 2
+    assert result['schema_version'] == 3
     assert tool['operator_view'] == [
         {'slot': 1, 'occurrence_id': 'occ-n1'},
         {'slot': 2, 'occurrence_id': 'occ-n2'},
@@ -121,7 +121,7 @@ def test_invalid_distributed_group_membership_is_rejected():
         validate_document(corrupted)
 
 
-def test_source_schema_stays_v1_and_old_output_is_not_accepted():
+def test_source_schema_is_v2_and_old_output_is_not_accepted():
     result = process_projection({'n1': 'GENERIC'})
     old = deepcopy(result)
     old['schema_version'] = 1

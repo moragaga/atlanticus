@@ -182,7 +182,9 @@ def test_snapshotless_closure_keeps_final_evidence() -> None:
 def test_steady_active_without_due_work_produces_no_commit() -> None:
     alarm, ids, started = _started()
     at = NOW + timedelta(minutes=1)
-    evaluation = physical('risk', AlarmStatus.ACTIVE, at=at)
+    evaluation = replace(
+        physical('risk', AlarmStatus.ACTIVE, at=at), cause_values={'pressure': 132}
+    )
     decision = _reduce(started.state, (alarm,), (evaluation,), at=at, ids=ids)
     assert (
         _materialize(

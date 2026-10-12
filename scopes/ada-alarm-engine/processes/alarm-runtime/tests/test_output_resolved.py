@@ -76,7 +76,7 @@ class _Identity:
         return isinstance(other, _Identity)
 
 
-def _result(*, at=None, managed=False, assignment=False, evidence_value=10, empty=False, disposition='PREDOMINANT'):
+def _result(*, at=None, managed=False, assignment=False, evidence_value=10, empty=False, disposition='PREDOMINANT', cause_values=None):
     at = datetime(2026, 10, 10, 19, 0, tzinfo=UTC) if at is None else at
     identity = _Identity()
     key = SimpleNamespace(alarm_configuration_revision='R1', confirmed_tool_catalog_revision='T1')
@@ -87,6 +87,7 @@ def _result(*, at=None, managed=False, assignment=False, evidence_value=10, empt
         evidence_snapshot=SimpleNamespace(
             contract_key='threshold', contract_version='v1', payload={'value': evidence_value}
         ),
+        cause_values={} if cause_values is None else cause_values,
         error=None,
     )
     cycle = SimpleNamespace(cycle_at=at, evaluations=(evaluation,))
@@ -283,3 +284,34 @@ def test_clock_rollback_cannot_overwrite_last_valid_state(tmp_path):
             result=_result(at=first.cycle.cycle_at - timedelta(seconds=1), assignment=True),
         )
     assert _read(tmp_path) == unchanged
+
+def test_cause_value_refresh_publishes_without_advancing_durable_position(tmp_path):
+    persistence = _Persistence()
+    publisher = AlarmResolvedCurrentPublisher(root=tmp_path, source_key='alarm-configuration')
+    first = _result(cause_values={'pressure': 125, 'limit': 100})
+    assert publisher.publish(context=_Context(), persistence=persistence, result=first)
+    original_position = _read(tmp_path)['journal_position']
+    next_cycle = _result(
+        at=first.cycle.cycle_at + timedelta(seconds=1),
+        cause_values={'pressure': 132, 'limit': 100},
+    )
+    assert publisher.publish(context=_Context(), persistence=persistence, result=next_cycle)
+    changed = _read(tmp_path)
+    assert changed['journal_position'] == original_position
+    assert changed['state']['alarms'][0]['evaluation']['cause_values'] == {
+        'pressure': 132, 'limit': 100,
+    }
+    assert not publisher.publish(context=_Context(), persistence=persistence, result=next_cycle)
+    assert persistence.read_head().durable.as_document() == original_position
+
+
+def test_invalid_cause_values_do_not_break_current_publication(tmp_path):
+    publisher = AlarmResolvedCurrentPublisher(root=tmp_path, source_key='alarm-configuration')
+    result = _result(cause_values={
+        'pressure': 132, 'invalid': object(), 'nan': float('nan'), 'none': None,
+        'nested': {'x': 1}, 5: 100, 'surrogate': '\ud800',
+    })
+    assert publisher.publish(context=_Context(), persistence=_Persistence(), result=result)
+    assert _read(tmp_path)['state']['alarms'][0]['evaluation']['cause_values'] == {
+        'pressure': 132,
+    }

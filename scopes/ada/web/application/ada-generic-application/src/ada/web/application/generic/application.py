@@ -73,23 +73,59 @@ def _resolve_browser_favicon(layer: AssetLayer | None) -> WebFavicon | None:
     if layer is None:
         return None
     try:
-        resource = files(layer.package).joinpath(layer.resource_directory, 'img', 'favicon.png')
+        resource_root = files(layer.package).joinpath(layer.resource_directory, 'img')
     except (ModuleNotFoundError, TypeError) as error:
         raise WebDefinitionError('Application favicon package could not be resolved') from error
-    if not resource.is_file():
-        raise WebDefinitionError('Application favicon resource img/favicon.png does not exist')
+    png = resource_root.joinpath('favicon.png')
+    ico = resource_root.joinpath('favicon.ico')
+    if png.is_file() == ico.is_file():
+        raise WebDefinitionError('Application favicon requires exactly one favicon.png or favicon.ico')
+    resource = ico if ico.is_file() else png
     content = resource.read_bytes()
+    if resource.name == 'favicon.ico':
+        _validate_ico_favicon(content)
+        mime_type = 'image/x-icon'
+    else:
+        _validate_png_favicon(content)
+        mime_type = 'image/png'
+    revision = hashlib.sha256(content).hexdigest()[:12]
+    return WebFavicon(
+        src=f'/assets/{layer.target_name}/img/{resource.name}?v={revision}',
+        mime_type=mime_type,
+    )
+
+
+def _validate_png_favicon(content: bytes) -> None:
     if (
         len(content) < 33
-        or int.from_bytes(content[8:12], 'big') != 13
         or content[:8] != b'\x89PNG\r\n\x1a\n'
+        or int.from_bytes(content[8:12], 'big') != 13
         or content[12:16] != b'IHDR'
         or int.from_bytes(content[16:20], 'big') != 32
         or int.from_bytes(content[20:24], 'big') != 32
     ):
-        raise WebDefinitionError('Application favicon must be a 32x32 PNG image')
-    revision = hashlib.sha256(content).hexdigest()[:12]
-    return WebFavicon(src=f'/assets/{layer.target_name}/img/favicon.png?v={revision}')
+        raise WebDefinitionError('Application favicon PNG must be 32x32')
+
+
+def _validate_ico_favicon(content: bytes) -> None:
+    if len(content) < 22 or content[:4] != b'\x00\x00\x01\x00':
+        raise WebDefinitionError('Application favicon ICO header is invalid')
+    count = int.from_bytes(content[4:6], 'little')
+    directory_end = 6 + count * 16
+    if count == 0 or directory_end > len(content):
+        raise WebDefinitionError('Application favicon ICO directory is invalid')
+    has_64_icon = False
+    for index in range(count):
+        entry = content[6 + index * 16 : 22 + index * 16]
+        width = entry[0] or 256
+        height = entry[1] or 256
+        size = int.from_bytes(entry[8:12], 'little')
+        offset = int.from_bytes(entry[12:16], 'little')
+        if size == 0 or offset < directory_end or offset + size > len(content):
+            raise WebDefinitionError('Application favicon ICO image data is invalid')
+        has_64_icon |= width == 64 and height == 64
+    if not has_64_icon:
+        raise WebDefinitionError('Application favicon ICO must contain a 64x64 image')
 
 
 def _resolve_publications_root(descriptor: AdaApplicationDescriptor) -> Path:
