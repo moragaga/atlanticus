@@ -15,7 +15,7 @@ from ada.web.application.generic.layout import (
     build_body_application_layout,
     create_ada_operational_layout,
 )
-from ada.web.application.generic.operational_latest import (
+from ada.web.application.generic.operational.latest import (
     OPERATIONAL_LATEST_HOST_TYPE,
     AdaOperationalLatestRenderer,
     OperationalLatestPresentation,
@@ -25,7 +25,7 @@ from ada.web.application.generic.operational_latest import (
     operational_latest_host_id,
     resolve_operational_latest_value,
 )
-from ada.web.application.generic.operational_render import (
+from ada.web.application.generic.operational.render import (
     AdaOperationalBodyFactory,
     AdaOperationalComponentRenderer,
     materialize_operational_components,

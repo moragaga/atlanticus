@@ -39,13 +39,13 @@ from ada.web.application.generic.alarm_access import (
     deny_alarm_access,
 )
 from ada.web.application.generic.alarm_surface_binding import attach_operational_alarm_surface
-from ada.web.application.generic.operational_collector import (
+from ada.web.application.generic.operational.collector import (
     attach_operational_alarm_collector,
     attach_operational_alarm_presentation_store,
     attach_operational_kpi_collector,
     attach_operational_kpi_presentation_stores,
 )
-from ada.web.application.generic.operational_tool import (
+from ada.web.application.generic.operational.tool import (
     create_definition_from_tool_resolution,
     resolve_operational_render_binding,
     resolve_operational_tool_projection,

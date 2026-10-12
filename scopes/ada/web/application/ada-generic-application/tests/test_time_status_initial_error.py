@@ -9,6 +9,7 @@ from ada.contracts.tools.sources import (
 )
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.time_status.runtime import resolve_time_status_summary
 from ada.web.ui.content_state import ContentStatePresentationMode
 
 
@@ -34,7 +35,8 @@ def test_tool_source_contract_mounts_time_status_without_runtime_data() -> None:
         source_consumption=consumption,
         source_operational_participation=participation,
     )
-    summary = definition.layout.keywords['time_status_summary']
+    binding = definition.layout.keywords['time_status_binding']
+    summary = resolve_time_status_summary(None, binding=binding)
     module_names = tuple(module.name for module in definition.modules)
 
     assert summary is not None
@@ -42,6 +44,7 @@ def test_tool_source_contract_mounts_time_status_without_runtime_data() -> None:
     assert summary.dispatch is not None
     assert summary.dispatch.condition.value == 'data_error'
     assert 'ada-time-status' in module_names
+    assert 'ada-time-status-runtime' in module_names
     assert 'ada-content-state' in module_names
 
 

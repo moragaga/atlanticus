@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ada.web.application.generic import operational_tool
-from ada.web.application.generic.operational_collector import create_operational_kpi_collector
-from ada.web.application.generic.operational_tool import (
+from ada.web.application.generic.operational import tool as operational_tool
+from ada.web.application.generic.operational.collector import create_operational_kpi_collector
+from ada.web.application.generic.operational.tool import (
     create_definition_from_tool_resolution,
     resolve_operational_tool_projection,
 )
@@ -215,7 +215,7 @@ def test_unavailable_resolution_keeps_base_definition_and_logs_diagnostic(
         'create_application_definition',
         lambda **kwargs: expected_definition,
     )
-    caplog.set_level('WARNING', logger='ada.web.application.generic.operational_tool')
+    caplog.set_level('WARNING', logger='ada.web.application.generic.operational.tool')
 
     definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(
@@ -240,7 +240,7 @@ def test_invalid_resolution_keeps_base_definition_and_logs_diagnostic(
         'create_application_definition',
         lambda **kwargs: expected_definition,
     )
-    caplog.set_level('ERROR', logger='ada.web.application.generic.operational_tool')
+    caplog.set_level('ERROR', logger='ada.web.application.generic.operational.tool')
 
     definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(

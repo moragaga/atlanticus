@@ -86,6 +86,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
         'ada-session',
         'ada-wake-lock',
         'ada-page-readiness',
+        'pwa',
     )
     assert definition.page_packages == ('ada.web.application.generic.pages',)
 

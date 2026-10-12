@@ -12,7 +12,7 @@ from ada.contracts.tools.structure import (
     ToolSubcomponent,
     ToolSubcomponentAddress,
 )
-from ada.web.application.generic.operational_render import materialize_operational_components
+from ada.web.application.generic.operational.render import materialize_operational_components
 from ada.web.operational_render_binding import bind_operational_render
 
 

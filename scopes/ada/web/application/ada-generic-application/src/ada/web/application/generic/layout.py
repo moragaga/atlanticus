@@ -18,7 +18,7 @@ from ada.web.alarms.management_summary import (
     build_alarm_management_summary,
 )
 from ada.web.alarms.status import AlarmStatusState, build_alarm_status
-from ada.web.application.generic.operational_render import (
+from ada.web.application.generic.operational.render import (
     AdaOperationalBodyFactory,
     build_operational_body,
 )

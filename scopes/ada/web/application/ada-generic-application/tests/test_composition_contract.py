@@ -45,7 +45,7 @@ def _operational_without_navigation_composition() -> AdaApplicationComposition:
 def test_explicit_composition_replaces_canonical_operational_modules() -> None:
     definition = create_application_definition(composition=_body_only_composition())
 
-    assert definition.modules == ()
+    assert tuple(module.name for module in definition.modules) == ('pwa',)
     assert definition.page_packages == ('ada.web.application.generic.pages',)
 
 

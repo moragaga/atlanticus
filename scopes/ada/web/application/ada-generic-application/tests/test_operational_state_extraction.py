@@ -24,5 +24,5 @@ def test_application_definition_preserves_empty_operational_contract() -> None:
     definition = create_application_definition()
 
     assert definition.layout.keywords['tool_key'] is None
-    assert definition.layout.keywords['time_status_summary'] is None
+    assert definition.layout.keywords['time_status_binding'] is None
     assert definition.layout.keywords['global_indicators_source_keys'] == ()

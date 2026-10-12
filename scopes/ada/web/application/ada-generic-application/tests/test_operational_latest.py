@@ -5,7 +5,7 @@ from dash.development.base_component import Component
 
 from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada.web.application.generic.operational_latest import (
+from ada.web.application.generic.operational.latest import (
     OPERATIONAL_LATEST_HOST_TYPE,
     OperationalLatestPresentation,
     build_operational_latest_body,
@@ -63,7 +63,15 @@ def _store(*, values=None, component_key='mine', latest=..., timeseries=None):
             'manifest': {'revision': 'latest-r1'},
             'values': values
             if values is not None
-            else {'crusher_rate': {'status': 'ok', 'value_kind': 'value', 'value': '42,0'}},
+            else {
+                'crusher_rate': {
+                    'status': 'ok',
+                    'value_kind': 'value',
+                    'value_type': 'float',
+                    'value': '42.0',
+                    'parsed_value': '42,0',
+                }
+            },
         }
         if latest is ...
         else latest
@@ -108,25 +116,37 @@ def test_render_module_binds_matching_store_and_exposes_ready_presentation() -> 
     assert first_output.component_id == operational_latest_host_id('integrated_operations', 'mine')
     assert first_input.component_id == component_kpi_store_id('integrated_operations', 'mine')
     rendered = dash_app.callback_functions[0](_store())
-    assert rendered.children == '42,0'
+    assert rendered.children == '42.0'
 
 
 def test_value_ok_is_returned_directly_without_consumer_inference() -> None:
     presentation = OperationalLatestPresentation('integrated_operations', 'mine', _store())
-    assert presentation['crusher_rate'] == '42,0'
-    assert presentation.resolve_many(('crusher_rate',)) == {'crusher_rate': '42,0'}
+    assert presentation['crusher_rate'] == '42.0'
+    assert presentation.resolve_many(('crusher_rate',)) == {'crusher_rate': '42.0'}
 
 
 def test_value_missing_and_error_are_presented_as_status_components() -> None:
     missing = OperationalLatestPresentation(
         'integrated_operations',
         'mine',
-        _store(values={'kpi': {'status': 'missing', 'value_kind': None, 'value': None}}),
+        _store(values={'kpi': {
+            'status': 'missing',
+            'value_kind': None,
+            'value_type': None,
+            'value': None,
+            'parsed_value': None,
+        }}),
     )['kpi']
     error = OperationalLatestPresentation(
         'integrated_operations',
         'mine',
-        _store(values={'kpi': {'status': 'error', 'value_kind': 'value', 'value': None}}),
+        _store(values={'kpi': {
+            'status': 'error',
+            'value_kind': 'value',
+            'value_type': 'float',
+            'value': None,
+            'parsed_value': None,
+        }}),
     )['kpi']
     assert isinstance(missing, Component)
     assert isinstance(error, Component)
@@ -139,7 +159,13 @@ def test_json_ok_preserves_structural_payload() -> None:
     presentation = OperationalLatestPresentation(
         'integrated_operations',
         'mine',
-        _store(values={'table': {'status': 'ok', 'value_kind': 'json', 'value': payload}}),
+        _store(values={'table': {
+            'status': 'ok',
+            'value_kind': 'json',
+            'value_type': None,
+            'value': payload,
+            'parsed_value': None,
+        }}),
     )
 
     assert presentation['table'] == payload
@@ -151,7 +177,13 @@ def test_json_payload_on_missing_or_error_is_invalid_contract() -> None:
         presentation = OperationalLatestPresentation(
             'integrated_operations',
             'mine',
-            _store(values={'table': {'status': status, 'value_kind': 'json', 'value': payload}}),
+            _store(values={'table': {
+                'status': status,
+                'value_kind': 'json',
+                'value_type': None,
+                'value': payload,
+                'parsed_value': None,
+            }}),
         )
         resolved = presentation['table']
         assert isinstance(resolved, Component)
@@ -165,7 +197,13 @@ def test_absent_key_and_invalid_payload_are_normalized_to_icons() -> None:
     invalid = OperationalLatestPresentation(
         'integrated_operations',
         'mine',
-        _store(values={'kpi': {'status': 'ok', 'value_kind': 'value', 'value': None}}),
+        _store(values={'kpi': {
+            'status': 'ok',
+            'value_kind': 'value',
+            'value_type': 'float',
+            'value': None,
+            'parsed_value': None,
+        }}),
     )['kpi']
     assert _prop(absent, 'src').endswith('/img/status/not-mapped.svg')
     assert _prop(invalid, 'src').endswith('/img/status/invalid-data.svg')
@@ -177,7 +215,7 @@ def test_timeseries_remains_outside_latest_normalization() -> None:
         'mine',
         _store(timeseries={'malformed': object()}),
     )
-    assert presentation['crusher_rate'] == '42,0'
+    assert presentation['crusher_rate'] == '42.0'
 
 
 def test_store_identity_mismatch_is_invalid() -> None:

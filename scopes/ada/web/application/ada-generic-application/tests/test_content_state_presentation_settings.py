@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.ui.content_state import ContentStatePresentationMode
 
@@ -46,7 +47,7 @@ def test_operational_bootstrap_threads_authoring_setting_into_definition(monkeyp
         }
     )
     captured: dict[str, object] = {}
-    definition = object()
+    definition = create_application_definition()
     runtime = object()
 
     monkeypatch.setattr(
@@ -61,7 +62,7 @@ def test_operational_bootstrap_threads_authoring_setting_into_definition(monkeyp
         'create_definition_from_tool_resolution',
         lambda _resolution, **kwargs: captured.update(kwargs) or definition,
     )
-    monkeypatch.setattr(bootstrap, 'create_web_application', lambda value: runtime)
+    monkeypatch.setattr(bootstrap, 'create_web_application', lambda value, **_kwargs: runtime)
 
     resolved = bootstrap.create_operational_application_runtime(settings=settings)
 

@@ -189,7 +189,7 @@ def test_corrupt_projection_keeps_base_web_runtime_available_and_logs_invalid(
         .glob('tool_projection_*.json')
     )
     projection_file.write_text('{"document_type":"wrong"}', encoding='utf-8')
-    caplog.set_level('ERROR', logger='ada.web.application.generic.operational_tool')
+    caplog.set_level('ERROR', logger='ada.web.application.generic.operational.tool')
 
     runtime = create_operational_application_runtime(settings=settings)
 

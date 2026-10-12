@@ -12,7 +12,7 @@ from ada.web.application.generic.application import create_application_definitio
 from ada.web.application.generic.extension import AdaApplicationExtension
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import OperationalRenderBinding
-from ada.web.tools.configuration import ToolRenderTopology
+from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
 from atlanticus.web.modules import WebModule
 from atlanticus.web.projection.models import ProjectionRecord
@@ -52,16 +52,36 @@ def _ready_resolution() -> ToolProjectionResolution:
             ),
         ),
     )
+    configuration = ToolConfiguration.from_document(
+        {
+            'tool_key': structure.tool_key,
+            'display_name': 'Sample Tool',
+            'kind': structure.kind.value,
+            'source_consumption': {
+                'tool_key': structure.tool_key,
+                'source_keys': ['pi'],
+            },
+            'source_operational_participation': {
+                'tool_key': structure.tool_key,
+                'control_sources': [
+                    {
+                        'source_key': 'pi',
+                        'pre_degrading_after_seconds': 200,
+                        'degrading_after_seconds': 300,
+                    }
+                ],
+                'additional_observation_source_keys': [],
+            },
+            'structure': structure.to_document(),
+        }
+    )
     timestamp = datetime(2026, 9, 25, tzinfo=UTC)
     projection = ProjectionRecord(
         source_key=SourceKey('tools'),
         source_release_id=SourceReleaseId('test-release'),
         source_published_at_utc=timestamp,
         projected_at_utc=timestamp,
-        payload=SimpleNamespace(
-            structure=structure,
-            render_topology=ToolRenderTopology(),
-        ),
+        payload=configuration,
     )
     return ToolProjectionResolution(
         state=ToolProjectionResolutionState.READY,
@@ -94,7 +114,7 @@ def test_external_extension_is_resolved_after_tool_projection(
         lambda definition, **_kwargs: definition,
     )
 
-    def create_web_application(definition):
+    def create_web_application(definition, **_kwargs):
         seen['definition'] = definition
         return expected_runtime
 
@@ -116,8 +136,14 @@ def test_external_extension_is_resolved_after_tool_projection(
 
     assert runtime is expected_runtime
     definition = seen['definition']
-    assert tuple(module.name for module in definition.modules[:-1]) == base_module_names
-    assert definition.modules[-1] is external_module
+    assert tuple(module.name for module in definition.modules[:len(base_module_names)]) == base_module_names
+    assert definition.modules[len(base_module_names)] is external_module
+    if configured:
+        assert tuple(module.name for module in definition.modules[len(base_module_names) + 1:]) == (
+            'ada-alarm-live-surface',
+        )
+    else:
+        assert len(definition.modules) == len(base_module_names) + 1
     assert definition.page_packages == ()
     if configured:
         assert isinstance(seen['binding'], OperationalRenderBinding)
@@ -139,7 +165,7 @@ def test_external_extension_preserves_generic_pages_by_default(monkeypatch, tmp_
     monkeypatch.setattr(
         bootstrap,
         'create_web_application',
-        lambda definition: captured.setdefault('definition', definition) or object(),
+        lambda definition, **_kwargs: captured.setdefault('definition', definition) or object(),
     )
 
     runtime = bootstrap.create_operational_application_runtime(
@@ -187,7 +213,7 @@ def test_external_runner_reuses_host_bootstrap_without_second_manager_path(
     monkeypatch.setattr(
         host,
         'run_web_application',
-        lambda application: forwarded.update(run=application),
+        lambda application, **_kwargs: forwarded.update(run=application),
     )
 
     def extension_factory(_binding):

@@ -26,7 +26,7 @@ from ada.web.application.generic.descriptor import (
     GENERIC_APPLICATION_DESCRIPTOR,
     AdaApplicationDescriptor,
 )
-from ada.web.application.generic.operational_render import (
+from ada.web.application.generic.operational.render import (
     validate_operational_render_application_binding,
 )
 from ada.web.branding import BrandingConfiguration

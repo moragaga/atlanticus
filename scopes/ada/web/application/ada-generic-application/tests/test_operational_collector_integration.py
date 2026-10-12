@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from ada.web.application.generic.application import create_application_definition
-from ada.web.application.generic.operational_collector import (
+from ada.web.application.generic.operational.collector import (
     attach_operational_alarm_collector,
     attach_operational_alarm_presentation_store,
     attach_operational_kpi_collector,
