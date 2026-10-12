@@ -1,0 +1,90 @@
+/* Las alturas y densidades cambian con la vista; los datos no determinan la altura. */
+/* Espejo pedagógico: dimensiones estables y variante compacta por estado de navegación. */
+.ada-alarm-live-surface {
+    --ada-alarm-live-board-height: 5.75rem;
+    --ada-alarm-live-card-font: .7rem;
+    --ada-alarm-live-red: #dc3545;
+    --ada-alarm-live-yellow: #e0a800;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-alarm-live-board {
+    display: grid;
+    grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 1), minmax(0, 1fr));
+    width: 100%;
+    height: var(--ada-alarm-live-board-height);
+    min-width: 0;
+    align-items: stretch;
+    gap: .15rem;
+    overflow: hidden;
+}
+
+.ada-alarm-live-card {
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: .3rem .4rem;
+    border: 1px solid #bdbdbd;
+    border-inline-start: 3px solid #6b6b6b;
+    border-radius: .4rem;
+    background: #f2f2f2;
+    color: #4d4d4d;
+    font-size: var(--ada-alarm-live-card-font);
+    overflow: hidden;
+}
+
+.ada-alarm-live-card--red { border-inline-start-color: var(--ada-alarm-live-red); }
+.ada-alarm-live-card--yellow { border-inline-start-color: var(--ada-alarm-live-yellow); }
+.ada-alarm-live-card__header { display: flex; align-items: center; gap: .3rem; min-width: 0; }
+.ada-alarm-live-card__criticality { font-weight: 800; flex: 0 0 auto; }
+.ada-alarm-live-card__category { min-width: 0; font-size: .85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ada-alarm-live-card__title { font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ada-alarm-live-card__cause { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ada-alarm-live-card__elapsed { font-size: .85em; text-align: end; }
+
+.ada-alarm-live-routes { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.ada-alarm-live-routes svg { width: 100%; height: 100%; overflow: visible; }
+.ada-alarm-live-route { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ada-alarm-live-route--red { stroke: var(--ada-alarm-live-red); }
+.ada-alarm-live-route--yellow { stroke: var(--ada-alarm-live-yellow); }
+.ada-alarm-baseline-surface__trace { pointer-events: none; }
+.ada-card-display[data-ada-alarm-affection='red'] { box-shadow: inset 3px 0 0 #dc3545; }
+.ada-card-display[data-ada-alarm-affection='yellow'] { box-shadow: inset 3px 0 0 #e0a800; }
+.ada-card-display[data-ada-alarm-affection='mixed'] { box-shadow: inset 3px 0 0 #dc3545, inset -3px 0 0 #e0a800; }
+
+@media only screen and (max-width: 1279px) {
+    .ada-alarm-live-board, .ada-alarm-live-routes { display: none; }
+}
+
+@media only screen and (min-width: 1280px) and (max-width: 1365px) {
+    .ada-alarm-live-surface { --ada-alarm-live-board-height: 5.4rem; --ada-alarm-live-card-font: .67rem; }
+}
+
+@media only screen and (min-width: 1366px) and (max-width: 2559px) {
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-surface,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-surface {
+        --ada-alarm-live-board-height: 2rem;
+    }
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card {
+        flex-direction: row;
+        align-items: center;
+        gap: .3rem;
+        border-radius: 999px;
+        padding: .15rem .4rem;
+    }
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__cause,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__cause,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__category,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__category { display: none; }
+}
+
+@media only screen and (min-width: 2560px) {
+    .ada-alarm-live-surface { --ada-alarm-live-board-height: 8rem; --ada-alarm-live-card-font: 1rem; }
+    .ada-alarm-live-route { stroke-width: 4; }
+}

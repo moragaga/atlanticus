@@ -89,6 +89,7 @@ dependencies = [
     { name = "ada-web-alarm-baseline-projection" },
     { name = "ada-web-alarm-baseline-surface" },
     { name = "ada-web-alarm-collector" },
+    { name = "ada-web-alarm-live-surface" },
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
     { name = "ada-web-branding", extra = ["web"] },
@@ -158,6 +159,7 @@ requires-dist = [
     { name = "ada-web-alarm-baseline-projection", editable = "../../alarms/baseline-projection" },
     { name = "ada-web-alarm-baseline-surface", editable = "../../alarms/baseline-surface" },
     { name = "ada-web-alarm-collector", editable = "../../alarms/collector" },
+    { name = "ada-web-alarm-live-surface", editable = "../../alarms/live-surface" },
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
@@ -356,6 +358,31 @@ requires-dist = [
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
+    { name = "dash", specifier = "==4.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-alarm-live-surface"
+version = "0.1.0"
+source = { editable = "../../alarms/live-surface" }
+dependencies = [
+    { name = "ada-web-alarm-baseline-projection" },
+    { name = "ada-web-alarm-baseline-surface" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-alarm-baseline-projection", editable = "../../alarms/baseline-projection" },
+    { name = "ada-web-alarm-baseline-surface", editable = "../../alarms/baseline-surface" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
 

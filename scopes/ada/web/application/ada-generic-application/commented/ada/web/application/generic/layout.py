@@ -8,7 +8,7 @@ from dash import html, page_container
 from dash.development.base_component import Component
 
 from ada.web.alarms.baseline_projection import AlarmBaselineProjection
-from ada.web.alarms.baseline_surface import build_alarm_baseline_surface
+from ada.web.alarms.live_surface import build_alarm_live_surface
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
     build_alarm_management_summary,
@@ -95,7 +95,7 @@ def build_operational_application_layout(
         else build_time_status_runtime_host(time_status_binding)
     )
     alarm_baseline_component = (
-        build_alarm_baseline_surface(alarm_baseline_projection)
+        build_alarm_live_surface(alarm_baseline_projection)
         if alarm_baseline_projection is not None
         else None
     )

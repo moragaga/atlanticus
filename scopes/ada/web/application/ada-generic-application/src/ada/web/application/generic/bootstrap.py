@@ -34,6 +34,7 @@ from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
 )
+from ada.web.application.generic.alarm_surface_binding import attach_operational_alarm_surface
 from ada.web.application.generic.operational_collector import (
     attach_operational_alarm_collector,
     attach_operational_alarm_presentation_store,
@@ -251,6 +252,10 @@ def create_operational_application_runtime(
                     tool_projection=projection,
                     cosmos_client=consumption_cosmos_client,
                 )
+
+            definition = attach_operational_alarm_surface(
+                definition, tool_key=projection.payload.structure.tool_key,
+            )
 
         if manager_dependencies is not None:
             definition = _integrate_manager(definition, manager_dependencies)
