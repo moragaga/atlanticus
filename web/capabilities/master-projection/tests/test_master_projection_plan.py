@@ -3,13 +3,10 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-import pytest
-
 from atlanticus.web.master_projection.plan import (
     MasterProjectionPlanner,
     ProjectionDomain,
     ProjectionPlanState,
-    UsersPlanState,
 )
 from atlanticus.web.projection.models import ProjectionRecord, ProjectionTarget
 from atlanticus.web.source.models import (
@@ -101,7 +98,7 @@ def projected(target):
     )
 
 
-def setup(snapshots=None):
+def setup():
     requirements = {
         'profiles': (),
         'access': ('profiles',),
@@ -130,7 +127,6 @@ def setup(snapshots=None):
     planner = MasterProjectionPlanner(
         domains=tuple(entries),
         profiles_key=key('profiles'),
-        users_snapshot_ids=snapshots,
     )
     return planner, sources, projections, selectors
 
@@ -153,31 +149,17 @@ def by_name(plan):
     return {entry.key.value: entry for entry in plan.entries}
 
 
-def test_empty_environment_reports_missing_sources_and_no_users_snapshot():
-    planner, sources, projections, _ = setup(snapshots=lambda: ())
+def test_empty_environment_reports_missing_sources():
+    planner, sources, projections, _ = setup()
     plan = planner.inspect()
     assert len(plan.entries) == 6
     assert {entry.state for entry in plan.entries} == {ProjectionPlanState.SOURCE_MISSING}
-    assert plan.users.state is UsersPlanState.SNAPSHOT_MISSING
-    assert plan.users.executable is False
     assert sources.releases == {}
     assert projections.active == {}
 
 
-def test_users_snapshot_is_self_contained_and_not_blocked_by_profiles_projection():
-    planner, sources, _projections, _ = setup(snapshots=lambda: ('snapshot-1',))
-    publish(sources, 'profiles', 'access', 'navigation', 'tools', 'registry', 'definitions')
-    plan = planner.inspect()
-    items = by_name(plan)
-    assert items['access'].state is ProjectionPlanState.BLOCKED
-    assert items['registry'].state is ProjectionPlanState.BLOCKED
-    assert plan.users.state is UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-    assert plan.users.executable is True
-    assert plan.users.snapshot_ids == ('snapshot-1',)
-
-
-def test_replanning_uses_exact_dependency_targets_and_users_remains_executable():
-    planner, sources, projections, _ = setup(snapshots=lambda: ('approved-1',))
+def test_replanning_uses_exact_dependency_targets():
+    planner, sources, projections, _ = setup()
     publish(sources, 'profiles', 'access', 'tools', 'registry', 'definitions')
     activate(sources, projections, 'profiles')
     activate(sources, projections, 'tools')
@@ -186,12 +168,11 @@ def test_replanning_uses_exact_dependency_targets_and_users_remains_executable()
     activate(sources, projections, 'registry', 'tools')
     second = planner.inspect()
     assert by_name(second)['definitions'].state is ProjectionPlanState.NEVER_PROJECTED
-    assert second.users.executable is True
     assert json.dumps(second.to_dict())
 
 
 def test_outdated_parent_blocks_consumer_until_parent_is_reprojected():
-    planner, sources, projections, _ = setup(snapshots=lambda: ('approved',))
+    planner, sources, projections, _ = setup()
     publish(sources, 'profiles', 'access')
     activate(sources, projections, 'profiles')
     activate(sources, projections, 'access', 'profiles')
@@ -210,15 +191,3 @@ def test_provider_failure_is_fail_closed_without_private_error_text():
     assert by_name(plan)['profiles'].state is ProjectionPlanState.UNAVAILABLE
     assert by_name(plan)['navigation'].state is ProjectionPlanState.UNAVAILABLE
     assert 'private' not in json.dumps(plan.to_dict())
-
-
-def test_invalid_snapshot_catalog_is_unavailable():
-    for catalog in (
-        lambda: ('duplicate', 'duplicate'),
-        lambda: ['not-a-tuple'],
-        lambda: (_ for _ in ()).throw(OSError('private location')),
-    ):
-        planner, sources, projections, _ = setup(snapshots=catalog)
-        publish(sources, 'profiles')
-        activate(sources, projections, 'profiles')
-        assert planner.inspect().users.state is UsersPlanState.CATALOG_UNAVAILABLE

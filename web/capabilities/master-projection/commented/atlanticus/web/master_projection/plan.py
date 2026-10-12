@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-# Users snapshots son autosuficientes; su ejecución no depende del estado CURRENT de Profiles.
+# El plan inspecciona los estados de cada dominio Source de manera independiente.
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -21,12 +20,6 @@ class ProjectionPlanState(StrEnum):
     OUTDATED = 'OUTDATED'
     BLOCKED = 'BLOCKED'
     UNAVAILABLE = 'UNAVAILABLE'
-
-
-class UsersPlanState(StrEnum):
-    CATALOG_UNAVAILABLE = 'CATALOG_UNAVAILABLE'
-    SNAPSHOT_MISSING = 'SNAPSHOT_MISSING'
-    SNAPSHOT_SELECTION_REQUIRED = 'SNAPSHOT_SELECTION_REQUIRED'
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,32 +66,8 @@ class ProjectionPlanEntry:
 
 
 @dataclass(frozen=True, slots=True)
-class UsersPlan:
-    state: UsersPlanState
-    snapshot_ids: tuple[str, ...] = ()
-    error_type: str | None = None
-
-    @property
-    def executable(self) -> bool:
-        return (
-            self.state is UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-            and bool(self.snapshot_ids)
-        )
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            'state': self.state.value,
-            'snapshot_ids': list(self.snapshot_ids),
-            'error_type': self.error_type,
-            'operation': 'users.replace',
-            'executable': self.executable,
-        }
-
-
-@dataclass(frozen=True, slots=True)
 class MasterProjectionPlan:
     entries: tuple[ProjectionPlanEntry, ...]
-    users: UsersPlan
 
     @property
     def ready(self) -> tuple[ProjectionPlanEntry, ...]:
@@ -113,7 +82,6 @@ class MasterProjectionPlan:
             'mode': 'MANUAL',
             'entries': [entry.to_dict() for entry in self.entries],
             'ready_source_keys': [entry.key.value for entry in self.ready],
-            'users': self.users.to_dict(),
         }
 
 
@@ -130,7 +98,6 @@ class MasterProjectionPlanner:
         *,
         domains: tuple[ProjectionDomain, ...],
         profiles_key: SourceKey,
-        users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None,
     ) -> None:
         domains = tuple(domains)
         if not domains:
@@ -139,11 +106,8 @@ class MasterProjectionPlanner:
             raise ValueError('Master Projection domain keys must be unique')
         if profiles_key not in {domain.key for domain in domains}:
             raise ValueError('Master Projection requires the Profiles domain')
-        if users_snapshot_ids is not None and not callable(users_snapshot_ids):
-            raise TypeError('Users snapshot catalog must be callable')
         self._domains = {domain.key: domain for domain in domains}
         self._order = _dependency_order(self._domains)
-        self._users_snapshot_ids = users_snapshot_ids
 
     def inspect(self) -> MasterProjectionPlan:
         observed = {key: self._observe(self._domains[key]) for key in self._order}
@@ -187,10 +151,7 @@ class MasterProjectionPlanner:
                 else:
                     entry = self._resolve(domain, state, projected_target, planned)
             planned[key] = entry
-        return MasterProjectionPlan(
-            entries=tuple(planned[key] for key in self._order),
-            users=self._inspect_users(),
-        )
+        return MasterProjectionPlan(entries=tuple(planned[key] for key in self._order))
 
     @staticmethod
     def _observe(domain: ProjectionDomain) -> _Observed:
@@ -257,36 +218,6 @@ class MasterProjectionPlanner:
             else ProjectionPlanState.OUTDATED
         )
         return ProjectionPlanEntry(state=state, current_target=target, **common)
-
-    def _inspect_users(self) -> UsersPlan:
-        if self._users_snapshot_ids is None:
-            return UsersPlan(state=UsersPlanState.CATALOG_UNAVAILABLE)
-        try:
-            identifiers = self._users_snapshot_ids()
-            if (
-                not isinstance(identifiers, tuple)
-                or any(
-                    not isinstance(value, str) or not value.strip() or value != value.strip()
-                    for value in identifiers
-                )
-                or len(identifiers) != len(set(identifiers))
-            ):
-                raise ValueError('Users snapshot catalog returned invalid identifiers')
-            snapshot_ids = tuple(sorted(identifiers))
-        except Exception as error:
-            return UsersPlan(
-                state=UsersPlanState.CATALOG_UNAVAILABLE,
-                error_type=type(error).__name__,
-            )
-        return UsersPlan(
-            state=(
-                UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-                if snapshot_ids
-                else UsersPlanState.SNAPSHOT_MISSING
-            ),
-            snapshot_ids=snapshot_ids,
-        )
-
 
 def _dependency_order(domains: dict[SourceKey, ProjectionDomain]) -> tuple[SourceKey, ...]:
     ordered: list[SourceKey] = []

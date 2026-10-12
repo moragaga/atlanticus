@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 from ada.contracts.alarms import AlarmConfigurationSnapshot
@@ -11,7 +10,6 @@ from atlanticus.web.navigation.configuration import NavigationConfigurationCatal
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.store import SourceStore
-from atlanticus.web.users.recovery import ToolUsersRecoveryService
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
@@ -24,8 +22,6 @@ class CommandCenterAdministrationDependencies:
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog]
     users_runtime_store: UsersRuntimeStore
     users_projection_entry: ManagerEntry | None = None
-    users_recovery: ToolUsersRecoveryService | Callable[[], ToolUsersRecoveryService] | None = None
-    users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
 
 
 @dataclass(frozen=True, slots=True)

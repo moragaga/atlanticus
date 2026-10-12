@@ -15,7 +15,7 @@ from ada_command_center.web.application.generic.master_projection.composition im
     compose_command_center_master_projection_backend,
 )
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
-from atlanticus.web.master_projection.plan import ProjectionPlanState, UsersPlanState
+from atlanticus.web.master_projection.plan import ProjectionPlanState
 from atlanticus.web.navigation.configuration import NAVIGATION_SOURCE_KEY
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 
@@ -48,4 +48,3 @@ def test_command_center_master_projection_uses_existing_manager_domains(tmp_path
         ALARM_CONFIGURATION_SOURCE_KEY,
     }
     assert all(entry.state is ProjectionPlanState.SOURCE_MISSING for entry in plan.entries)
-    assert plan.users.state is UsersPlanState.CATALOG_UNAVAILABLE

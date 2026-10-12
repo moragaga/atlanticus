@@ -4,7 +4,6 @@ from atlanticus.web.compositions.users_manager.composition import (
     UsersManagerComposition,
     UsersPrincipalProvider,
     compose_users_manager,
-    compose_users_projection_manager,
     compose_users_reconstruction_manager,
 )
 
@@ -13,6 +12,5 @@ __all__ = [
     'UsersManagerComposition',
     'UsersPrincipalProvider',
     'compose_users_manager',
-    'compose_users_projection_manager',
     'compose_users_reconstruction_manager',
 ]

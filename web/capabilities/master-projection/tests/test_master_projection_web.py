@@ -52,10 +52,6 @@ class Planner:
                     blocked_by=(),
                 ),
             ),
-            users=SimpleNamespace(
-                state=SimpleNamespace(value='SNAPSHOT_SELECTION_REQUIRED'),
-                snapshot_ids=('<script>alert(1)</script>',),
-            ),
         )
 
 
@@ -124,7 +120,7 @@ def test_unauthenticated_operator_cannot_inspect_plan(surface):
     assert planner.calls == 0
 
 
-def test_login_displays_read_only_plan_and_escapes_snapshot_ids(surface):
+def test_login_displays_read_only_plan(surface):
     server, _, planner = surface
     client = server.test_client()
     login = _login(client)
@@ -134,8 +130,6 @@ def test_login_displays_read_only_plan_and_escapes_snapshot_ids(surface):
     assert page.status_code == 200
     assert 'exclusivamente de lectura' in body
     assert 'profiles-configuration' in body
-    assert '<script>alert(1)</script>' not in body
-    assert '&lt;script&gt;' in body
     assert planner.calls == 1
     assert page.headers['Cache-Control'] == 'no-store, private'
     assert 'frame-ancestors' in page.headers['Content-Security-Policy']

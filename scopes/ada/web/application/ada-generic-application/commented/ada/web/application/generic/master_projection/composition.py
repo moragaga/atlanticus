@@ -45,20 +45,9 @@ def compose_master_projection_backend(
     domains = _compose_domains(stores)
     planner = _create_planner(stores, domains)
 
-    def replace_users(snapshot_id: str):
-        recovery = stores.users_recovery
-        if recovery is None:
-            raise RuntimeError('Users recovery is not configured')
-        service = recovery() if callable(recovery) else recovery
-        return service.apply_snapshot(snapshot_id)
-
     return MasterProjectionBackend(
         planner=planner,
-        executor=MasterProjectionExecutor(
-            planner=planner,
-            domains=domains,
-            users_replace=replace_users if stores.users_recovery is not None else None,
-        ),
+        executor=MasterProjectionExecutor(planner=planner, domains=domains),
     )
 
 
@@ -69,7 +58,6 @@ def _create_planner(
     return MasterProjectionPlanner(
         domains=domains,
         profiles_key=PROFILES_CONFIGURATION_SOURCE_KEY,
-        users_snapshot_ids=stores.users_snapshot_ids,
     )
 
 

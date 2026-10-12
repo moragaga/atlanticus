@@ -57,4 +57,42 @@ def test_administration_composes_generic_users_profiles_and_navigation(tmp_path:
     assert administration.navigation_module.access_key == NAVIGATION_MANAGER_ACCESS_KEY
     assert administration.navigation_module.source_key == NAVIGATION_SOURCE_KEY
     assert administration.users_runtime_store is runtime
-    assert administration.users_projection_entry is None
+    assert administration.users_projection_entry is not None
+    assert administration.users_projection_entry.route == '/users-projection'
+
+
+def test_command_center_runtime_base_publication_preserves_domain_extensions():
+    from dataclasses import replace
+
+    from atlanticus.web.profiles.models import BASIC_PROFILE
+    from atlanticus.web.users.identity import build_user_key
+    from atlanticus.web.users.models import (
+        RuntimeOperational,
+        RuntimeOperationalReference,
+        RuntimeProfile,
+        RuntimeUser,
+        UserIdentity,
+    )
+
+    identity = UserIdentity(
+        user_id=build_user_key(issuer='test', subject_id='alice'),
+        issuer='test',
+        subject_id='alice',
+        display_name='Alice',
+    )
+    operational = RuntimeOperational(area=RuntimeOperationalReference(id='area', label='Area'))
+    store = InProcessUsersRuntimeStore()
+    user = RuntimeUser(
+        identity=identity,
+        enabled=True,
+        profile=RuntimeProfile.from_profile(BASIC_PROFILE),
+        access_keys=('users.view',),
+        operational=operational,
+    )
+    store.upsert_base_user(user)
+    changed = store.upsert_base_user(
+        replace(user, enabled=False, operational=RuntimeOperational(), access_keys=())
+    )
+    assert changed.enabled is False
+    assert changed.access_keys == ('users.view',)
+    assert changed.operational == operational

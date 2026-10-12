@@ -33,7 +33,6 @@ from ada_command_center.web.tools.catalog import BlobToolCatalogStore, BlobToolC
 from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
-from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.projection.cosmos import (
@@ -41,7 +40,6 @@ from atlanticus.web.navigation.projection.cosmos import (
     CosmosNavigationProjectionStore,
     CosmosNavigationProjectionStoreSettings,
 )
-from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.profiles.projection.cosmos import (
     PROFILES_PROJECTION_STORAGE_RESOURCE,
     CosmosProfilesProjectionStore,
@@ -55,15 +53,9 @@ from atlanticus.web.storage.topology import (
 )
 from atlanticus.web.users.blob import (
     BlobToolMembershipStore,
-    BlobToolUsersRecoverySnapshotStore,
-    BlobUsersRecoveryAuditStore,
     BlobUsersRegistryStore,
-    BlobUsersReplaceBeforeImageStore,
 )
 from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
-from atlanticus.web.users.models import build_runtime_user
-from atlanticus.web.users.profiles import require_managed_profile
-from atlanticus.web.users.recovery import ToolUsersRecoveryService, UsersRecoveryConflictError
 from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
 
 _COSMOS_CONNECTION_REF = 'command-center-cosmos'
@@ -246,60 +238,6 @@ def open_durable_configuration_manager(
             container_name=resolved.users_runtime_container_name,
         )
 
-        def profiles_provider() -> ProfileCatalog:
-            active = profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY)
-            if active is None or not isinstance(active.payload, ProfileCatalog):
-                raise UsersRecoveryConflictError('An active Profiles projection is required')
-            return active.payload
-
-        def materialize_runtime_users():
-            registry = users_registry.load()
-            memberships = users_memberships.load()
-            profile_catalog = profiles_provider()
-            users = []
-            for membership in memberships.memberships:
-                identity = registry.get(membership.user_id)
-                if identity is None:
-                    raise UsersRecoveryConflictError(
-                        'Tool membership user is missing from global Users registry'
-                    )
-                profile = require_managed_profile(
-                    membership.profile_key,
-                    profiles=profile_catalog,
-                )
-                users.append(
-                    build_runtime_user(
-                        identity=identity,
-                        membership=membership,
-                        profile=profile,
-                    )
-                )
-            return tuple(sorted(users, key=lambda user: user.user_id))
-
-        snapshots = BlobToolUsersRecoverySnapshotStore(
-            client=storage,
-            container_name=resolved.storage_container_name,
-            prefix=resolved.namespace.scope_blob_name('users/recovery/snapshots'),
-        )
-
-        def recovery_provider() -> ToolUsersRecoveryService:
-            return ToolUsersRecoveryService(
-                runtime=users_runtime,
-                materialize=materialize_runtime_users,
-                snapshots=snapshots,
-                audit=BlobUsersRecoveryAuditStore(
-                    client=storage,
-                    container_name=resolved.storage_container_name,
-                    prefix=resolved.namespace.scope_blob_name('users/recovery/audit'),
-                ),
-                before_images=BlobUsersReplaceBeforeImageStore(
-                    client=storage,
-                    container_name=resolved.storage_container_name,
-                    prefix=resolved.namespace.scope_blob_name('users/recovery/replace-before'),
-                ),
-                environment=f'{reader.environment.value}:{resolved.cosmos_settings.database_name}',
-            )
-
         administration = compose_command_center_administration(
             stores=CommandCenterAdministrationStores(
                 profiles_source=persistence.source,
@@ -309,10 +247,6 @@ def open_durable_configuration_manager(
                 users_registry=users_registry,
                 users_memberships=users_memberships,
                 users_runtime=users_runtime,
-                users_recovery=recovery_provider,
-                users_snapshot_ids=snapshots.list_snapshot_ids,
-                users_snapshot_summaries=snapshots.list_snapshot_summaries,
-                users_read_snapshot=snapshots.load,
             ),
             principal_provider=principal_provider,
             source_name='Blob Storage',

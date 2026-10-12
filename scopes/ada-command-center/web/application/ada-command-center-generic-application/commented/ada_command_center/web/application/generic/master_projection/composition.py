@@ -71,21 +71,9 @@ def compose_command_center_master_projection_backend(
     planner = MasterProjectionPlanner(
         domains=domains,
         profiles_key=PROFILES_CONFIGURATION_SOURCE_KEY,
-        users_snapshot_ids=administration.users_snapshot_ids,
     )
-
-    def replace_users(snapshot_id: str):
-        recovery = administration.users_recovery
-        if recovery is None:
-            raise RuntimeError('Users recovery is not configured')
-        service = recovery() if callable(recovery) else recovery
-        return service.apply_snapshot(snapshot_id)
 
     return CommandCenterMasterProjectionBackend(
         planner=planner,
-        executor=MasterProjectionExecutor(
-            planner=planner,
-            domains=domains,
-            users_replace=replace_users if administration.users_recovery is not None else None,
-        ),
+        executor=MasterProjectionExecutor(planner=planner, domains=domains),
     )

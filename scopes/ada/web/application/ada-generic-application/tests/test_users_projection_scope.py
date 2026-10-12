@@ -28,9 +28,6 @@ def test_two_tools_share_global_identity_registry_but_not_tool_user_artifacts():
     assert first.namespace.scope_blob_name('users/memberships.json.gz') != (
         second.namespace.scope_blob_name('users/memberships.json.gz')
     )
-    assert first.namespace.scope_blob_name('users/recovery/snapshots') != (
-        second.namespace.scope_blob_name('users/recovery/snapshots')
-    )
 
 
 def test_independent_application_namespace_has_separate_global_identity_registry():

@@ -72,7 +72,6 @@ from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
 from atlanticus.web.users.models import RuntimeUser
 from atlanticus.web.users.reconstruction import UsersReconstructionWorkflow
-from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.store import (
     ToolMembershipStore,
     UsersDirectoryReader,
@@ -104,11 +103,6 @@ class ConfigurationManagerStores:
     users_directory: UsersDirectoryReader | None = None
     operational_source: SourceStore | None = None
     operational: ProjectionStore[OperationalDocument] | None = None
-    users_recovery: ToolUsersRecoveryService | Callable[[], ToolUsersRecoveryService] | None = None
-    users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
-    users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
-    users_read_snapshot: Callable[[str], ToolUsersRecoverySnapshot] | None = None
-
     def __post_init__(self) -> None:
         for name, expected in (
             ('navigation_source', SourceStore),
@@ -144,14 +138,6 @@ class ConfigurationManagerStores:
             self.users_directory, UsersDirectoryReader
         ):
             raise TypeError('Configuration Manager directory must implement UsersDirectoryReader')
-        if (self.users_recovery is None) != (self.users_snapshot_ids is None):
-            raise ValueError('Users recovery and snapshot catalog must be injected together')
-        if (
-            self.users_recovery is not None
-            and not isinstance(self.users_recovery, ToolUsersRecoveryService)
-            and not callable(self.users_recovery)
-        ):
-            raise TypeError('Users recovery service has an invalid type')
 
 
 def compose_configuration_manager_dependencies(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
+from dataclasses import replace
 from pathlib import Path
 from typing import Generic, TypeVar
 
@@ -130,6 +131,23 @@ class InProcessUsersRuntimeStore(UsersRuntimeStore):
 
     def list_users(self) -> tuple[RuntimeUser, ...]:
         return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
+
+    # Actualiza la base del usuario sin alterar Access ni Operational.
+    def upsert_base_user(self, user: RuntimeUser) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Users base publication requires RuntimeUser')
+        current = self._users.get(user.user_id)
+        if current is not None:
+            if current.issuer != user.issuer or current.subject_id != user.subject_id:
+                raise ValueError('Runtime user identity cannot be changed')
+            user = replace(
+                current,
+                identity=user.identity,
+                enabled=user.enabled,
+                profile=user.profile,
+            )
+        self._users[user.user_id] = user
+        return user
 
     def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
         self._users = {user.user_id: user for user in users}

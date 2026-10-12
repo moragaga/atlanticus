@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-# Users se aplica como operación especial snapshot -> users-runtime, separada de Source Projection.
+# El executor sólo aplica proyecciones Source de forma individual y verificable.
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -10,7 +9,6 @@ from atlanticus.web.master_projection.plan import (
     MasterProjectionPlanner,
     ProjectionDomain,
     ProjectionPlanState,
-    UsersPlanState,
 )
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.source.models import SourceKey
@@ -34,28 +32,18 @@ class MasterApplyResult:
     outcome: MasterApplyOutcome
 
 
-@dataclass(frozen=True, slots=True)
-class MasterUsersApplyResult:
-    snapshot_id: str
-    outcome: MasterApplyOutcome
-
-
 class MasterProjectionExecutor:
     def __init__(
         self,
         *,
         planner: MasterProjectionPlanner,
         domains: tuple[ProjectionDomain, ...],
-        users_replace: Callable[[str], object] | None = None,
     ) -> None:
         registered = {domain.key: domain for domain in domains}
         if len(registered) != len(domains) or not registered:
             raise ValueError('Master Projection domains must be unique and non-empty')
-        if users_replace is not None and not callable(users_replace):
-            raise TypeError('Master Projection Users replace must be callable')
         self._planner = planner
         self._domains = registered
-        self._users_replace = users_replace
 
     def apply(
         self,
@@ -124,27 +112,3 @@ class MasterProjectionExecutor:
                 'Projection result could not be verified', reason='VERIFICATION_FAILED'
             )
         return MasterApplyResult(source_key, expected_target, MasterApplyOutcome.APPLIED)
-
-    def apply_users(self, *, snapshot_id: str) -> MasterUsersApplyResult:
-        if not isinstance(snapshot_id, str) or not snapshot_id.strip() or snapshot_id != snapshot_id.strip():
-            raise MasterApplyError('Invalid Users snapshot selection', reason='INVALID_SELECTION')
-        if self._users_replace is None:
-            raise MasterApplyError('Users replacement is not configured', reason='UNAVAILABLE')
-        plan = self._planner.inspect()
-        if (
-            plan.users.state is not UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-            or snapshot_id not in plan.users.snapshot_ids
-        ):
-            raise MasterApplyError('Users snapshot selection is outdated', reason='STALE_SELECTION')
-        try:
-            result = self._users_replace(snapshot_id)
-        except Exception as error:
-            raise MasterApplyError(
-                'Users replacement failed', reason='EXECUTION_FAILED'
-            ) from error
-        differences = getattr(result, 'differences', None)
-        if differences not in (None, ()):
-            raise MasterApplyError(
-                'Users replacement could not be verified', reason='VERIFICATION_FAILED'
-            )
-        return MasterUsersApplyResult(snapshot_id=snapshot_id, outcome=MasterApplyOutcome.APPLIED)
