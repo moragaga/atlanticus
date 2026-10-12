@@ -37,6 +37,7 @@ def _candidate_to_document(candidate: UserCandidate) -> dict[str, object]:
         'directory_user': _directory_to_document(candidate.directory_user),
         'promoted_user': _managed_to_document(candidate.promoted_user),
         'issues': list(candidate.issues),
+        'runtime_status': None if candidate.runtime_status is None else candidate.runtime_status.value,
     }
 
 

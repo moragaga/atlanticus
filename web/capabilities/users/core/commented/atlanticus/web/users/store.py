@@ -29,6 +29,20 @@ class UsersRuntimeStore(ABC):
         raise NotImplementedError
 
 
+# Observación independiente: únicamente Cosmos, nunca Storage durante el login.
+class UsersGuestObserver(ABC):
+    @abstractmethod
+    def observe_guest(self, identity: AuthenticatedIdentity) -> RuntimeUser:
+        raise NotImplementedError
+
+
+# Administración consulta huéspedes persistidos sin modificar Registry ni Membership.
+class UsersGuestReader(ABC):
+    @abstractmethod
+    def list_guests(self) -> tuple[DiscoveredUser, ...]:
+        raise NotImplementedError
+
+
 class UsersRegistryStore(ABC):
     @abstractmethod
     def load(self) -> UsersRegistrySnapshot:

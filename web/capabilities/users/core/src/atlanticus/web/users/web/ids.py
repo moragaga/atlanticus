@@ -29,6 +29,7 @@ MANAGED_ROWS_ID = 'atlanticus-users-admin-managed-rows'
 MANAGED_STATUS_ID = 'atlanticus-users-admin-managed-status'
 MANAGED_PREVIOUS_ID = 'atlanticus-users-admin-managed-previous'
 MANAGED_NEXT_ID = 'atlanticus-users-admin-managed-next'
+MANAGED_RESULT_ID = 'atlanticus-users-admin-managed-result'
 
 EDIT_MODAL_ID = 'atlanticus-users-admin-edit-modal'
 EDIT_SELECTED_ID = 'atlanticus-users-admin-edit-selected'
@@ -49,6 +50,10 @@ def candidate_profile_id(user_id: str) -> dict[str, str]:
 
 def candidate_promote_id(user_id: str) -> dict[str, str]:
     return {'type': 'atlanticus-users-admin-candidate-promote', 'user_id': user_id}
+
+
+def managed_publish_id(user_id: str) -> dict[str, str]:
+    return {'type': 'atlanticus-users-admin-managed-publish', 'user_id': user_id}
 
 
 def managed_edit_id(user_id: str) -> dict[str, str]:

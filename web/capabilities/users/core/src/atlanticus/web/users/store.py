@@ -27,6 +27,18 @@ class UsersRuntimeStore(ABC):
         raise NotImplementedError
 
 
+class UsersGuestObserver(ABC):
+    @abstractmethod
+    def observe_guest(self, identity: AuthenticatedIdentity) -> RuntimeUser:
+        raise NotImplementedError
+
+
+class UsersGuestReader(ABC):
+    @abstractmethod
+    def list_guests(self) -> tuple[DiscoveredUser, ...]:
+        raise NotImplementedError
+
+
 class UsersRegistryStore(ABC):
     @abstractmethod
     def load(self) -> UsersRegistrySnapshot:

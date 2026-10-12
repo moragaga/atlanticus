@@ -26,13 +26,26 @@ from atlanticus.web.users.profiles import (
     require_managed_profile,
     resolve_profile_catalog,
 )
-from atlanticus.web.users.store import ToolMembershipStore, UsersDirectoryReader, UsersRegistryStore
+from atlanticus.web.users.store import (
+    ToolMembershipStore,
+    UsersDirectoryReader,
+    UsersGuestReader,
+    UsersRegistryStore,
+)
 
 
 class UserCandidateState(StrEnum):
     PROMOTABLE = 'promotable'
     CONFLICT = 'conflict'
     PROMOTED = 'promoted'
+
+
+# Estado de materialización, distinto del estado administrativo PROMOTED.
+class RuntimePublicationStatus(StrEnum):
+    SYNCHRONIZED = 'synchronized'
+    MISSING = 'missing'
+    OUTDATED = 'outdated'
+    UNAVAILABLE = 'unavailable'
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +56,7 @@ class UserCandidate:
     directory_user: DiscoveredUser | None = None
     promoted_user: ManagedUser | None = None
     issues: tuple[str, ...] = ()
+    runtime_status: RuntimePublicationStatus | None = None
 
     def __post_init__(self) -> None:
         user_id = self.user_id.strip()
@@ -50,6 +64,8 @@ class UserCandidate:
             raise ValueError('User candidate id must not be empty')
         object.__setattr__(self, 'user_id', user_id)
         object.__setattr__(self, 'issues', tuple(self.issues))
+        if self.runtime_status is not None and not isinstance(self.runtime_status, RuntimePublicationStatus):
+            raise ValueError('User candidate runtime status is invalid')
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,11 +84,14 @@ class UsersAdministrationService:
         memberships: ToolMembershipStore,
         profiles: UsersProfileCatalogProvider,
         directory: UsersDirectoryReader | None = None,
+        guest_reader: UsersGuestReader | None = None,
     ) -> None:
         self._registry = registry
         self._memberships = memberships
         self._profiles = profiles
         self._directory = directory
+        # El lector Guest pertenece a Cosmos y solo participa en el panel administrativo.
+        self._guest_reader = guest_reader
 
     def available_profiles(self) -> tuple[ProfileDefinition, ...]:
         return available_managed_profiles(resolve_profile_catalog(self._profiles))
@@ -81,13 +100,19 @@ class UsersAdministrationService:
         registry = self._registry.load()
         memberships = self._memberships.load()
         directory_users = self._directory.list_discovered() if self._directory is not None else ()
+        guest_users = self._guest_reader.list_guests() if self._guest_reader is not None else ()
+        # La identidad global ya conocida tiene precedencia sobre el dato observado como Guest.
+        directory_by_id = {user.user_id: user for user in directory_users}
+        for guest in guest_users:
+            if guest.user_id not in directory_by_id and registry.get(guest.user_id) is None:
+                directory_by_id[guest.user_id] = guest
         return UsersAdministrationSnapshot(
             registry=registry,
             memberships=memberships,
             candidates=_resolve_candidates(
                 registry=registry,
                 memberships=memberships,
-                directory_users=directory_users,
+                directory_users=tuple(directory_by_id.values()),
             ),
             profiles=self.available_profiles(),
         )

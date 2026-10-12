@@ -27,6 +27,7 @@ from atlanticus.web.users.web.ids import (
     MANAGED_ENABLED_ID,
     MANAGED_LIST_ID,
     MANAGED_NEXT_ID,
+    MANAGED_RESULT_ID,
     MANAGED_PAGE_ID,
     MANAGED_PAGE_SIZE_ID,
     MANAGED_PANEL_ID,
@@ -55,6 +56,7 @@ from atlanticus.web.users.web.ids import (
     candidate_profile_id,
     candidate_promote_id,
     managed_edit_id,
+    managed_publish_id,
     managed_page_number_id,
     promotion_page_number_id,
 )
@@ -357,7 +359,7 @@ def _managed_section(document: dict[str, object], *, can_manage: bool) -> object
         [
             _section_header(
                 'Usuarios administrados',
-                'Usuarios promovidos. La identidad es informativa; solo el perfil y el estado son editables.',
+                'Usuarios promovidos. La publicación en runtime se comprueba de forma independiente.',
             ),
             html.Div(
                 [
@@ -396,6 +398,7 @@ def _managed_section(document: dict[str, object], *, can_manage: bool) -> object
                 className='atlanticus-users-admin__filters atlanticus-users-admin__filters--managed',
             ),
             html.Div(paged_list, id=MANAGED_LIST_ID),
+            html.Div(id=MANAGED_RESULT_ID),
         ],
         className='atlanticus-users-admin__section atlanticus-users-admin__view-section',
     )
@@ -467,6 +470,13 @@ def _managed_row(candidate: dict[str, object], *, can_manage: bool) -> object:
     user = candidate.get('promoted_user')
     user = user if isinstance(user, dict) else {}
     enabled = user.get('enabled') is True
+    runtime_status = candidate.get('runtime_status')
+    runtime_label = {
+        'synchronized': 'Runtime sincronizado',
+        'missing': 'Runtime pendiente',
+        'outdated': 'Runtime desactualizado',
+        'unavailable': 'Runtime no verificable',
+    }.get(runtime_status)
     return html.Article(
         [
             _user_copy(user, candidate),
@@ -487,6 +497,26 @@ def _managed_row(candidate: dict[str, object], *, can_manage: bool) -> object:
                         str(user.get('profile_key') or '—'),
                         className='atlanticus-users-admin__profile-key',
                     ),
+                    html.Span(
+                        runtime_label,
+                        className=(
+                            'atlanticus-users-admin__badge '
+                            + (
+                                'atlanticus-users-admin__badge--ready'
+                                if runtime_status == 'synchronized'
+                                else 'atlanticus-users-admin__badge--warning'
+                            )
+                        ),
+                    ) if runtime_label is not None else None,
+                    dbc.Button(
+                        'Publicar en runtime' if runtime_status == 'missing' else 'Reintentar publicación',
+                        id=managed_publish_id(str(candidate.get('user_id'))),
+                        n_clicks=0,
+                        color='secondary',
+                        outline=True,
+                        size='sm',
+                        disabled=not can_manage,
+                    ) if runtime_status in {'missing', 'outdated'} else None,
                     dbc.Button(
                         'Editar',
                         id=managed_edit_id(str(candidate.get('user_id'))),

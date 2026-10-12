@@ -72,6 +72,7 @@ from atlanticus.web.users.models import RuntimeUser
 from atlanticus.web.users.store import (
     ToolMembershipStore,
     UsersDirectoryReader,
+    UsersGuestReader,
     UsersRegistryStore,
     UsersRuntimeStore,
 )
@@ -254,12 +255,16 @@ def compose_configuration_manager_dependencies(
         profile_options_provider=navigation_profile_options,
     )
 
+    guest_reader = (
+        stores.users_runtime if isinstance(stores.users_runtime, UsersGuestReader) else None
+    )
     if users_runtime_publisher is None:
         users_administration = UsersAdministrationService(
             registry=stores.users_registry,
             memberships=stores.users_memberships,
             profiles=profiles_provider,
             directory=stores.users_directory,
+            guest_reader=guest_reader,
         )
     else:
         users_administration = AdaUsersAdministrationService(
@@ -267,7 +272,9 @@ def compose_configuration_manager_dependencies(
             memberships=stores.users_memberships,
             profiles=profiles_provider,
             directory=stores.users_directory,
+            guest_reader=guest_reader,
             publish_runtime=users_runtime_publisher,
+            inspect_runtime=getattr(users_reconciliation, 'inspect', None),
         )
     users_manager = compose_users_manager(
         administration=users_administration,

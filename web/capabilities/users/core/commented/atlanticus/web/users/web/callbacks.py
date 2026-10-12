@@ -19,6 +19,7 @@ from atlanticus.web.users.web.ids import (
     MANAGED_ENABLED_ID,
     MANAGED_LIST_ID,
     MANAGED_NEXT_ID,
+    MANAGED_RESULT_ID,
     MANAGED_PAGE_ID,
     MANAGED_PAGE_SIZE_ID,
     MANAGED_PANEL_ID,
@@ -43,6 +44,7 @@ from atlanticus.web.users.web.ids import (
     candidate_profile_id,
     candidate_promote_id,
     managed_edit_id,
+    managed_publish_id,
     managed_page_number_id,
     promotion_page_number_id,
 )
@@ -241,6 +243,37 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             )
             fresh = snapshot_to_document(context.administration.discover())
             return preserve_profiles(fresh, document), _notice('Usuario promovido.')
+        except Exception as error:
+            return no_update, _error(str(error))
+
+    # Reintento por usuario: no reescribe Registry ni Membership.
+    @app.callback(
+        Output(SNAPSHOT_ID, 'data', allow_duplicate=True),
+        Output(MANAGED_RESULT_ID, 'children'),
+        Input(managed_publish_id(ALL), 'n_clicks'),
+        State(managed_publish_id(ALL), 'id'),
+        State(SNAPSHOT_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def retry_runtime_publication(clicks, publish_ids, document):
+        trigger = ctx.triggered_id
+        if not _pattern_click_is_real(trigger, clicks, publish_ids) or not context.can_manage():
+            return no_update, no_update
+        user_id = str(trigger.get('user_id', ''))
+        candidate = _candidate(document, user_id)
+        if (
+            candidate is None
+            or candidate.get('state') != 'promoted'
+            or candidate.get('runtime_status') not in {'missing', 'outdated'}
+        ):
+            return no_update, _error('Runtime status changed. Refresh Users before retrying.')
+        retry = getattr(context.administration, 'retry_runtime', None)
+        if not callable(retry):
+            return no_update, _error('Runtime publication is not available.')
+        try:
+            retry(user_id)
+            fresh = snapshot_to_document(context.administration.discover())
+            return preserve_profiles(fresh, document), _notice('Usuario publicado en runtime.')
         except Exception as error:
             return no_update, _error(str(error))
 

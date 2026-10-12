@@ -14,14 +14,16 @@ from atlanticus.connectivity.cosmos import (
     CosmosQueryParameter,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import GUEST_PROFILE, GUEST_PROFILE_KEY
+from atlanticus.web.users.local import LOCAL_ISSUER
 from atlanticus.web.users.errors import (
     UsersDefinitionError,
     UsersIdentityConflictError,
     UsersStoreUnavailableError,
 )
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import RuntimeUser
-from atlanticus.web.users.store import UsersRuntimeStore
+from atlanticus.web.users.models import DiscoveredUser, RuntimeProfile, RuntimeUser, UserIdentity
+from atlanticus.web.users.store import UsersGuestObserver, UsersGuestReader, UsersRuntimeStore
 
 _USER_DOCUMENT_TYPE = 'atlanticus_tool_runtime_user'
 _USER_SCHEMA_VERSION = 2
@@ -77,7 +79,7 @@ class _CosmosClient(Protocol):
     ) -> None: ...
 
 
-class CosmosUsersRuntimeStore(UsersRuntimeStore):
+class CosmosUsersRuntimeStore(UsersRuntimeStore, UsersGuestObserver, UsersGuestReader):
     def __init__(self, *, client: _CosmosClient, container_name: str) -> None:
         normalized_container_name = container_name.strip()
         if not normalized_container_name or normalized_container_name != container_name:
@@ -103,6 +105,57 @@ class CosmosUsersRuntimeStore(UsersRuntimeStore):
         if user.user_id != user_id or user.issuer != identity.issuer or user.subject_id != identity.subject_id:
             raise UsersIdentityConflictError('Users runtime user does not match authenticated identity')
         return user
+
+    # Crea Guest en el mismo formato y PK usados por el usuario promovido.
+    def observe_guest(self, identity: AuthenticatedIdentity) -> RuntimeUser:
+        if not isinstance(identity, AuthenticatedIdentity):
+            raise UsersDefinitionError('identity must be AuthenticatedIdentity')
+        if identity.issuer == LOCAL_ISSUER:
+            raise UsersDefinitionError('Local identities cannot be observed as guests')
+        current = self.resolve(identity)
+        if current is not None:
+            return current
+        user = RuntimeUser(
+            identity=UserIdentity(
+                user_id=build_user_key(issuer=identity.issuer, subject_id=identity.subject_id),
+                issuer=identity.issuer,
+                subject_id=identity.subject_id,
+                display_name=identity.display_name or identity.email or 'Usuario pendiente',
+                email=identity.email,
+            ),
+            enabled=True,
+            profile=RuntimeProfile.from_profile(GUEST_PROFILE),
+        )
+        try:
+            self._client.create_item(
+                container_name=self._container_name,
+                item=_user_to_document(user),
+            )
+        except CosmosConflictError:
+            # Si gana la promocion concurrente, se devuelve su version actual.
+            current = self.resolve(identity)
+            if current is None:
+                raise UsersStoreUnavailableError('Users runtime observation changed concurrently')
+            return current
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not observe guest in users runtime') from error
+        persisted = self.resolve(identity)
+        if persisted is None:
+            raise UsersStoreUnavailableError('Observed guest could not be read')
+        return persisted
+
+    # Solo se exponen Guests observados, no se escribe en Blob.
+    def list_guests(self) -> tuple[DiscoveredUser, ...]:
+        return tuple(
+            DiscoveredUser(
+                issuer=user.issuer,
+                subject_id=user.subject_id,
+                display_name=user.display_name,
+                email=user.email,
+            )
+            for user in self.list_users()
+            if user.profile.id == GUEST_PROFILE_KEY and user.issuer != LOCAL_ISSUER
+        )
 
     def list_users(self) -> tuple[RuntimeUser, ...]:
         try:
