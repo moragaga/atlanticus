@@ -59,16 +59,12 @@ def test_local_launcher_selects_durable_manager_with_shared_users_runtime(
         *,
         identity_provider,
         users_runtime,
-        master_material_reader,
         environment,
-        namespace,
     ):
         observed['dependencies'] = current
         observed['identity'] = identity_provider
         observed['users_runtime'] = users_runtime
-        observed['master_material_reader'] = master_material_reader
         observed['environment'] = environment
-        observed['namespace'] = namespace
         return application
 
     monkeypatch.setattr(runtime, 'open_durable_configuration_manager', open_durable)
@@ -84,8 +80,6 @@ def test_local_launcher_selects_durable_manager_with_shared_users_runtime(
     assert observed['identity'].resolve(None).subject_id == subject_id
     assert isinstance(observed['users_runtime'], UsersRuntime)
     assert observed['environment'] is reader.environment
-    assert observed['namespace'] == reader.namespace
-    assert observed['master_material_reader'] is not None
 
 
 def test_local_subject_defaults_to_atlanticus_local_user(monkeypatch) -> None:

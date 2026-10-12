@@ -40,7 +40,6 @@ COSMOS_DATABASE_VARIABLE = 'ADA_COSMOS_DATABASE_NAME'
 CONSUMPTION_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 CONSUMPTION_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 CONSUMPTION_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
-MASTER_PROJECTION_RELATIVE_PATH = 'master-projection/material.zip'
 AZURE_OBSERVABILITY_MODE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_MODE'
 AZURE_OBSERVABILITY_PROFILE_VARIABLE = 'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE'
 
@@ -219,15 +218,6 @@ class AdaGenericSettings(WebSettings):
 
     def local_base_root(self) -> Path:
         return self.tool_local_base_root.expanduser().resolve()
-
-    def master_projection_local_path(self) -> Path:
-        return (
-            self.storage_namespace().local_application_root(self.local_base_root())
-            / MASTER_PROJECTION_RELATIVE_PATH
-        )
-
-    def master_projection_blob_name(self) -> str:
-        return self.storage_namespace().application_blob_name(MASTER_PROJECTION_RELATIVE_PATH)
 
     def tool_persistence_settings(self) -> ToolPersistenceSettings:
         return ToolPersistenceSettings(

@@ -6,7 +6,6 @@ import pytest
 from pydantic import ValidationError
 
 from ada.web.application.generic.settings import (
-    MASTER_PROJECTION_RELATIVE_PATH,
     AdaGenericSettings,
     AdaPersistenceMode,
 )
@@ -232,9 +231,6 @@ def test_local_base_root_defaults_and_relative_override_are_resolved(
 
     assert default.local_base_root() == tmp_path / '.runtime/ada'
     assert overridden.local_base_root() == tmp_path / 'custom-runtime'
-    assert default.master_projection_local_path() == (
-        tmp_path / '.runtime/ada/conciencia_situacional' / MASTER_PROJECTION_RELATIVE_PATH
-    )
 
 
 def test_durable_mode_rejects_ambiguous_blob_credentials() -> None:

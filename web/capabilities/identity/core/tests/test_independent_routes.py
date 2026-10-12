@@ -35,21 +35,21 @@ def test_independent_route_is_excluded_without_exempting_nearby_paths(monkeypatc
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     provider = DeniedProvider()
     module = create_identity_module(
-        provider, independent_routes=('/master-projection', '/master-projection/logout')
+        provider, independent_routes=('/maintenance-console', '/maintenance-console/logout')
     )
     services = ServiceRegistry()
     module.register_services(services)
     server = Flask(__name__)
     module.register_middlewares(server, services)
-    server.add_url_rule('/master-projection', 'master', lambda: 'master')
-    server.add_url_rule('/master-projection/logout', 'logout', lambda: 'logout')
-    server.add_url_rule('/master-projection/unknown', 'unknown', lambda: 'unknown')
+    server.add_url_rule('/maintenance-console', 'maintenance', lambda: 'maintenance')
+    server.add_url_rule('/maintenance-console/logout', 'logout', lambda: 'logout')
+    server.add_url_rule('/maintenance-console/unknown', 'unknown', lambda: 'unknown')
     server.add_url_rule('/manager', 'manager', lambda: 'manager')
     client = server.test_client()
-    assert client.get('/master-projection').get_data(as_text=True) == 'master'
-    assert client.get('/master-projection/logout').get_data(as_text=True) == 'logout'
+    assert client.get('/maintenance-console').get_data(as_text=True) == 'maintenance'
+    assert client.get('/maintenance-console/logout').get_data(as_text=True) == 'logout'
     assert provider.calls == 0
-    assert client.get('/master-projection/unknown').status_code == 401
+    assert client.get('/maintenance-console/unknown').status_code == 401
     assert provider.calls == 1
     assert client.get('/manager').status_code == 401
     assert provider.calls == 1
@@ -58,8 +58,8 @@ def test_independent_route_is_excluded_without_exempting_nearby_paths(monkeypatc
     assert provider.calls == 2
 
 
-@pytest.mark.parametrize('route', ['', 'master-projection', '/', '/health/',
-                                   '/master-projection/', '/master-projection//x'])
+@pytest.mark.parametrize('route', ['', 'maintenance-console', '/', '/health/',
+                                   '/maintenance-console/', '/maintenance-console//x'])
 def test_independent_routes_reject_invalid_or_public_paths(route):
     with pytest.raises(ValueError, match='Independent route'):
         create_identity_module(DeniedProvider(), independent_routes=(route,))

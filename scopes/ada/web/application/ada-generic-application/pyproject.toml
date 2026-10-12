@@ -67,7 +67,6 @@ dependencies = [
     "atlanticus-web-profiles==0.1.0",
     "atlanticus-web-users==0.1.0",
     "atlanticus-web-projection==0.1.0",
-    "atlanticus-web-master-projection==0.1.0",
     "ada-web-ui-page-readiness==0.1.0",
     "pydantic==2.13.5",
     "pydantic-settings==2.14.1",
@@ -81,7 +80,6 @@ dev = [
 
 [project.scripts]
 ada-generic-manager-resources = "ada.web.application.generic.manager_deployment:manager_resources_main"
-ada-generic-master-projection = "ada.web.application.generic.master_projection.provision:main"
 ada-generic-local-resources = "ada.web.application.generic.local_resources:main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
@@ -156,7 +154,6 @@ ada-web-components = { path = "../../components/core", editable = true }
 ada-web-kpi-collector = { path = "../../kpis/collector", editable = true }
 ada-web-alarm-collector = { path = "../../alarms/collector", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
-atlanticus-web-master-projection = { path = "../../../../../web/capabilities/master-projection", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }

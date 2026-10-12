@@ -27,9 +27,6 @@ from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )
-from ada.web.application.generic.master_projection.composition import (
-    compose_master_projection_backend,
-)
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
@@ -72,11 +69,6 @@ from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.manager.web.ids import LOCATION_ID
-from atlanticus.web.master_projection.web import (
-    MASTER_PROJECTION_INDEPENDENT_ROUTES,
-    MasterMaterialReader,
-    MasterProjectionWebBinding,
-)
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 from atlanticus.web.navigation.api import (
     NavigationDefinition,
@@ -121,7 +113,6 @@ def create_operational_application_runtime(
     manager_projection_name: str = 'Projection',
     application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
-    master_material_reader: MasterMaterialReader | None = None,
     web_event_sink: WebEventSink | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
@@ -191,7 +182,6 @@ def create_operational_application_runtime(
             provider,
             users_runtime,
             resolver,
-            master_routes=master_material_reader is not None,
         )
     elif manager_dependencies is not None and isinstance(
         manager_dependencies.principal_provider, ManagerPrincipalBinding
@@ -205,11 +195,6 @@ def create_operational_application_runtime(
             modules=(
                 create_identity_module(
                     LocalIdentityProvider(),
-                    independent_routes=(
-                        MASTER_PROJECTION_INDEPENDENT_ROUTES
-                        if master_material_reader is not None
-                        else ()
-                    ),
                 ),
                 *definition.modules,
             ),
@@ -260,20 +245,6 @@ def create_operational_application_runtime(
         if manager_dependencies is not None:
             definition = _integrate_manager(definition, manager_dependencies)
 
-        if master_material_reader is not None:
-            backend = (
-                compose_master_projection_backend(manager_stores)
-                if manager_stores is not None
-                else None
-            )
-            master_module = MasterProjectionWebBinding(
-                application_namespace=resolved_settings.application_namespace,
-                environment=resolved_settings.environment.value,
-                planner=backend.planner if backend is not None else None,
-                reader=master_material_reader,
-                executor=backend.executor if backend is not None else None,
-            ).module()
-            definition = replace(definition, modules=(master_module, *definition.modules))
         return create_web_application(
             definition,
             external_sink=web_event_sink,
@@ -333,13 +304,10 @@ def _bind_manager_identity(
     provider: IdentityProvider,
     users_runtime: UsersRuntime,
     resolver: AccessResolver,
-    *,
-    master_routes: bool = False,
 ) -> WebApplicationDefinition:
     identity = create_identity_module(
         provider,
         access_resolver=resolver,
-        independent_routes=MASTER_PROJECTION_INDEPENDENT_ROUTES if master_routes else (),
     )
     identity_count = sum(module.name == identity.name for module in definition.modules)
     if identity_count > 1:

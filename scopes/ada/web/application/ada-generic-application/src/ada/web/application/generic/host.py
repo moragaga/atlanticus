@@ -20,10 +20,6 @@ from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.provider import IdentityProvider
-from atlanticus.web.master_projection.reader import (
-    BlobMasterMaterialReader,
-    LocalMasterMaterialReader,
-)
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.observability_azure import create_web_azure_event_sink
 from atlanticus.web.users.local import select_local_user
@@ -80,7 +76,6 @@ def create_worker_runtime(
         if settings.persistence_mode is AdaPersistenceMode.LOCAL:
             if not settings.environment.is_local:
                 raise IdentityConfigurationError('Local persistence is unavailable in production')
-            material_reader = LocalMasterMaterialReader(settings.master_projection_local_path())
             application = create_operational_application_runtime(
                 settings=settings,
                 manager_stores=create_local_configuration_manager_stores(),
@@ -90,16 +85,9 @@ def create_worker_runtime(
                 web_event_sink=azure_sink,
                 application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
-                master_material_reader=material_reader,
             )
         else:
             deployment = resources.enter_context(open_durable_manager(settings))
-            resource = deployment.application_artifacts
-            material_reader = BlobMasterMaterialReader(
-                client=deployment.connections.storage[resource.connection_ref],
-                container_name=resource.container_name,
-                blob_name=settings.master_projection_blob_name(),
-            )
             identity = (
                 _production_identity(production_identity_provider_factory)
                 if settings.environment.is_production
@@ -114,7 +102,6 @@ def create_worker_runtime(
                 web_event_sink=azure_sink,
                 application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
-                master_material_reader=material_reader,
             )
         prepare_dash_worker(application.dash)
         return AdaWorkerRuntime(application, resources)

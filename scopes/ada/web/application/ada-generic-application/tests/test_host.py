@@ -19,17 +19,15 @@ def _local_settings(tmp_path):
     return SimpleNamespace(
         persistence_mode=AdaPersistenceMode.LOCAL,
         environment=_environment('local'),
-        master_projection_local_path=lambda: (tmp_path / 'material.zip').resolve(),
         azure_observability_mode='off',
         azure_observability_profile='slim',
         application_insights_connection_string=None,
     )
 
 
-def test_local_host_owns_runtime_and_master_projection(tmp_path, monkeypatch) -> None:
+def test_local_host_owns_runtime(tmp_path, monkeypatch) -> None:
     settings = _local_settings(tmp_path)
     calls = []
-    reader = object()
     application = SimpleNamespace(dash='dash', server='server')
 
     def extension_factory(*_args):
@@ -38,7 +36,6 @@ def test_local_host_owns_runtime_and_master_projection(tmp_path, monkeypatch) ->
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(host, 'create_local_configuration_manager_stores', lambda: 'local-stores')
     monkeypatch.setattr(host, '_local_identity', lambda: 'local-identity')
-    monkeypatch.setattr(host, 'LocalMasterMaterialReader', lambda path: reader)
 
     def create(**kwargs):
         calls.append(kwargs)
@@ -55,7 +52,6 @@ def test_local_host_owns_runtime_and_master_projection(tmp_path, monkeypatch) ->
     assert calls[0]['manager_source_name'] == 'Local Source'
     assert calls[0]['manager_projection_name'] == 'Local Projection'
     assert calls[0]['extension_factory'] is extension_factory
-    assert calls[0]['master_material_reader'] is reader
     assert calls[1] == {'dash': 'dash'}
     worker.close()
 
@@ -70,7 +66,6 @@ def test_local_host_uses_automatic_identity_when_override_is_unset(
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: _local_settings(tmp_path))
     monkeypatch.setattr(host, 'create_local_configuration_manager_stores', lambda: 'local-stores')
     monkeypatch.setattr(host, 'select_local_user', lambda: local_user)
-    monkeypatch.setattr(host, 'LocalMasterMaterialReader', lambda _path: object())
     monkeypatch.setattr(
         host,
         'create_operational_application_runtime',
@@ -96,7 +91,6 @@ def test_local_host_uses_explicit_identity_override(tmp_path, monkeypatch) -> No
         'select_local_user',
         lambda: pytest.fail('Explicit local identity must bypass automatic selection'),
     )
-    monkeypatch.setattr(host, 'LocalMasterMaterialReader', lambda _path: object())
     monkeypatch.setattr(
         host,
         'create_operational_application_runtime',
@@ -111,27 +105,21 @@ def test_local_host_uses_explicit_identity_override(tmp_path, monkeypatch) -> No
     worker.close()
 
 
-def test_durable_local_host_keeps_resources_open_and_uses_application_artifacts(
+def test_durable_local_host_keeps_resources_open(
     monkeypatch,
 ) -> None:
     settings = SimpleNamespace(
         persistence_mode=AdaPersistenceMode.DURABLE,
         environment=_environment('local'),
-        master_projection_blob_name=lambda: 'app/master-projection/material.zip',
         azure_observability_mode='off',
         azure_observability_profile='slim',
         application_insights_connection_string=None,
     )
-    resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(
         stores='durable-stores',
-        application_artifacts=resource,
-        connections=SimpleNamespace(storage={'storage': object()}),
     )
     events = []
     captured = {}
-    reader_calls = []
-    reader = object()
     application = SimpleNamespace(dash='dash', server='server')
 
     @contextmanager
@@ -146,11 +134,6 @@ def test_durable_local_host_keeps_resources_open_and_uses_application_artifacts(
     monkeypatch.setattr(host, 'open_durable_manager', opened)
     monkeypatch.setattr(host, '_local_identity', lambda: 'local-identity')
 
-    def open_reader(**kwargs):
-        reader_calls.append(kwargs)
-        return reader
-
-    monkeypatch.setattr(host, 'BlobMasterMaterialReader', open_reader)
     monkeypatch.setattr(
         host,
         'create_operational_application_runtime',
@@ -161,18 +144,10 @@ def test_durable_local_host_keeps_resources_open_and_uses_application_artifacts(
     worker = host.create_worker_runtime()
 
     assert events == ['opened']
-    assert reader_calls == [
-        {
-            'client': deployment.connections.storage['storage'],
-            'container_name': 'configuration',
-            'blob_name': 'app/master-projection/material.zip',
-        }
-    ]
     assert captured['manager_stores'] == 'durable-stores'
     assert captured['identity_provider'] == 'local-identity'
     assert captured['manager_source_name'] == 'Blob Storage'
     assert captured['manager_projection_name'] == 'Cosmos DB'
-    assert captured['master_material_reader'] is reader
     worker.close()
     assert events == ['opened', 'closed']
 
@@ -181,16 +156,12 @@ def test_production_host_requires_injected_identity(monkeypatch) -> None:
     settings = SimpleNamespace(
         persistence_mode=AdaPersistenceMode.DURABLE,
         environment=_environment('production'),
-        master_projection_blob_name=lambda: 'app/master-projection/material.zip',
         azure_observability_mode='off',
         azure_observability_profile='slim',
         application_insights_connection_string=None,
     )
-    resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(
         stores='stores',
-        application_artifacts=resource,
-        connections=SimpleNamespace(storage={'storage': object()}),
     )
 
     @contextmanager
@@ -199,7 +170,6 @@ def test_production_host_requires_injected_identity(monkeypatch) -> None:
 
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(host, 'open_durable_manager', opened)
-    monkeypatch.setattr(host, 'BlobMasterMaterialReader', lambda **_kwargs: object())
 
     with pytest.raises(Exception, match='production identity provider'):
         host.create_worker_runtime()

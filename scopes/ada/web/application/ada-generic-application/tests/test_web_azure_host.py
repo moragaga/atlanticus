@@ -38,7 +38,6 @@ def test_worker_injects_owned_sink_before_web_composition(monkeypatch) -> None:
                         lambda **kwargs: (seen.update(kwargs), sink)[1])
     monkeypatch.setattr(host, 'create_local_configuration_manager_stores', lambda: object())
     monkeypatch.setattr(host, '_local_identity', lambda: object())
-    monkeypatch.setattr(host, 'LocalMasterMaterialReader', lambda path: object())
     monkeypatch.setattr(host, 'create_operational_application_runtime',
                         lambda **kwargs: (seen.update({'injected': kwargs['web_event_sink']}),
                                           SimpleNamespace(dash=object(), server=object()))[1])
@@ -58,7 +57,6 @@ def test_worker_closes_sink_when_composition_fails(monkeypatch) -> None:
     monkeypatch.setattr(host, 'create_web_azure_event_sink', lambda **kwargs: sink)
     monkeypatch.setattr(host, 'create_local_configuration_manager_stores', lambda: object())
     monkeypatch.setattr(host, '_local_identity', lambda: object())
-    monkeypatch.setattr(host, 'LocalMasterMaterialReader', lambda path: object())
 
     def fail(**kwargs):
         raise RuntimeError('compose failed')

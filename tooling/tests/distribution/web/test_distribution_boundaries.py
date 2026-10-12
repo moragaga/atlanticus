@@ -22,7 +22,7 @@ def test_product_specific_distribution_surfaces_belong_to_scopes() -> None:
     ).is_file()
 
 
-def test_master_projection_runtime_is_consumed_as_shared_capability() -> None:
+def test_obsolete_projection_package_is_not_a_runtime_dependency() -> None:
     application = tomllib.loads(
         (
             _ROOT / "scopes/ada/web/application/ada-generic-application/pyproject.toml"
@@ -37,7 +37,7 @@ def test_master_projection_runtime_is_consumed_as_shared_capability() -> None:
     application_dependencies = set(application["project"]["dependencies"])
     starter_dependencies = set(starter["project"]["dependencies"])
 
-    assert "atlanticus-web-master-projection==0.1.0" in application_dependencies
+    assert "atlanticus-web-master-projection==0.1.0" not in application_dependencies
     assert any(
         dependency.startswith("ada-generic-application==")
         for dependency in starter_dependencies

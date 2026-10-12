@@ -120,7 +120,7 @@ def inspect_material(content: bytes) -> MaterialAvailability:
     return MaterialAvailability.PRESENT
 
 
-# El esquema nuevo no admite las acciones de proyección heredadas de Master Projection.
+# El esquema solo admite el propósito y las acciones propias de Deployment Access.
 def _validate_payload(data: object) -> dict[str, object]:
     fields = {
         'schema_version',
