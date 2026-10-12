@@ -110,7 +110,7 @@ def test_change_in_one_tool_dispatches_only_that_tool():
         modeler_document=_source(), destination_identities=_destinations(), confirmations={}
     )
     source = _source(position=2)
-    source['tools']['tool_b']['alarms']['o1'] = {'status': 'ACTIVE'}
+    source['tools']['tool_b']['alarms']['o1'] = {'title': 'Alarm O1'}
     source['tools']['tool_b']['meta']['live_count'] = 1
     _seal(source)
     plan = plan_tool_deliveries(

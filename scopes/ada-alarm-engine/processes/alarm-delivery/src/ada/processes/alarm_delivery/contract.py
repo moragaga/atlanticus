@@ -7,6 +7,11 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 
+from ada.processes.alarm_delivery.public_projection import (
+    LIVE_PUBLIC_SCHEMA_VERSION,
+    public_tool_projection,
+)
+
 SOURCE_DOCUMENT_TYPE = 'ada_alarm_modeler_live_projection'
 SOURCE_SCHEMA_VERSION = 3
 CONFIRMATION_DOCUMENT_TYPE = 'ada_alarm_delivery_confirmation'
@@ -147,7 +152,11 @@ def plan_tool_deliveries(
     pending: list[ToolDeliveryCandidate] = []
     unchanged: list[str] = []
     for tool_key, tool in sorted(tools.items()):
-        fingerprint = _hash({'artifact_ref': source['artifact_ref'], 'tool': tool})
+        fingerprint = _hash({
+            'schema_version': LIVE_PUBLIC_SCHEMA_VERSION,
+            'artifact_ref': source['artifact_ref'],
+            'tool': public_tool_projection(tool),
+        })
         previous = confirmations.get(tool_key)
         if previous is not None:
             _monotonic(previous.source_journal_position, source['source_journal_position'])

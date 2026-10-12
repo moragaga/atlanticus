@@ -4,17 +4,20 @@ import hashlib
 import json
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Protocol
 
 from ada.processes.alarm_delivery.contract import ToolDeliveryCandidate
+from ada.processes.alarm_delivery.public_projection import (
+    LIVE_PUBLIC_SCHEMA_VERSION,
+    public_tool_projection,
+)
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 
 LIVE_CONTAINER = 'alarm-live-projection'
 LIVE_PARTITION_KEY = '/tool_key'
 LIVE_DOCUMENT_TYPE = 'ada_alarm_live_tool_projection'
-LIVE_SCHEMA_VERSION = 1
+LIVE_SCHEMA_VERSION = LIVE_PUBLIC_SCHEMA_VERSION
 
 
 class CosmosWriter(Protocol):
@@ -51,18 +54,14 @@ def live_document(candidate: ToolDeliveryCandidate) -> dict[str, object]:
     tool = candidate.tool
     if tool.get('tool_key') != candidate.tool_key:
         raise ValueError('Live publication Tool identity differs')
+    presentation = public_tool_projection(tool)
     return {
         'id': f'alarm-live:{candidate.tool_key}',
         'document_type': LIVE_DOCUMENT_TYPE,
         'schema_version': LIVE_SCHEMA_VERSION,
         'tool_key': candidate.tool_key,
-        'retired': tool['retired'],
-        'alarms': deepcopy(tool['alarms']),
-        'operator_pool': deepcopy(tool['operator_pool']),
-        'operator_view': deepcopy(tool['operator_view']),
-        'meta': deepcopy(tool['meta']),
-        'artifact_ref': deepcopy(candidate.artifact_ref),
-        'source_journal_position': deepcopy(candidate.source_journal_position),
+        **presentation,
+        'resolution_key': dict(candidate.artifact_ref['resolution_key']),
         'source_as_of': candidate.source_as_of,
         'source_sha256': candidate.source_sha256,
         'semantic_sha256': candidate.semantic_sha256,

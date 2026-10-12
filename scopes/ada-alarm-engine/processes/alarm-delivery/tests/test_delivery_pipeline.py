@@ -170,7 +170,7 @@ def test_only_changed_tool_and_retirement_are_published(tmp_path):
         job.recover(context)
         job.run_iteration(context)
         changed = _source(position=2)
-        changed['tools']['tool_b']['alarms']['incident'] = {'status': 'ACTIVE'}
+        changed['tools']['tool_b']['alarms']['incident'] = {'title': 'Incident'}
         changed['tools']['tool_b']['meta']['live_count'] = 1
         output.replace('current/latest.json', _seal(changed))
         assert job.run_iteration(context).published_tools == ('tool_b',)
@@ -249,7 +249,7 @@ def test_destination_change_reissues_without_semantic_change(tmp_path):
 
 def test_live_document_is_stable_and_contains_tool_only():
     source = _source()
-    source['tools']['tool_a']['alarms'] = {'occ-a': {'status': 'ACTIVE'}}
+    source['tools']['tool_a']['alarms'] = {'occ-a': {'title': 'Alarm A'}}
     source['tools']['tool_a']['meta']['live_count'] = 1
     plan = plan_tool_deliveries(
         modeler_document=_seal(source),
@@ -260,9 +260,9 @@ def test_live_document_is_stable_and_contains_tool_only():
     )
     doc = live_document(plan.pending[0])
     assert doc['id'] == 'alarm-live:tool_a'
-    assert doc['alarms'] == {'occ-a': {'status': 'ACTIVE'}}
+    assert doc['alarms'] == {'occ-a': {'title': 'Alarm A'}}
     assert doc['tool_key'] == 'tool_a'
-    assert doc['artifact_ref']['resolution_key'] == source['artifact_ref']['resolution_key']
+    assert doc['resolution_key'] == source['artifact_ref']['resolution_key']
     assert 'tool_b' not in str(doc)
 
 
