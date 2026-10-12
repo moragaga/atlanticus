@@ -12,7 +12,6 @@ from ada.web.application.configuration_manager import operational_ids as ids
 from ada.web.operational.identification import (
     OperationalCatalog,
     Position,
-    assignment_source_key,
 )
 from atlanticus.web.pagination import (
     ALLOWED_PAGE_SIZES,
@@ -288,8 +287,7 @@ def _assignment_row(
     user_id = user.user_id
     try:
         snapshot, assignment = context.service.assignment_for_edit(user_id)
-        status = context.service.projection_status(assignment_source_key(user_id))
-        state = _status_label(status)
+        state = 'Publicada en Source' if snapshot.current is not None else 'Sin publicar'
         publication_exists = snapshot.current is not None
         assignment_label = (
             'Sin asignación'

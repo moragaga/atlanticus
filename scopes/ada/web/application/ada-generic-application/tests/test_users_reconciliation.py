@@ -1,186 +1,157 @@
+from __future__ import annotations
+
 from dataclasses import replace
 
 import pytest
 
-from ada.web.application.generic.users_reconciliation import (
-    AdaUsersRuntimeReconciler,
-    UsersRuntimeReconciliationChangedError,
-    UsersRuntimeReconciliationError,
-    UsersRuntimeReconciliationIncompleteError,
-)
-from atlanticus.web.profiles.models import BASIC_PROFILE
+from ada.web.application.generic.users_reconciliation import AdaUsersReconciliationWorkflow
+from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
+from atlanticus.web.users.models import (
+    RuntimeOperational,
+    RuntimeOperationalReference,
+    RuntimeProfile,
+    RuntimeUser,
+    UserIdentity,
+)
+from atlanticus.web.users.reconstruction import UsersReconstructionConflictError
+from ada.web.application.configuration_manager.local_runtime import InProcessUsersRuntimeStore
 
 
-def _user(subject: str, *, enabled: bool = True, access_keys: tuple[str, ...] = ()) -> RuntimeUser:
+def _user(subject: str = 'alice', *, access_keys: tuple[str, ...] = ()) -> RuntimeUser:
     identity = UserIdentity(
         user_id=build_user_key(issuer='issuer', subject_id=subject),
-        issuer='issuer',
-        subject_id=subject,
-        display_name=subject,
+        issuer='issuer', subject_id=subject, display_name=subject,
     )
     return RuntimeUser(
-        identity=identity,
-        enabled=enabled,
-        profile=RuntimeProfile.from_profile(BASIC_PROFILE),
-        access_keys=access_keys,
+        identity=identity, enabled=True,
+        profile=RuntimeProfile.from_profile(BASIC_PROFILE), access_keys=access_keys,
     )
 
 
-class _Materializer:
-    def __init__(self, users: tuple[RuntimeUser, ...]) -> None:
+class Materializer:
+    def __init__(self, users):
         self.users = users
-        self.reads = 0
 
-    def materialize_all(self) -> tuple[RuntimeUser, ...]:
-        self.reads += 1
-        return self.users
+    def materialize_all(self):
+        return tuple(self.users)
 
-
-class _Store:
-    def __init__(self, users: tuple[RuntimeUser, ...]) -> None:
-        self.users = users
-        self.writes = 0
-        self.fail_after_partial_write = False
-        self.return_incomplete = False
-
-    def list_users(self) -> tuple[RuntimeUser, ...]:
-        return self.users
-
-    def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
-        self.writes += 1
-        if self.fail_after_partial_write:
-            self.users = users[:1]
-            raise RuntimeError('Simulated partial write')
-        if self.return_incomplete:
-            return self.users
-        self.users = users
-        return self.users
+    def materialize_user(self, user_id):
+        return next(user for user in self.users if user.user_id == user_id)
 
 
-def test_preview_reports_all_differences_without_mutating_runtime():
-    current = (_user('alice', enabled=False), _user('obsolete'))
-    desired = (_user('alice', access_keys=('dashboard.view',)), _user('bob'))
-    store = _Store(current)
-    reconcile = AdaUsersRuntimeReconciler(materializer=_Materializer(desired), store=store)
-
-    plan = reconcile.preview()
-
-    assert plan.creates == (desired[1].user_id,)
-    assert plan.updates == (desired[0].user_id,)
-    assert plan.deletes == (current[1].user_id,)
-    assert plan.unchanged == ()
-    assert plan.target_count == 2
-    assert store.writes == 0
-    assert store.users == current
-
-
-def test_application_requires_same_preview_and_explicit_deletion_permission():
-    current = (_user('obsolete'),)
-    desired = (_user('alice'),)
-    store = _Store(current)
-    materializer = _Materializer(desired)
-    reconcile = AdaUsersRuntimeReconciler(materializer=materializer, store=store)
-    plan = reconcile.preview()
-
-    with pytest.raises(UsersRuntimeReconciliationChangedError):
-        reconcile.apply(expected_plan_id='wrong', actor='admin', allow_deletes=True)
-    with pytest.raises(UsersRuntimeReconciliationError, match='deletion requires'):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='admin')
-    with pytest.raises(TypeError, match='boolean'):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='admin', allow_deletes='yes')
-    assert store.writes == 0
-
-    result = reconcile.apply(expected_plan_id=plan.plan_id, actor='admin', allow_deletes=True)
-
-    assert result.plan == plan
-    assert result.actor == 'admin'
-    assert result.persisted_count == 1
-    assert store.users == desired
-    assert store.writes == 1
+def test_integral_reconciliation_updates_access_profile_and_operational_together():
+    before = _user(access_keys=('admin.manage',))
+    desired = replace(
+        before, profile=RuntimeProfile.from_profile(ROOT_PROFILE),
+        access_keys=('reports.view',),
+        operational=RuntimeOperational(
+            position=RuntimeOperationalReference(id='operator', label='Operator')
+        ),
+    )
+    runtime = InProcessUsersRuntimeStore((before,))
+    workflow = AdaUsersReconciliationWorkflow(
+        materializer=Materializer((desired,)), runtime=runtime
+    )
+    preview = workflow.inspect()
+    assert preview.update_ids == (before.user_id,)
+    assert workflow.apply(preview).has_changes is False
+    assert runtime.list_users() == (desired,)
+    assert workflow.inspect().has_changes is False
 
 
-def test_outdated_source_and_runtime_cancel_before_first_write():
-    alice = _user('alice')
-    bob = _user('bob')
-    materializer = _Materializer((alice,))
-    store = _Store(())
-    reconcile = AdaUsersRuntimeReconciler(materializer=materializer, store=store)
-    old_plan = reconcile.preview()
-    materializer.users = (bob,)
-
-    with pytest.raises(UsersRuntimeReconciliationChangedError):
-        reconcile.apply(expected_plan_id=old_plan.plan_id, actor='admin')
-    assert store.writes == 0
-
-    new_plan = reconcile.preview()
-    store.users = (alice,)
-    with pytest.raises(UsersRuntimeReconciliationChangedError):
-        reconcile.apply(expected_plan_id=new_plan.plan_id, actor='admin', allow_deletes=True)
-    assert store.writes == 0
+def test_missing_member_disables_and_revokes_without_deleting_runtime():
+    user = _user(access_keys=('admin.manage',))
+    runtime = InProcessUsersRuntimeStore((user,))
+    workflow = AdaUsersReconciliationWorkflow(materializer=Materializer(()), runtime=runtime)
+    preview = workflow.inspect()
+    assert preview.disable_ids == (user.user_id,)
+    workflow.apply(preview)
+    assert runtime.list_users() == (replace(user, enabled=False, access_keys=()),)
 
 
-def test_no_changes_are_idempotent_and_require_no_cosmos_writes():
-    user = _user('alice')
-    store = _Store((user,))
-    reconcile = AdaUsersRuntimeReconciler(materializer=_Materializer((user,)), store=store)
-
-    plan = reconcile.preview()
-    result = reconcile.apply(expected_plan_id=plan.plan_id, actor='admin')
-
-    assert plan.unchanged == (user.user_id,)
-    assert not plan.has_changes
-    assert result.persisted_count == 1
-    assert store.writes == 0
-
-
-def test_partial_write_fails_without_reporting_success_and_allows_new_preview():
-    desired = (_user('alice'), _user('bob'))
-    store = _Store(())
-    store.fail_after_partial_write = True
-    reconcile = AdaUsersRuntimeReconciler(materializer=_Materializer(desired), store=store)
-    plan = reconcile.preview()
-
-    with pytest.raises(UsersRuntimeReconciliationIncompleteError, match='did not complete'):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='admin')
-    ordered = tuple(sorted(desired, key=lambda user: user.user_id))
-    assert store.users == ordered[:1]
-
-    store.fail_after_partial_write = False
-    recovery = reconcile.preview()
-    assert recovery.creates == (ordered[1].user_id,)
-    assert recovery.unchanged == (ordered[0].user_id,)
-    assert recovery.plan_id != plan.plan_id
-    assert reconcile.apply(expected_plan_id=recovery.plan_id, actor='admin').persisted_count == 2
+def test_stale_preview_refused_before_writing():
+    user = _user()
+    desired = replace(user, enabled=False)
+    materializer = Materializer((desired,))
+    runtime = InProcessUsersRuntimeStore((user,))
+    workflow = AdaUsersReconciliationWorkflow(materializer=materializer, runtime=runtime)
+    preview = workflow.inspect()
+    materializer.users = (replace(desired, profile=RuntimeProfile.from_profile(ROOT_PROFILE)),)
+    with pytest.raises(UsersReconstructionConflictError, match='sources changed'):
+        workflow.apply(preview)
+    assert runtime.list_users() == (user,)
 
 
-def test_runtime_store_disagreement_reports_incomplete_publication():
-    store = _Store(())
-    store.return_incomplete = True
-    reconcile = AdaUsersRuntimeReconciler(materializer=_Materializer((_user('alice'),)), store=store)
-    plan = reconcile.preview()
-    with pytest.raises(UsersRuntimeReconciliationIncompleteError):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='admin')
+def test_unverified_operational_clear_is_blocked():
+    before = replace(
+        _user(), operational=RuntimeOperational(
+            area=RuntimeOperationalReference(id='mina', label='Mina')
+        ),
+    )
+    runtime = InProcessUsersRuntimeStore((before,))
+    workflow = AdaUsersReconciliationWorkflow(
+        materializer=Materializer((_user(),)), runtime=runtime
+    )
+    with pytest.raises(UsersReconstructionConflictError, match='cannot be cleared'):
+        workflow.apply(workflow.inspect())
+    assert runtime.list_users() == (before,)
 
 
-def test_invalid_actor_is_rejected_before_any_write():
-    store = _Store(())
-    reconcile = AdaUsersRuntimeReconciler(materializer=_Materializer((_user('alice'),)), store=store)
-    plan = reconcile.preview()
-    with pytest.raises(ValueError, match='actor'):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='  ')
-    assert store.writes == 0
+def test_individual_publication_uses_full_desired_user():
+    user = _user()
+    desired = replace(user, access_keys=('dashboard.view',))
+    runtime = InProcessUsersRuntimeStore((user,))
+    workflow = AdaUsersReconciliationWorkflow(
+        materializer=Materializer((desired,)), runtime=runtime
+    )
+    assert workflow.publish_one(user.user_id) == desired
+    assert runtime.list_users() == (desired,)
 
 
-def test_current_grants_changed_after_preview_rejects_stale_plan():
-    alice = _user('alice', access_keys=('dashboard.view',))
-    materializer = _Materializer((alice,))
-    store = _Store((_user('alice'),))
-    reconcile = AdaUsersRuntimeReconciler(materializer=materializer, store=store)
-    plan = reconcile.preview()
-    store.users = (replace(alice, access_keys=('dashboard.view', 'reports.read')),)
+def test_conditional_write_refuses_concurrent_access_update():
+    user = _user(access_keys=('dashboard.view',))
+    desired = replace(user, access_keys=('reports.view',))
 
-    with pytest.raises(UsersRuntimeReconciliationChangedError):
-        reconcile.apply(expected_plan_id=plan.plan_id, actor='admin')
-    assert store.writes == 0
+    class RacingStore(InProcessUsersRuntimeStore):
+        def upsert_user_if_current(self, item, *, expected):
+            self.upsert_user(replace(user, access_keys=('critical.new', 'dashboard.view')))
+            return super().upsert_user_if_current(item, expected=expected)
+
+    runtime = RacingStore((user,))
+    workflow = AdaUsersReconciliationWorkflow(
+        materializer=Materializer((desired,)), runtime=runtime
+    )
+    with pytest.raises(UsersReconstructionConflictError, match='changed'):
+        workflow.apply(workflow.inspect())
+    assert runtime.list_users()[0].access_keys == ('critical.new', 'dashboard.view')
+
+
+def test_partial_failure_allows_new_inspection_and_retry():
+    alice, bob = _user('alice'), _user('bob')
+
+    class InterruptedStore(InProcessUsersRuntimeStore):
+        def __init__(self):
+            super().__init__()
+            self.writes = 0
+            self.fail = True
+
+        def upsert_user_if_current(self, user, *, expected):
+            self.writes += 1
+            if self.fail and self.writes == 2:
+                raise RuntimeError('Simulated partial failure')
+            return super().upsert_user_if_current(user, expected=expected)
+
+    runtime = InterruptedStore()
+    workflow = AdaUsersReconciliationWorkflow(
+        materializer=Materializer((alice, bob)), runtime=runtime
+    )
+    with pytest.raises(RuntimeError, match='partial failure'):
+        workflow.apply(workflow.inspect())
+    assert len(runtime.list_users()) == 1
+    runtime.fail = False
+    remaining = workflow.inspect()
+    assert len(remaining.create_ids) == 1
+    assert len(remaining.update_ids) == 0
+    workflow.apply(remaining)
+    assert runtime.list_users() == tuple(sorted((alice, bob), key=lambda user: user.user_id))

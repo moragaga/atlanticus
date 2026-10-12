@@ -45,7 +45,7 @@ def test_local_base_publication_preserves_access_keys():
     assert store.list_users() == (actual,)
 
 
-def test_local_manager_exposes_reconstruction_and_can_publish(tmp_path, monkeypatch):
+def test_local_manager_does_not_expose_partial_reconstruction(tmp_path, monkeypatch):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     stores = create_local_configuration_manager_stores(source_root=tmp_path)
     user = _user()
@@ -63,15 +63,5 @@ def test_local_manager_exposes_reconstruction_and_can_publish(tmp_path, monkeypa
     dependencies = compose_configuration_manager_dependencies(
         stores=stores, principal_provider=lambda: principal,
     )
-    entry = dependencies.users_reconstruction_entry
-    assert entry is not None and entry.route == '/users-reconstruction'
-    entry.layout(None)
-    app = FakeDash()
-    entry.web_module.register_callbacks(app, None)
-    _message, inspection = app.callbacks[0](1)
-    assert inspection['create_ids'] == [user.user_id]
-    _message, reset = app.callbacks[1](1, inspection, ['confirmed'])
-    assert reset is None
-    published = next(item for item in stores.users_runtime.list_users() if item.user_id == user.user_id)
-    assert published.enabled is True
-    assert published.profile.id == 'basic'
+    assert dependencies.users_reconstruction_entry is None
+    assert all(user.user_id != item.user_id for item in stores.users_runtime.list_users())

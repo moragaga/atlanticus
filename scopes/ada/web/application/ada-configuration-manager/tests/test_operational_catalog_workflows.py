@@ -185,7 +185,8 @@ def test_catalog_and_individual_assignment_remain_independent(tmp_path):
         expected=individual_snapshot,
     )
     assert projections.get_active(assignment_source_key(USER_ID)) is None
-    service.project_current(assignment_source_key(USER_ID))
+    with pytest.raises(OperationalReferenceError, match='not projected'):
+        service.project_current(assignment_source_key(USER_ID))
     assert service.assignment_for_read(USER_ID).position_id == position_id
     assert service.catalog_for_read().position(position_id) is not None
     assert len(contracts.source.list_history().items) == 1

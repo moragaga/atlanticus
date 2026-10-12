@@ -30,6 +30,10 @@ def _id(suffix: str) -> str:
 class UsersReconstructionWebContext:
     workflow: UsersReconstructionWorkflow
     can_manage: Callable[[], bool]
+    title: str = 'Reconstrucción de usuarios'
+    description: str = 'Reconstruye Identity, Membership y Profile desde sus fuentes vigentes.'
+    action_label: str = 'Reconstruir'
+    complete_label: str = 'Reconstrucción completada'
 
 
 def inspection_document(preview: UsersReconstructionPreview) -> dict[str, object]:
@@ -55,8 +59,8 @@ def build_users_reconstruction_configuration(context: UsersReconstructionWebCont
     permitted = context.can_manage()
     return html.Div(
         [
-            html.H3('Reconstrucción de usuarios'),
-            html.P('Reconstruye Identity, Membership y Profile desde sus fuentes vigentes.'),
+            html.H3(context.title),
+            html.P(context.description),
             dcc.Store(id=_id('inspection'), storage_type='memory'),
             dbc.Button('Inspeccionar', id=_id('inspect'), n_clicks=0, disabled=not permitted),
             html.Div(id=_id('inspection-result')),
@@ -65,7 +69,7 @@ def build_users_reconstruction_configuration(context: UsersReconstructionWebCont
                 options=[{'label': 'Confirmo la publicación', 'value': 'confirmed', 'disabled': not permitted}],
                 value=[],
             ),
-            dbc.Button('Reconstruir', id=_id('apply'), n_clicks=0, disabled=not permitted),
+            dbc.Button(context.action_label, id=_id('apply'), n_clicks=0, disabled=not permitted),
             html.Div(id=_id('apply-result')),
         ],
         className=f'{_PREFIX} atlanticus-bootstrap',
@@ -117,7 +121,7 @@ def register_users_reconstruction_callbacks(app: object, context: UsersReconstru
             if not fresh.has_changes:
                 return _notice('Users runtime is already aligned'), None
             context.workflow.apply(fresh)
-            return _notice(_summary('Reconstrucción completada', document)), None
+            return _notice(_summary(context.complete_label, document)), None
         except UsersReconstructionConflictError as error:
             return _error(str(error)), None
         except Exception:

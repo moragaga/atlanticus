@@ -115,13 +115,14 @@ def test_base_update_preserves_operational_enrichment(monkeypatch):
     publisher = AdaCosmosRuntimeUserWriter(
         client=cosmos, store=runtime, container_name='users-runtime'
     )
-    revised = replace(original, enabled=False, profile=RuntimeProfile.from_profile(ROOT_PROFILE))
+    revised = replace(original, enabled=False, profile=RuntimeProfile.from_profile(ROOT_PROFILE), access_keys=())
     updated = publisher.upsert_base_user(revised)
     assert updated.operational == operational
+    assert updated.access_keys == original.access_keys
     assert updated.profile == revised.profile
     assert not updated.enabled
     assert cosmos.patches == [
-        ('/user/identity', '/user/enabled', '/user/profile', '/user/access_keys')
+        ('/user/identity', '/user/enabled', '/user/profile')
     ]
 
 

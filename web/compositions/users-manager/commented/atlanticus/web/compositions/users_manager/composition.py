@@ -82,19 +82,27 @@ def compose_users_reconstruction_manager(
     group_key: str,
     access_key: str,
     authorization: ManagerAuthorizationPolicy | None = None,
+    title: str = 'Reconstrucción de usuarios',
+    description: str = 'Reconstrucción controlada desde Registry, Memberships y Profiles vigentes.',
+    action_label: str = 'Reconstruir',
+    complete_label: str = 'Reconstrucción completada',
 ) -> ManagerEntry:
     policy = authorization or DefaultManagerAuthorizationPolicy()
     context = UsersReconstructionWebContext(
         workflow=reconstruction,
         can_manage=lambda: policy.can_view(principal_provider(), entry),
+        title=title,
+        description=description,
+        action_label=action_label,
+        complete_label=complete_label,
     )
     entry = ManagerEntry(
         key='users-reconstruction',
         group_key=group_key,
-        title='Reconstrucción de usuarios',
+        title=title,
         route='/users-reconstruction',
         order=11,
-        description='Reconstrucción controlada desde Registry, Memberships y Profiles vigentes.',
+        description=description,
         layout=lambda _services: build_users_reconstruction_configuration(context),
         access_key=access_key,
         web_module=create_users_reconstruction_web_module(context),

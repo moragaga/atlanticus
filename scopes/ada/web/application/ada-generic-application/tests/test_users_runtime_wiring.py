@@ -58,18 +58,16 @@ def test_integrated_manager_wires_individual_publication(tmp_path, monkeypatch):
         def __init__(self, *, stores):
             self.stores = stores
 
-        def publish_user(self, user_id, *, writer):
+        def materialize_user(self, user_id):
             captured.append(user_id)
             user = next(
                 user for user in self.stores.users_registry.load().users if user.user_id == user_id
             )
             membership = self.stores.users_memberships.load().get(user_id)
-            return writer.upsert_base_user(
-                RuntimeUser(
-                    identity=user,
-                    enabled=membership.enabled,
-                    profile=RuntimeProfile.from_profile(BASIC_PROFILE),
-                )
+            return RuntimeUser(
+                identity=user,
+                enabled=membership.enabled,
+                profile=RuntimeProfile.from_profile(BASIC_PROFILE),
             )
 
     monkeypatch.setattr(manager_principal, 'AdaUsersRuntimeMaterializer', Materializer)
@@ -78,6 +76,9 @@ def test_integrated_manager_wires_individual_publication(tmp_path, monkeypatch):
         access_runtime=AccessRuntime(),
         users_runtime=UsersRuntime(),
     )
+    assert deps.users_reconstruction_entry is not None
+    assert deps.users_reconstruction_entry.title == 'Conciliación de usuarios'
+    assert deps.users_reconstruction_entry.route == '/users-reconstruction'
     services = ServiceRegistry()
     deps.users_entry.web_module.register_services(services)
     administration = services.require(USERS_ADMINISTRATION_SERVICE, AdaUsersAdministrationService)

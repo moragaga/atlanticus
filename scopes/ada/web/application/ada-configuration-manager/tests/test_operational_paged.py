@@ -140,7 +140,7 @@ def test_position_catalog_has_same_10_20_pagination_and_search():
         PageRequest(1, 15)
 
 
-def test_source_publication_and_projection_are_distinguishable_in_user_list(tmp_path):
+def test_source_publication_is_shown_without_individual_projection(tmp_path):
     context, users = make_context(tmp_path, 1)
     user_id = users.users[0].user_id
     initial, _page = render_assignment_list(context, None, 1, 10)
@@ -154,11 +154,8 @@ def test_source_publication_and_projection_are_distinguishable_in_user_list(tmp_
     )
     published, _page = render_assignment_list(context, None, 1, 10)
     assert 'Con atributos' in _strings(published)
-    assert 'Pendiente de proyección' in _strings(published)
-    context.service.project_current(assignment_source_key(user_id))
-    projected, _page = render_assignment_list(context, None, 1, 10)
-    assert 'Sincronizado' in _strings(projected)
-    assert 'Grupo: 2' in _strings(projected)
+    assert 'Publicada en Source' in _strings(published)
+    assert 'Grupo: 2' in _strings(published)
     catalog, _ = context.service.catalog_for_edit()
     assert catalog.current is None
     assert context.service.project_current(CATALOG_SOURCE_KEY) is None

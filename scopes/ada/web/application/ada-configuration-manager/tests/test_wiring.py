@@ -52,7 +52,6 @@ def test_local_dependencies_use_one_injected_principal_for_manager(tmp_path, mon
     visible = surface.registry.visible_items(provider(), surface.authorization)
     assert {item.key for item in visible} == {
         'users',
-        'users-reconstruction',
         'operational-identification',
         'profiles',
         'access',

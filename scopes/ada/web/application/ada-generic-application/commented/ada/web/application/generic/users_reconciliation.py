@@ -1,186 +1,109 @@
 from __future__ import annotations
 
-import hashlib
-import json
-from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import replace
 
+from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import GUEST_PROFILE_KEY
+from atlanticus.web.users.errors import UsersIdentityConflictError
 from atlanticus.web.users.models import RuntimeUser
+from atlanticus.web.users.reconstruction import (
+    UsersReconstructionConflictError,
+    UsersReconstructionPreview,
+)
+from atlanticus.web.users.store import UsersRuntimeStore
 
 
-class UsersRuntimeReconciliationError(RuntimeError):
-    pass
-
-
-class UsersRuntimeReconciliationChangedError(UsersRuntimeReconciliationError):
-    pass
-
-
-class UsersRuntimeReconciliationIncompleteError(UsersRuntimeReconciliationError):
-    pass
-
-
-class RuntimeReconciliationStore(Protocol):
-    def list_users(self) -> tuple[RuntimeUser, ...]: ...
-
-    def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]: ...
-
-
-class RuntimeUsersMaterializer(Protocol):
-    def materialize_all(self) -> tuple[RuntimeUser, ...]: ...
-
-
-@dataclass(frozen=True, slots=True)
-# Resumen estable para mostrar las diferencias sin duplicar documentos de identidad.
-class UsersRuntimeReconciliationPlan:
-    plan_id: str
-    creates: tuple[str, ...]
-    updates: tuple[str, ...]
-    deletes: tuple[str, ...]
-    unchanged: tuple[str, ...]
-
-    @property
-    def has_changes(self) -> bool:
-        return bool(self.creates or self.updates or self.deletes)
-
-    @property
-    def target_count(self) -> int:
-        return len(self.creates) + len(self.updates) + len(self.unchanged)
-
-
-@dataclass(frozen=True, slots=True)
-class UsersRuntimeReconciliationResult:
-    plan: UsersRuntimeReconciliationPlan
-    actor: str
-    persisted_count: int
-
-
-class AdaUsersRuntimeReconciler:
+# Reconcilia el RuntimeUser completo desde las autoridades de ADA, no desde snapshots de runtime.
+class AdaUsersReconciliationWorkflow:
     def __init__(
-        self,
-        *,
-        materializer: RuntimeUsersMaterializer,
-        store: RuntimeReconciliationStore,
+        self, *, materializer: AdaUsersRuntimeMaterializer, runtime: UsersRuntimeStore
     ) -> None:
         self._materializer = materializer
-        self._store = store
+        self._runtime = runtime
 
-    # Calcula la diferencia y el identificador sin escribir en Cosmos.
-    def preview(self) -> UsersRuntimeReconciliationPlan:
-        plan, _desired = self._capture()
-        return plan
-
-    # Solo publica si la confirmación corresponde al estado actual y las bajas fueron autorizadas.
-    def apply(
-        self,
-        *,
-        expected_plan_id: str,
-        actor: str,
-        allow_deletes: bool = False,
-    ) -> UsersRuntimeReconciliationResult:
-        if not isinstance(expected_plan_id, str) or not expected_plan_id.strip():
-            raise ValueError('A confirmed Users runtime reconciliation plan is required')
-        if (
-            not isinstance(actor, str)
-            or not actor.strip()
-            or actor != actor.strip()
-            or len(actor) > 128
-            or any(ord(char) < 32 for char in actor)
-        ):
-            raise ValueError('Users runtime reconciliation actor is invalid')
-        if not isinstance(allow_deletes, bool):
-            raise TypeError('Users runtime deletion confirmation must be boolean')
-        plan, desired = self._capture()
-        if plan.plan_id != expected_plan_id:
-            raise UsersRuntimeReconciliationChangedError(
-                'Users runtime reconciliation changed since the preview'
-            )
-        if plan.deletes and not allow_deletes:
-            raise UsersRuntimeReconciliationError(
-                'Users runtime deletion requires explicit confirmation'
-            )
-        if not plan.has_changes:
-            return UsersRuntimeReconciliationResult(
-                plan=plan,
-                actor=actor,
-                persisted_count=len(desired),
-            )
-        if _unique_sorted(self._materializer.materialize_all()) != desired:
-            raise UsersRuntimeReconciliationChangedError(
-                'Users runtime source data changed before reconciliation'
-            )
-        # replace_all no es una transacción entre particiones Cosmos: cualquier error es incompleto.
-        try:
-            persisted = self._store.replace_all(desired)
-            if tuple(sorted(persisted, key=lambda user: user.user_id)) != desired:
-                raise UsersRuntimeReconciliationIncompleteError(
-                    'Users runtime replacement returned unexpected data'
-                )
-            if _unique_sorted(self._store.list_users()) != desired:
-                raise UsersRuntimeReconciliationIncompleteError(
-                    'Users runtime persistence differs from the expected projection'
-                )
-            if _unique_sorted(self._materializer.materialize_all()) != desired:
-                raise UsersRuntimeReconciliationIncompleteError(
-                    'Users runtime sources changed during reconciliation'
-                )
-        except Exception as error:
-            raise UsersRuntimeReconciliationIncompleteError(
-                'Users runtime reconciliation did not complete; verify current state before retrying'
-            ) from error
-        return UsersRuntimeReconciliationResult(
-            plan=plan,
-            actor=actor,
-            persisted_count=len(desired),
-        )
-
-    # Evita trabajar con registros duplicados y calcula el diff reproducible.
-    def _capture(self) -> tuple[UsersRuntimeReconciliationPlan, tuple[RuntimeUser, ...]]:
-        desired = _unique_sorted(self._materializer.materialize_all())
-        current = _unique_sorted(self._store.list_users())
-        existing = {user.user_id: user for user in current}
-        target = {user.user_id: user for user in desired}
-        creates = tuple(sorted(target.keys() - existing.keys()))
-        deletes = tuple(sorted(existing.keys() - target.keys()))
-        updates = tuple(
-            sorted(user_id for user_id in target.keys() & existing.keys() if target[user_id] != existing[user_id])
-        )
-        unchanged = tuple(
-            sorted(user_id for user_id in target.keys() & existing.keys() if target[user_id] == existing[user_id])
-        )
-        plan_id = _fingerprint(current=current, desired=desired)
-        return (
-            UsersRuntimeReconciliationPlan(
-                plan_id=plan_id,
-                creates=creates,
-                updates=updates,
-                deletes=deletes,
-                unchanged=unchanged,
+    # La inspección no escribe datos; detecta diferencias y bajas lógicas.
+    def inspect(self) -> UsersReconstructionPreview:
+        desired = tuple(sorted(self._materializer.materialize_all(), key=lambda user: user.user_id))
+        if len({user.user_id for user in desired}) != len(desired):
+            raise UsersReconstructionConflictError('Users reconciliation contains duplicate identities')
+        runtime_users = self._runtime.list_users()
+        existing = {user.user_id: user for user in runtime_users}
+        if len(existing) != len(runtime_users):
+            raise UsersReconstructionConflictError('Users runtime contains duplicate identities')
+        desired_ids = {user.user_id for user in desired}
+        return UsersReconstructionPreview(
+            desired_users=desired,
+            create_ids=tuple(user.user_id for user in desired if user.user_id not in existing),
+            update_ids=tuple(
+                user.user_id for user in desired
+                if user.user_id in existing and existing[user.user_id] != user
             ),
-            desired,
+            disable_ids=tuple(sorted(
+                user.user_id for user in existing.values()
+                if user.user_id not in desired_ids
+                and not user.is_local
+                and user.profile.id != GUEST_PROFILE_KEY
+                and (user.enabled or user.access_keys)
+            )),
         )
 
+    # La confirmación vuelve a inspeccionar, publica por usuario y comprueba la convergencia.
+    def apply(self, preview: UsersReconstructionPreview) -> UsersReconstructionPreview:
+        if not isinstance(preview, UsersReconstructionPreview):
+            raise TypeError('ADA users reconciliation preview is required')
+        if self.inspect() != preview:
+            raise UsersReconstructionConflictError('ADA users reconciliation sources changed')
+        existing = {user.user_id: user for user in self._runtime.list_users()}
+        desired = {user.user_id: user for user in preview.desired_users}
+        for user_id in preview.disable_ids:
+            previous = existing[user_id]
+            self._publish(replace(previous, enabled=False, access_keys=()), previous)
+        for user_id in (*preview.create_ids, *preview.update_ids):
+            self._publish(desired[user_id], existing.get(user_id))
+        after = self.inspect()
+        if after.has_changes:
+            raise UsersReconstructionConflictError('ADA users reconciliation is incomplete')
+        return after
 
-def _unique_sorted(users: Iterable[RuntimeUser]) -> tuple[RuntimeUser, ...]:
-    values = tuple(users)
-    if any(not isinstance(user, RuntimeUser) for user in values):
-        raise TypeError('Users runtime reconciliation requires RuntimeUser entries')
-    identifiers = tuple(user.user_id for user in values)
-    if len(set(identifiers)) != len(identifiers):
-        raise UsersRuntimeReconciliationError('Users runtime reconciliation contains duplicate users')
-    return tuple(sorted(values, key=lambda user: user.user_id))
+    def publish_one(self, user_id: str) -> RuntimeUser:
+        desired = self._materializer.materialize_user(user_id)
+        current = self._resolve(desired)
+        return self._publish(desired, current)
 
+    # Protege cambios concurrentes visibles y evita borrar una asignación operacional sin prueba.
+    def _publish(self, desired: RuntimeUser, expected: RuntimeUser | None) -> RuntimeUser:
+        current = self._resolve(desired)
+        if current != expected:
+            raise UsersReconstructionConflictError('ADA runtime user changed during reconciliation')
+        if (
+            current is not None
+            and current.operational != desired.operational
+            and desired.operational.area is None
+            and desired.operational.position is None
+            and desired.operational.group is None
+            and desired.enabled
+        ):
+            raise UsersReconstructionConflictError(
+                'Existing operational assignment cannot be cleared by reconciliation'
+            )
+        publish = getattr(self._runtime, 'upsert_user_if_current', None)
+        if not callable(publish):
+            raise UsersReconstructionConflictError('Runtime store lacks conditional publication')
+        try:
+            published = publish(desired, expected=expected)
+        except UsersIdentityConflictError as error:
+            raise UsersReconstructionConflictError('ADA runtime user changed during reconciliation') from error
+        persisted = self._resolve(desired)
+        if published != desired or persisted != desired:
+            raise UsersReconstructionConflictError('ADA reconciled runtime differs from source')
+        return persisted
 
-# El digest depende de valores completos actuales y esperados, no solo de identificadores.
-def _fingerprint(
-    *,
-    current: tuple[RuntimeUser, ...],
-    desired: tuple[RuntimeUser, ...],
-) -> str:
-    payload = {
-        'current': [user.to_document() for user in current],
-        'desired': [user.to_document() for user in desired],
-    }
-    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
-    return hashlib.sha256(encoded.encode('utf-8')).hexdigest()
+    def _resolve(self, user: RuntimeUser) -> RuntimeUser | None:
+        return self._runtime.resolve(
+            AuthenticatedIdentity(
+                provider_key='ada-reconciliation',
+                issuer=user.issuer,
+                subject_id=user.subject_id,
+            )
+        )

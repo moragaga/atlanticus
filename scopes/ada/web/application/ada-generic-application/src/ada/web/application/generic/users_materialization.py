@@ -158,7 +158,6 @@ class AdaUsersRuntimeMaterializer:
             or persisted.identity != base.identity
             or persisted.enabled != base.enabled
             or persisted.profile != base.profile
-            or persisted.access_keys != base.access_keys
         ):
             raise UsersMaterializationError('Persisted base user differs from materialized user')
         return persisted

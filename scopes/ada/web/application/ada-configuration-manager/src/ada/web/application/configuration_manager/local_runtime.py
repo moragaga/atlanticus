@@ -41,6 +41,7 @@ from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.users.errors import (
+    UsersIdentityConflictError,
     UsersMembershipConflictError,
     UsersRegistryConflictError,
 )
@@ -152,6 +153,19 @@ class InProcessUsersRuntimeStore(UsersRuntimeStore):
             raise ValueError('Runtime user identity cannot be changed')
         self._users[user.user_id] = user
         return user
+
+    def upsert_user_if_current(
+        self, user: RuntimeUser, *, expected: RuntimeUser | None
+    ) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Conditional runtime publication requires RuntimeUser')
+        if expected is not None and not isinstance(expected, RuntimeUser):
+            raise TypeError('Expected runtime user must be RuntimeUser or None')
+        if expected is not None and expected.user_id != user.user_id:
+            raise UsersIdentityConflictError('Conditional publication identity mismatch')
+        if self._users.get(user.user_id) != expected:
+            raise UsersIdentityConflictError('Runtime user changed during conditional publication')
+        return self.upsert_user(user)
 
     def upsert_base_user(self, user: RuntimeUser) -> RuntimeUser:
         if not isinstance(user, RuntimeUser):

@@ -10,6 +10,7 @@ from atlanticus.connectivity.cosmos import (
     CosmosError,
     CosmosItemNotFoundError,
     CosmosPatchOperation,
+    CosmosPreconditionFailedError,
     CosmosQueryParameter,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
@@ -182,6 +183,53 @@ class CosmosUsersRuntimeStore(UsersRuntimeStore):
         raise UsersStoreUnavailableError('Users base publication changed concurrently')
 
     # Actualiza una sola partición. Nunca utiliza replace_all para cambios individuales.
+    def upsert_user_if_current(
+        self, user: RuntimeUser, *, expected: RuntimeUser | None
+    ) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Conditional runtime publication requires RuntimeUser')
+        if expected is not None and not isinstance(expected, RuntimeUser):
+            raise TypeError('Expected runtime user must be RuntimeUser or None')
+        if expected is not None and expected.user_id != user.user_id:
+            raise UsersIdentityConflictError('Conditional publication identity mismatch')
+        try:
+            document = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                include_metadata=True,
+            )
+            current = None if document is None else _user_from_document(document)
+            if current != expected:
+                raise UsersIdentityConflictError('Runtime user changed during conditional publication')
+            if current is None:
+                self._client.create_item(
+                    container_name=self._container_name, item=_user_to_document(user),
+                )
+            elif current != user:
+                self._client.patch_item(
+                    container_name=self._container_name,
+                    item_id=user.user_id,
+                    partition_key=user.user_id,
+                    operations=(CosmosPatchOperation('set', '/user', user.to_document()),),
+                    if_match_etag=_etag(document),
+                )
+            persisted = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+            )
+        except (CosmosConflictError, CosmosItemNotFoundError, CosmosPreconditionFailedError) as error:
+            raise UsersIdentityConflictError('Runtime user changed during conditional publication') from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not conditionally publish runtime user') from error
+        if persisted is None:
+            raise UsersStoreUnavailableError('Published runtime user could not be read')
+        result = _user_from_document(persisted)
+        if result != user:
+            raise UsersStoreUnavailableError('Conditional runtime publication differs from request')
+        return result
+
     def upsert_user(self, user: RuntimeUser) -> RuntimeUser:
         if not isinstance(user, RuntimeUser):
             raise TypeError('Users runtime upsert requires RuntimeUser')

@@ -10,6 +10,7 @@ from ada.web.application.configuration_manager.wiring import (
     compose_configuration_manager_dependencies,
 )
 from ada.web.application.generic.users_materialization import AdaUsersRuntimeMaterializer
+from ada.web.application.generic.users_reconciliation import AdaUsersReconciliationWorkflow
 from ada.web.application.generic.users_runtime_publication import AdaLocalRuntimeUserWriter
 from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.configuration import WebEnvironment, WebSettings
@@ -138,13 +139,15 @@ def compose_integrated_manager_dependencies(
     ):
         raise TypeError('Integrated ADA Manager requires additive runtime writers')
     materializer = AdaUsersRuntimeMaterializer(stores=stores)
+    reconciliation = AdaUsersReconciliationWorkflow(materializer=materializer, runtime=stores.users_runtime)
     return compose_configuration_manager_dependencies(
         stores=stores,
         principal_provider=principal,
         projection_unavailable_causes=(CosmosOperationError,),
         source_name=source_name,
         projection_name=projection_name,
-        users_runtime_publisher=lambda user_id: materializer.publish_user(user_id, writer=writer),
+        users_runtime_publisher=reconciliation.publish_one,
+        users_reconciliation=reconciliation,
         operational_runtime_publisher=lambda user_id: materializer.publish_operational(
             user_id, writer=writer
         ),

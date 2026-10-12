@@ -71,7 +71,6 @@ from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
 from atlanticus.web.users.models import RuntimeUser
-from atlanticus.web.users.reconstruction import UsersReconstructionWorkflow
 from atlanticus.web.users.store import (
     ToolMembershipStore,
     UsersDirectoryReader,
@@ -151,6 +150,7 @@ def compose_configuration_manager_dependencies(
     kpi_projection_name: str | None = None,
     users_runtime_publisher: Callable[[str], RuntimeUser] | None = None,
     operational_runtime_publisher: Callable[[str], RuntimeUser] | None = None,
+    users_reconciliation: object | None = None,
 ) -> ConfigurationManagerDependencies:
     if not isinstance(stores, ConfigurationManagerStores):
         raise TypeError('Configuration Manager stores are invalid')
@@ -282,18 +282,16 @@ def compose_configuration_manager_dependencies(
     # La vista activa usa fuentes durables actuales, sin seleccionar snapshots de recuperación.
     users_reconstruction_entry = (
         compose_users_reconstruction_manager(
-            reconstruction=UsersReconstructionWorkflow(
-                registry=stores.users_registry,
-                memberships=stores.users_memberships,
-                profiles=profiles_provider,
-                runtime=stores.users_runtime,
-                writer=stores.users_runtime,
-            ),
+            reconstruction=users_reconciliation,
             principal_provider=principal_provider,
             group_key='administration',
             access_key=USERS_MANAGER_ACCESS_KEY,
+            title='Conciliación de usuarios',
+            description='Concilia Registry, Memberships, Profiles, Access y Operational contra users-runtime.',
+            action_label='Conciliar',
+            complete_label='Conciliación completada',
         )
-        if callable(getattr(stores.users_runtime, 'upsert_base_user', None))
+        if users_reconciliation is not None
         else None
     )
     return ConfigurationManagerDependencies(

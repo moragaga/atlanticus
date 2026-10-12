@@ -22,7 +22,7 @@ class AdaLocalRuntimeUserWriter:
         if current is not None:
             if current.identity.issuer != user.issuer or current.subject_id != user.subject_id:
                 raise ValueError('Runtime identity cannot change')
-            user = replace(user, operational=current.operational)
+            user = replace(user, operational=current.operational, access_keys=current.access_keys)
         return self._store.upsert_user(user)
 
     def upsert_operational(self, user_id: str, operational: RuntimeOperational) -> RuntimeUser:
@@ -64,7 +64,6 @@ class AdaCosmosRuntimeUserWriter:
                 identity=user.identity,
                 enabled=user.enabled,
                 profile=user.profile,
-                access_keys=user.access_keys,
             )
             if updated == current:
                 return current
@@ -76,7 +75,6 @@ class AdaCosmosRuntimeUserWriter:
                         CosmosPatchOperation('set', '/user/identity', user.identity.to_document()),
                         CosmosPatchOperation('set', '/user/enabled', user.enabled),
                         CosmosPatchOperation('set', '/user/profile', user.profile.to_document()),
-                        CosmosPatchOperation('set', '/user/access_keys', list(user.access_keys)),
                     ),
                 )
                 result = self._resolve(user)
@@ -84,7 +82,6 @@ class AdaCosmosRuntimeUserWriter:
                     result.identity != user.identity
                     or result.enabled != user.enabled
                     or result.profile != user.profile
-                    or result.access_keys != user.access_keys
                 ):
                     raise RuntimeError('ADA base publication was overwritten concurrently')
                 return result
