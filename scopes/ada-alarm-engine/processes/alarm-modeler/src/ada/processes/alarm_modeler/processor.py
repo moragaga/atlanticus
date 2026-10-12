@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from math import floor
 from pathlib import Path
 from typing import Callable
 
@@ -19,6 +18,11 @@ from ada.processes.alarm_modeler.projection import (
     has_semantic_change,
     project,
     validate_document,
+)
+from ada.processes.alarm_modeler.distributed_rotation import plan_distributed_rotation
+from ada.processes.alarm_modeler.presentation_policy import (
+    QUEUE_IN_QUEUE_ROTATION_SECONDS,
+    QUEUE_IN_QUEUE_SLOTS_PER_AREA,
 )
 from ada.processes.alarm_modeler.rotation import ToolRotationMemory, is_grouped, plan_rotation
 from atlanticus.state import AtomicJsonStore
@@ -41,11 +45,11 @@ class AlarmModelerProcessor:
     output_root: Path
     rotation_seconds: float
     max_visible_slots: int
+    queue_rotation_seconds: float = QUEUE_IN_QUEUE_ROTATION_SECONDS
+    queue_slots_per_area: int = QUEUE_IN_QUEUE_SLOTS_PER_AREA
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
     _last_source_digest: str | None = field(default=None, init=False, repr=False)
     _last_output_digest: str | None = field(default=None, init=False, repr=False)
-    _last_rotation_phase: int | None = field(default=None, init=False, repr=False)
-    _rotation_pending: bool = field(default=False, init=False, repr=False)
     _next_rotation_at: datetime | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -95,12 +99,10 @@ class AlarmModelerProcessor:
             or now.utcoffset() != UTC.utcoffset(now)
         ):
             raise AlarmModelerProjectionError('Modeler clock must be UTC')
-        rotation_phase = floor(now.timestamp() / self.rotation_seconds)
         if (
             previous is not None
             and self._last_source_digest == source['sha256']
             and self._last_output_digest == previous['sha256']
-            and (not self._rotation_pending or self._last_rotation_phase == rotation_phase)
             and (self._next_rotation_at is None or now < self._next_rotation_at)
         ):
             return AlarmModelerCycleResult(status='SKIPPED')
@@ -129,19 +131,29 @@ class AlarmModelerProcessor:
         prepared = {}
         due_times = []
         for tool_key, tool in document['tools'].items():
-            if is_grouped(tool):
-                continue
             old_tool = None if previous is None else previous['tools'].get(tool_key)
             old_state = memory.read(tool_key=tool_key, previous_tool=old_tool)
-            if old_state is None and old_tool is not None and not is_grouped(old_tool):
-                _, old_state, _ = plan_rotation(
-                    tool=old_tool, previous_tool=old_tool, state=None,
+            if is_grouped(tool):
+                planned_tool, planned_state, due_at = plan_distributed_rotation(
+                    tool=tool, previous_tool=old_tool, state=old_state, now=now,
+                    carousel_seconds=self.rotation_seconds,
+                    queue_seconds=self.queue_rotation_seconds,
+                    slots_per_area=self.queue_slots_per_area,
+                )
+            else:
+                rotation_state = (
+                    None if isinstance(old_state, dict) and 'normal' in old_state
+                    else old_state
+                )
+                if rotation_state is None and old_tool is not None and not is_grouped(old_tool):
+                    _, rotation_state, _ = plan_rotation(
+                        tool=old_tool, previous_tool=old_tool, state=None,
+                        now=now, rotation_seconds=self.rotation_seconds,
+                    )
+                planned_tool, planned_state, due_at = plan_rotation(
+                    tool=tool, previous_tool=old_tool, state=rotation_state,
                     now=now, rotation_seconds=self.rotation_seconds,
                 )
-            planned_tool, planned_state, due_at = plan_rotation(
-                tool=tool, previous_tool=old_tool, state=old_state,
-                now=now, rotation_seconds=self.rotation_seconds,
-            )
             document['tools'][tool_key] = planned_tool
             prepared[tool_key] = (old_tool, old_state, planned_tool, planned_state)
             if due_at is not None:
@@ -169,7 +181,7 @@ class AlarmModelerProcessor:
                 output.replace(_CURRENT, document)
             for tool_key, (_, _, planned_tool, _) in prepared.items():
                 memory.confirm(tool_key=tool_key, current_tool=planned_tool)
-        self._remember(source, document if changed else previous, rotation_phase, due_times)
+        self._remember(source, document if changed else previous, due_times)
         if not changed:
             return AlarmModelerCycleResult(status='SKIPPED')
         return AlarmModelerCycleResult(
@@ -179,14 +191,7 @@ class AlarmModelerProcessor:
             tools=len(document['tools']),
         )
 
-    def _remember(
-        self, source: dict, document: dict, phase: int, due_times: list[datetime]
-    ) -> None:
+    def _remember(self, source: dict, document: dict, due_times: list[datetime]) -> None:
         self._last_source_digest = source['sha256']
         self._last_output_digest = document['sha256']
-        self._last_rotation_phase = phase
-        self._rotation_pending = any(
-            is_grouped(tool) and tool['meta']['rotation_pending']
-            for tool in document['tools'].values()
-        )
         self._next_rotation_at = min(due_times) if due_times else None

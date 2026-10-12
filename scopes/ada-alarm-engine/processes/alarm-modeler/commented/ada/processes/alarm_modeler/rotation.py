@@ -49,6 +49,18 @@ def _parse_timestamp(value: object) -> datetime:
 
 # Valida la forma y unicidad de la memoria por Tool.
 def _rotation_state(value: object) -> dict:
+    if isinstance(value, dict) and set(value) == {'normal', 'areas'}:
+        if not isinstance(value['normal'], dict) or set(value['normal']) != {'queue', 'visible', 'next_due_at'}:
+            raise AlarmRotationError('Distributed normal rotation state is invalid')
+        _rotation_state(value['normal'])
+        areas = value['areas']
+        if not isinstance(areas, dict) or set(areas) - {'MINE', 'PLANT'}:
+            raise AlarmRotationError('Distributed area states are invalid')
+        for area_state in areas.values():
+            if not isinstance(area_state, dict) or set(area_state) != {'queue', 'visible', 'next_due_at'}:
+                raise AlarmRotationError('Distributed area rotation state is invalid')
+            _rotation_state(area_state)
+        return value
     if not isinstance(value, dict) or set(value) != {'queue', 'visible', 'next_due_at'}:
         raise AlarmRotationError('Rotation state has invalid fields')
     queue, visible = value['queue'], value['visible']
@@ -196,9 +208,7 @@ class ToolRotationMemory:
             _rotation_state(candidate['state'])
             if fingerprint == candidate['tool_sha256']:
                 return candidate['state']
-        if (previous_tool is None and document['committed'] is None) or (
-            previous_tool is not None and is_grouped(previous_tool)
-        ):
+        if previous_tool is None and document['committed'] is None:
             return None
         raise AlarmRotationError('Rotation memory disagrees with the published Tool')
 
