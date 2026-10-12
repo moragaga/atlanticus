@@ -363,8 +363,9 @@ def project(
         priority = alarm.get('priority')
         if not isinstance(evaluation, dict) or not isinstance(priority, dict):
             raise AlarmModelerProjectionError('Resolved alarm evaluation or priority is invalid')
-        if evaluation.get('status') not in ('ACTIVE', 'ERROR'):
-            raise AlarmModelerProjectionError('Open alarm evaluation status is invalid')
+        # La frontera Live acepta solo la evaluación física ACTIVE, sin reinterpretar ERROR.
+        if evaluation.get('status') != 'ACTIVE':
+            raise AlarmModelerProjectionError('Live alarm evaluation must be ACTIVE')
         public_evaluation = {key: value for key, value in evaluation.items() if key != 'cause_values'}
         if priority.get('disposition') not in (
             'PREDOMINANT',

@@ -128,6 +128,8 @@ def build_resolved_current_document(
             evaluation = evaluations[identity]
             if evaluation.status is AlarmStatus.INACTIVE:
                 raise EngineResolvedCurrentPublicationError('Open occurrence is evaluated INACTIVE')
+            if evaluation.status is AlarmStatus.ERROR:
+                continue
             priority = priorities[identity]
             management = current.management_effect
             deactivation = current.deactivation_effect

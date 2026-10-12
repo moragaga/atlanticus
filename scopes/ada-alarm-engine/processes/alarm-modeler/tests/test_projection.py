@@ -107,18 +107,21 @@ def test_predominance_and_management_keep_live_but_remove_attention():
         alarm('normal'), alarm('managed', managed=True),
         alarm('deactivated', priority='DEACTIVATED', deactivated=True),
         alarm('eclipsed', priority='ECLIPSED'),
-        alarm('error', status='ERROR'),
     ])
     tool = result['tools']['tool-a']
     assert set(tool['alarms']) == {
-        'occ-normal', 'occ-managed', 'occ-deactivated', 'occ-error'
+        'occ-normal', 'occ-managed', 'occ-deactivated'
     }
-    assert set(tool['operator_pool']) == {'occ-normal', 'occ-error'}
+    assert set(tool['operator_pool']) == {'occ-normal'}
     assert tool['alarms']['occ-managed']['directly_managed'] is True
     assert tool['alarms']['occ-managed']['attention_required'] is False
-    assert tool['alarms']['occ-error']['evaluation']['status'] == 'ERROR'
     assert tool['alarms']['occ-normal']['started_at'] == '2026-10-10T17:00:00Z'
     assert validate_document(result) == result
+
+
+def test_error_evaluation_cannot_enter_modeler_live():
+    with pytest.raises(AlarmModelerProjectionError, match='must be ACTIVE'):
+        built([alarm('error', status='ERROR')])
 
 
 def test_visibility_trace_only_is_not_projected():
