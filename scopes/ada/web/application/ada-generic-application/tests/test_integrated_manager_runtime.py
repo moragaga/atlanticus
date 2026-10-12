@@ -74,7 +74,11 @@ def test_manager_mount_is_independent_of_tool_ready_state(tmp_path, monkeypatch)
         '_resolve_tool_projection',
         lambda _settings: SimpleNamespace(
             state=ToolProjectionResolutionState.READY,
-            projection=object(),
+            projection=SimpleNamespace(
+                payload=SimpleNamespace(
+                    structure=SimpleNamespace(tool_key='test_tool'),
+                ),
+            ),
         ),
     )
     monkeypatch.setattr(
@@ -85,6 +89,16 @@ def test_manager_mount_is_independent_of_tool_ready_state(tmp_path, monkeypatch)
     monkeypatch.setattr(
         bootstrap,
         'attach_operational_kpi_presentation_stores',
+        lambda definition, **_kwargs: definition,
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        'attach_operational_alarm_presentation_store',
+        lambda definition, **_kwargs: definition,
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        'attach_operational_alarm_surface',
         lambda definition, **_kwargs: definition,
     )
 

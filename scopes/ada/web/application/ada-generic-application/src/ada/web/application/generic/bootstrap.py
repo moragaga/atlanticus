@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import replace
+from functools import partial
 
 from ada.web.application.configuration_manager.composition import (
     MANAGER_ROUTE_PREFIX,
@@ -30,6 +31,11 @@ from ada.web.application.generic.manager_principal import (
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
+)
+from ada.web.application.generic.alarm_access import (
+    ALARM_SURFACE_VIEW,
+    AlarmAccessBinding,
+    deny_alarm_access,
 )
 from ada.web.application.generic.alarm_surface_binding import attach_operational_alarm_surface
 from ada.web.application.generic.operational_collector import (
@@ -206,6 +212,20 @@ def create_operational_application_runtime(
             projection=manager_dependencies.navigation_projection_store,
             allow_local=resolved_settings.environment.is_local,
         )
+    alarm_access_check = deny_alarm_access
+    if manager_dependencies is not None and isinstance(
+        manager_dependencies.principal_provider, ManagerPrincipalBinding
+    ):
+        principal = manager_dependencies.principal_provider
+        alarm_access_check = AlarmAccessBinding(
+            access_runtime=principal.access_runtime,
+            users_runtime=principal.users_runtime,
+        ).allows
+    definition = replace(
+        definition,
+        layout=partial(definition.layout, alarm_access_check=alarm_access_check),
+    )
+    can_view_alarms = lambda: alarm_access_check(ALARM_SURFACE_VIEW)
     consumption_cosmos_client = None
 
     try:
@@ -236,10 +256,12 @@ def create_operational_application_runtime(
                     definition,
                     tool_projection=projection,
                     cosmos_client=consumption_cosmos_client,
+                    can_view=can_view_alarms,
                 )
 
             definition = attach_operational_alarm_surface(
                 definition, tool_key=projection.payload.structure.tool_key,
+                can_view=can_view_alarms,
             )
 
         if manager_dependencies is not None:

@@ -43,6 +43,7 @@ class AdaAlarmCollectorWebIntegration:
     module: WebModule
     collector: AdaAlarmCollector
     presentation_settings: AlarmCollectorPresentationSettings
+    can_view: Callable[[], bool] | None = None
 
     # Ejecuta una operación explícita del componente sin añadir acoplamientos.
     def wrap_layout(self, layout: LayoutFactory) -> LayoutFactory:
@@ -54,7 +55,11 @@ class AdaAlarmCollectorWebIntegration:
             resolved = layout(*args, **kwargs)
             if not isinstance(resolved, Component):
                 raise TypeError('Alarm collector requires a Dash Component layout')
-            snapshot = self.collector.snapshot
+            snapshot = (
+                self.collector.snapshot
+                if self.can_view is None or self.can_view()
+                else _empty_alarm_snapshot(self.collector.tool_key)
+            )
             components = (
                 dcc.Interval(
                     id=self.presentation_settings.interval_id,
@@ -84,9 +89,12 @@ def create_ada_alarm_collector_web_integration(
     collector: AdaAlarmCollector, *,
     polling_settings: AlarmCollectorPollingSettings | None = None,
     presentation_settings: AlarmCollectorPresentationSettings | None = None,
+    can_view: Callable[[], bool] | None = None,
 ) -> AdaAlarmCollectorWebIntegration:
     if not isinstance(collector, AdaAlarmCollector):
         raise TypeError('Alarm Web integration requires AdaAlarmCollector')
+    if can_view is not None and not callable(can_view):
+        raise TypeError('Alarm collector authorization must be callable')
     settings = presentation_settings or AlarmCollectorPresentationSettings()
     if not isinstance(settings, AlarmCollectorPresentationSettings):
         raise TypeError('Alarm presentation settings are invalid')
@@ -124,6 +132,8 @@ def create_ada_alarm_collector_web_integration(
         )
         # Ejecuta una operación explícita del componente sin añadir acoplamientos.
         def refresh_from_cache(_interval: int, browser_data: object):
+            if can_view is not None and not can_view():
+                return project_alarm_live_store(_empty_alarm_snapshot(collector.tool_key))
             source = services.require(ADA_ALARM_COLLECTOR_SERVICE_KEY, AdaAlarmCollector)
             return resolve_alarm_live_browser_update(
                 source.snapshot, browser_data=browser_data,
@@ -139,6 +149,7 @@ def create_ada_alarm_collector_web_integration(
         ),
         collector=collector,
         presentation_settings=settings,
+        can_view=can_view,
     )
 
 
@@ -148,6 +159,7 @@ def attach_ada_alarm_collector(
     collector: AdaAlarmCollector, *,
     polling_settings: AlarmCollectorPollingSettings | None = None,
     presentation_settings: AlarmCollectorPresentationSettings | None = None,
+    can_view: Callable[[], bool] | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('Alarm collector requires WebApplicationDefinition')
@@ -156,6 +168,7 @@ def attach_ada_alarm_collector(
     integration = create_ada_alarm_collector_web_integration(
         collector, polling_settings=polling_settings,
         presentation_settings=presentation_settings,
+        can_view=can_view,
     )
     return replace(
         definition,
@@ -165,6 +178,15 @@ def attach_ada_alarm_collector(
 
 
 # Incorpora un Store vacío cuando no existe conexión de consumo configurada.
+def _empty_alarm_snapshot(tool_key: str) -> AlarmCollectorSnapshot:
+    return AlarmCollectorSnapshot(
+        tool_key=tool_key,
+        availability=AlarmCollectorAvailability.WAITING,
+        semantic_sha256=None,
+        document=None,
+    )
+
+
 def attach_ada_alarm_presentation_store(
     definition: WebApplicationDefinition, *, tool_key: str,
 ) -> WebApplicationDefinition:

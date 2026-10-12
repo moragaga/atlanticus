@@ -8,6 +8,11 @@ from dash import html, page_container
 from dash.development.base_component import Component
 
 from ada.web.alarms.baseline_projection import AlarmBaselineProjection
+from ada.web.application.generic.alarm_access import (
+    ALARM_MANAGEMENT_SUMMARY_VIEW,
+    ALARM_STATUS_VIEW,
+    ALARM_SURFACE_VIEW,
+)
 from ada.web.alarms.live_surface import build_alarm_live_surface
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
@@ -69,6 +74,7 @@ def build_operational_application_layout(
     operational_render_binding: OperationalRenderBinding | None,
     operational_body_factory: AdaOperationalBodyFactory | None,
     navigation_enabled: bool,
+    alarm_access_check: Callable[[str], bool] | None = None,
 ):
     navigation_offcanvas = None
     desktop_navigation_trigger = None
@@ -87,8 +93,16 @@ def build_operational_application_layout(
         tool_key=tool_key,
         source_keys=global_indicators_source_keys,
     )
-    alarm_management_component = build_alarm_management_summary(alarm_management_summary)
-    alarm_status_component = build_alarm_status(alarm_status)
+    alarm_management_component = (
+        build_alarm_management_summary(alarm_management_summary)
+        if alarm_access_check is None or alarm_access_check(ALARM_MANAGEMENT_SUMMARY_VIEW)
+        else None
+    )
+    alarm_status_component = (
+        build_alarm_status(alarm_status)
+        if alarm_access_check is None or alarm_access_check(ALARM_STATUS_VIEW)
+        else None
+    )
     time_status_component = (
         None
         if time_status_binding is None
@@ -99,6 +113,12 @@ def build_operational_application_layout(
         if alarm_baseline_projection is not None
         else None
     )
+    if (
+        alarm_baseline_component is not None
+        and alarm_access_check is not None
+        and not alarm_access_check(ALARM_SURFACE_VIEW)
+    ):
+        alarm_baseline_component.style = {'display': 'none'}
     header = build_ada_operational_header(
         brand=build_operational_brand(operational_brand),
         global_indicators=global_indicators_component,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ada.contracts.tools.structure import ToolStructure
 from ada.web.alarms.collector import (
     AdaAlarmCollector,
@@ -143,6 +145,7 @@ def attach_operational_alarm_collector(
     reader_settings: AlarmLiveReaderSettings | None = None,
     polling_settings: AlarmCollectorPollingSettings | None = None,
     presentation_settings: AlarmCollectorPresentationSettings | None = None,
+    can_view: Callable[[], bool] | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('definition must be WebApplicationDefinition')
@@ -156,4 +159,5 @@ def attach_operational_alarm_collector(
         collector,
         polling_settings=polling_settings,
         presentation_settings=presentation_settings,
+        can_view=can_view,
     )
