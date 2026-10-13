@@ -38,8 +38,9 @@ def attach_operational_alarm_surface(
             Input(store_id, 'data'),
         )
         def render_alarm_live(data: object):
+            # Sin permiso de cards se vacía el contenido, pero se conserva la altura del tablero.
             if can_view is not None and not can_view():
-                return [], {'display': 'none', '--ada-alarm-live-slot-count': '1'}
+                return [], {'--ada-alarm-live-slot-count': '1'}
             return (
                 list(build_live_alarm_cards(data, tool_key=tool_key)),
                 {'--ada-alarm-live-slot-count': str(resolve_live_alarm_capacity(

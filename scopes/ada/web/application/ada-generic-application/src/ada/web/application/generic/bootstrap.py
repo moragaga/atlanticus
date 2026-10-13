@@ -33,8 +33,8 @@ from ada.web.application.generic.navigation_binding import (
     public_navigation_principal,
 )
 from ada.web.application.generic.alarm_access import (
-    ALARM_SURFACE_VIEW,
     AlarmAccessBinding,
+    can_view_alarm_cards,
     deny_alarm_access,
 )
 from ada.web.application.generic.alarm_surface_binding import attach_operational_alarm_surface
@@ -223,12 +223,13 @@ def create_operational_application_runtime(
         alarm_access_check = AlarmAccessBinding(
             access_runtime=principal.access_runtime,
             users_runtime=principal.users_runtime,
+            trusted_local_principal=(principal if principal.trusted_local_users else None),
         ).allows
     definition = replace(
         definition,
         layout=partial(definition.layout, alarm_access_check=alarm_access_check),
     )
-    can_view_alarms = lambda: alarm_access_check(ALARM_SURFACE_VIEW)
+    can_view_cards = lambda: can_view_alarm_cards(alarm_access_check)
     consumption_cosmos_client = None
 
     try:
@@ -259,12 +260,12 @@ def create_operational_application_runtime(
                     definition,
                     tool_projection=projection,
                     cosmos_client=consumption_cosmos_client,
-                    can_view=can_view_alarms,
+                    can_view=can_view_cards,
                 )
 
             definition = attach_operational_alarm_surface(
                 definition, tool_key=projection.payload.structure.tool_key,
-                can_view=can_view_alarms,
+                can_view=can_view_cards,
             )
 
         if manager_dependencies is not None:

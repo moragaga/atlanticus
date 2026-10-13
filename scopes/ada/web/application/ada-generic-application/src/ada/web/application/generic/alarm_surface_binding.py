@@ -36,7 +36,7 @@ def attach_operational_alarm_surface(
         )
         def render_alarm_live(data: object):
             if can_view is not None and not can_view():
-                return [], {'display': 'none', '--ada-alarm-live-slot-count': '1'}
+                return [], {'--ada-alarm-live-slot-count': '1'}
             return (
                 list(build_live_alarm_cards(data, tool_key=tool_key)),
                 {'--ada-alarm-live-slot-count': str(resolve_live_alarm_capacity(
