@@ -6,28 +6,10 @@ requires-python = "==3.14.2"
 overrides = [{ name = "atlanticus-storage", directory = "../../../../../connectivity/storage" }]
 
 [[package]]
-name = "ada-command-center-alarms-domain"
-version = "1.0.0"
-source = { editable = "../../../domain/alarms" }
-dependencies = [
-    { name = "ada-contracts-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-command-center-configuration-manager"
 version = "0.1.4"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-web-alarm-configuration", extra = ["web"] },
     { name = "ada-command-center-web-alarm-persistence" },
     { name = "ada-command-center-web-alarm-projection-cosmos" },
@@ -68,7 +50,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
     { name = "ada-command-center-web-alarm-configuration", extras = ["web"], editable = "../../alarms/configuration" },
     { name = "ada-command-center-web-alarm-persistence", editable = "../../alarms/persistence" },
     { name = "ada-command-center-web-alarm-projection-cosmos", editable = "../../alarms/projection-cosmos" },
@@ -112,7 +93,6 @@ name = "ada-command-center-web-alarm-configuration"
 version = "0.1.1"
 source = { editable = "../../alarms/configuration" }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-web-tool-catalog" },
     { name = "ada-contracts-alarms" },
     { name = "ada-contracts-tools" },
@@ -129,7 +109,6 @@ web = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
     { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
     { name = "ada-contracts-alarms", editable = "../../../../ada-contracts/alarms" },
     { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },

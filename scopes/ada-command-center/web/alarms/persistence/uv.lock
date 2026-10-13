@@ -6,28 +6,10 @@ requires-python = "==3.14.2"
 overrides = [{ name = "atlanticus-storage", directory = "../../../../../connectivity/storage" }]
 
 [[package]]
-name = "ada-command-center-alarms-domain"
-version = "1.0.0"
-source = { editable = "../../../domain/alarms" }
-dependencies = [
-    { name = "ada-contracts-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-command-center-web-alarm-configuration"
 version = "0.1.1"
 source = { editable = "../configuration" }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-web-tool-catalog" },
     { name = "ada-contracts-alarms" },
     { name = "ada-contracts-tools" },
@@ -37,7 +19,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
     { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
     { name = "ada-contracts-alarms", editable = "../../../../ada-contracts/alarms" },
     { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },

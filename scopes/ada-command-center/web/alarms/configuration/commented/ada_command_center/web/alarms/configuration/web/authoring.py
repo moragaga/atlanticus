@@ -8,7 +8,8 @@ from collections.abc import Mapping
 from copy import deepcopy
 
 from ada.contracts.tools.enums import ToolConfigurationKind
-from ada_command_center.domain.alarms.routing_policy import next_routing_tool_kind
+# La navegación de routing pertenece al autor de configuración de alarmas.
+from ada_command_center.web.alarms.configuration.routing_policy import next_routing_tool_kind
 from ada_command_center.web.alarms.configuration.tool_references import (
     AlarmToolReferenceCatalog,
 )
