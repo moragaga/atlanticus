@@ -3,12 +3,22 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from contextlib import ExitStack
+from functools import partial
 
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.generic.activity import open_durable_activity_repository
-from ada.web.application.generic.bootstrap import create_operational_application_runtime
+from ada.web.application.generic.adoption import (
+    ToolAdoptingWorkerRuntime,
+    ToolAdoptionMode,
+    ToolAdoptionSettings,
+    ToolRevision,
+)
+from ada.web.application.generic.bootstrap import (
+    _resolve_tool_projection,
+    create_operational_application_runtime,
+)
 from ada.web.application.generic.descriptor import (
     GENERIC_APPLICATION_DESCRIPTOR,
     AdaApplicationDescriptor,
@@ -16,6 +26,7 @@ from ada.web.application.generic.descriptor import (
 from ada.web.application.generic.extension import AdaApplicationExtensionFactory
 from ada.web.application.generic.manager.deployment import open_durable_manager
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
+from ada.web.tools.persistence import ToolProjectionResolutionState
 from atlanticus.web.application import run_web_application
 from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
@@ -57,6 +68,48 @@ def _production_identity(factory: ProductionIdentityFactory | None) -> IdentityP
 
 
 def create_worker_runtime(
+    *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
+    extension_factory: AdaApplicationExtensionFactory | None = None,
+    production_identity_provider_factory: ProductionIdentityFactory | None = None,
+    settings: AdaGenericSettings | None = None,
+) -> AdaWorkerRuntime | ToolAdoptingWorkerRuntime:
+    resolved_settings = settings if settings is not None else AdaGenericSettings()
+    mode = ToolAdoptionSettings().mode
+    factory = partial(
+        _create_plain_worker_runtime,
+        application_descriptor=application_descriptor,
+        extension_factory=extension_factory,
+        production_identity_provider_factory=production_identity_provider_factory,
+        settings=resolved_settings,
+    )
+    if mode is ToolAdoptionMode.STARTUP:
+        return factory()
+    initial = factory()
+    try:
+        return ToolAdoptingWorkerRuntime(
+            initial=initial,
+            revision_reader=lambda: _active_tool_revision(resolved_settings),
+            worker_factory=factory,
+        )
+    except Exception:
+        initial.close()
+        raise
+
+
+def _active_tool_revision(settings: AdaGenericSettings) -> ToolRevision:
+    resolution = _resolve_tool_projection(settings)
+    if resolution.state is ToolProjectionResolutionState.READY:
+        projection = resolution.projection
+        if projection is None:
+            raise RuntimeError('READY Tool Projection resolution has no projection')
+        return ToolRevision(eligible=True, release_id=projection.source_release_id.value)
+    if resolution.state is ToolProjectionResolutionState.UNCONFIGURED:
+        return ToolRevision(eligible=True, release_id=None)
+    return ToolRevision(eligible=False, release_id=None)
+
+
+def _create_plain_worker_runtime(
     *,
     application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
