@@ -13,12 +13,11 @@ class AlarmModelerSettings:
     poll_seconds: float
 
     @classmethod
-    # Valida la identidad del Runtime origen y el intervalo de sondeo del Job.
+    # Valida la identidad del Runtime origen y permite compartir APPLICATION con Modeler.
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmModelerSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be ResolvedConfiguration')
         application = configuration.require('ALARM_RUNTIME_APPLICATION')
-        own_application = configuration.require('APPLICATION')
         if (
             not application
             or application != application.strip()
@@ -27,8 +26,6 @@ class AlarmModelerSettings:
             or '\\' in application
         ):
             raise ValueError('ALARM_RUNTIME_APPLICATION must be a normalized application name')
-        if application == own_application:
-            raise ValueError('Modeler and Runtime must use different APPLICATION names')
         poll = _positive_float(
             configuration.require('ALARM_MODELER_POLL_SECONDS'),
             'ALARM_MODELER_POLL_SECONDS',

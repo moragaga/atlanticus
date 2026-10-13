@@ -10,7 +10,8 @@ from ada.web.ui.global_indicator import (
 from .bindings import DashboardGlobalIndicatorBinding
 
 
-def _build_test() -> Iterator[DashboardGlobalIndicatorBinding]:
+def _build_test() -> tuple[DashboardGlobalIndicatorBinding, ...]:
+    data = []
     for index in range(1, 9):
         if index == 1:
             scopes = (ToolScope.MINE,)
@@ -18,7 +19,7 @@ def _build_test() -> Iterator[DashboardGlobalIndicatorBinding]:
             scopes = (ToolScope.MINE, ToolScope.PLANT)
         else:
             scopes = (ToolScope.PLANT,)
-        yield DashboardGlobalIndicatorBinding(
+        data.append(DashboardGlobalIndicatorBinding(
             definition=GlobalIndicatorDefinition(
                 key=f'test_indicator_{index}',
                 label=f'Indicador Prueba {index}',
@@ -39,7 +40,9 @@ def _build_test() -> Iterator[DashboardGlobalIndicatorBinding]:
                 ),
             ),
             scopes=scopes,
-        )
+        ))
+    print(data)
+    return tuple(data)
 
 
 INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.READY
