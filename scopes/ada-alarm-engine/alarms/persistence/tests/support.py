@@ -91,6 +91,7 @@ def ready_resolution(
                         tool_key='tool_a',
                         tool_kind=ToolConfigurationKind.PROCESS,
                         process_projection_mode=ProcessAlarmProjectionMode.GENERIC,
+                        display_component_key='main',
                     ),
                 ),
             ),

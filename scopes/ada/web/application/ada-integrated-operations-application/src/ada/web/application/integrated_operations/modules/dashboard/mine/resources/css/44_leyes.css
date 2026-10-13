@@ -12,7 +12,7 @@
     font-size: .57rem;
     font-weight: 700;
     text-align: center;
-    background: var(--atlanticus-admin-color-border);
+    background: var(--atlanticus-ui-marker);
     border-radius: .2rem;
 }
 
