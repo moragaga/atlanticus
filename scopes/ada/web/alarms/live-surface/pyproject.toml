@@ -38,6 +38,7 @@ include = ["ada.web.alarms.live_surface*"]
     "resources/css/css.list",
     "resources/js/*.js",
     "resources/js/js.list",
+    "resources/img/alarms/*.svg",
 ]
 
 [tool.ruff]

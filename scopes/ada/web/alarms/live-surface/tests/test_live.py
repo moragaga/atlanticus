@@ -13,19 +13,41 @@ def _data():
         'tool_key': 'io',
         'availability': 'ready',
         'live': {
-            'tool_key': 'io', 'schema_version': 2, 'retired': False,
+            'tool_key': 'io',
+            'schema_version': 2,
+            'retired': False,
             'max_visible_slots': 4,
             'alarms': {
-                'b': {'title': 'Second', 'cause_text': 'Reason', 'color': 'YELLOW',
-                      'criticality': 'C2', 'started_at': '2026-10-12T12:00:00Z',
-                      'visual_target': {'tool_key': 'io', 'component_keys': ['cmp_2'],
-                                        'subcomponents': [{'owner_component_key': 'cmp_2',
-                                                           'subcomponent_key': 'sub_2'}]}},
-                'a': {'title': 'First', 'cause_text': 'Event', 'color': 'RED',
-                      'criticality': 'C1', 'business_category': 'PRODUCTIVITY', 'kind': 'IMPACT', 'started_at': '2026-10-12T12:00:00Z',
-                      'visual_target': {'tool_key': 'io', 'component_keys': ['cmp_1'],
-                                        'subcomponents': [{'owner_component_key': 'cmp_1',
-                                                           'subcomponent_key': 'sub_1'}]}},
+                'b': {
+                    'title': 'Second',
+                    'cause_text': 'Reason',
+                    'color': 'YELLOW',
+                    'criticality': 'C2',
+                    'started_at': '2026-10-12T12:00:00Z',
+                    'visual_target': {
+                        'tool_key': 'io',
+                        'component_keys': ['cmp_2'],
+                        'subcomponents': [
+                            {'owner_component_key': 'cmp_2', 'subcomponent_key': 'sub_2'}
+                        ],
+                    },
+                },
+                'a': {
+                    'title': 'First',
+                    'cause_text': 'Event',
+                    'color': 'RED',
+                    'criticality': 'C1',
+                    'business_category': 'PRODUCTIVITY',
+                    'kind': 'IMPACT',
+                    'started_at': '2026-10-12T12:00:00Z',
+                    'visual_target': {
+                        'tool_key': 'io',
+                        'component_keys': ['cmp_1'],
+                        'subcomponents': [
+                            {'owner_component_key': 'cmp_1', 'subcomponent_key': 'sub_1'}
+                        ],
+                    },
+                },
             },
             'operator_view': [
                 {'slot': 3, 'occurrence_id': 'b'},
@@ -37,14 +59,16 @@ def _data():
 
 def test_live_cards_follow_operator_slots_and_resolved_targets():
     capacity, cards = resolve_live_alarm_cards(
-        _data(), tool_key='io', now=datetime(2026, 10, 12, 12, 12, tzinfo=timezone.utc),
+        _data(),
+        tool_key='io',
+        now=datetime(2026, 10, 12, 12, 12, tzinfo=timezone.utc),
     )
     assert capacity == 4
     assert [card.occurrence_id for card in cards] == ['a', 'b']
     assert [card.slot for card in cards] == [1, 3]
     assert [card.color for card in cards] == ['RED', 'YELLOW']
     assert cards[0].elapsed == '12 min'
-    assert cards[0].category == 'IMPACT · PRODUCTIVITY'
+    assert cards[0].category == 'Impacto · Productividad'
     assert cards[1].component_keys == ('cmp_2',)
     assert cards[1].subcomponent_keys == ('sub_2',)
 
@@ -80,11 +104,14 @@ def test_rendered_cards_have_stable_occurrence_and_target_metadata():
 def test_distributed_group_keeps_slot_without_inventing_rotation():
     data = _data()
     data['live']['operator_view'] = [
-        {'slot': 4, 'group': {
-            'kind': 'DISTRIBUTED',
-            'visible_by_area': {'MINE': ['a'], 'PLANT': ['b']},
-            'total_by_area': {'MINE': 2, 'PLANT': 3},
-        }},
+        {
+            'slot': 4,
+            'group': {
+                'kind': 'DISTRIBUTED',
+                'visible_by_area': {'MINE': ['a'], 'PLANT': ['b']},
+                'total_by_area': {'MINE': 2, 'PLANT': 3},
+            },
+        },
     ]
     capacity, cards = resolve_live_alarm_cards(data, tool_key='io')
     assert capacity == 4
@@ -103,10 +130,16 @@ def test_live_cards_are_keyboard_selectable_without_exposing_distributed_group_a
     assert props['aria-pressed'] == 'false'
     assert 'First' in props['aria-label']
 
-    data['live']['operator_view'] = [{'slot': 4, 'group': {
-        'kind': 'DISTRIBUTED', 'visible_by_area': {'MINE': ['a']},
-        'total_by_area': {'MINE': 1},
-    }}]
+    data['live']['operator_view'] = [
+        {
+            'slot': 4,
+            'group': {
+                'kind': 'DISTRIBUTED',
+                'visible_by_area': {'MINE': ['a']},
+                'total_by_area': {'MINE': 1},
+            },
+        }
+    ]
     grouped = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
     assert grouped['role'] == 'group'
     assert 'tabIndex' not in grouped
@@ -115,25 +148,36 @@ def test_live_cards_are_keyboard_selectable_without_exposing_distributed_group_a
 def test_distributed_group_respects_projected_area_order_and_targets():
     data = _data()
     data['live']['max_visible_slots'] = 6
-    data['live']['operator_view'] = [{'slot': 6, 'group': {
-        'kind': 'DISTRIBUTED',
-        'visible_by_area': {'MINE': ['b', 'a'], 'PLANT': ['a']},
-        'total_by_area': {'MINE': 3, 'PLANT': 2},
-    }}]
+    data['live']['operator_view'] = [
+        {
+            'slot': 6,
+            'group': {
+                'kind': 'DISTRIBUTED',
+                'visible_by_area': {'MINE': ['b', 'a'], 'PLANT': ['a']},
+                'total_by_area': {'MINE': 3, 'PLANT': 2},
+            },
+        }
+    ]
     _, cards = resolve_live_alarm_cards(data, tool_key='io')
     group = cards[0]
     assert group.grouped
     assert group.slot == 6
     assert group.cause == 'Mina 2/3 · Planta 1/2'
     assert [(item.area, item.occurrence_id) for item in group.group_members] == [
-        ('MINE', 'b'), ('MINE', 'a'), ('PLANT', 'a'),
+        ('MINE', 'b'),
+        ('MINE', 'a'),
+        ('PLANT', 'a'),
     ]
     assert [item.color for item in group.group_members] == ['YELLOW', 'RED', 'RED']
     assert [item.component_keys for item in group.group_members] == [
-        ('cmp_2',), ('cmp_1',), ('cmp_1',),
+        ('cmp_2',),
+        ('cmp_1',),
+        ('cmp_1',),
     ]
     assert [item.subcomponent_keys for item in group.group_members] == [
-        ('sub_2',), ('sub_1',), ('sub_1',),
+        ('sub_2',),
+        ('sub_1',),
+        ('sub_1',),
     ]
 
 
@@ -141,35 +185,49 @@ def test_distributed_carousel_only_renders_selected_members_from_operator_view()
     data = _data()
     data['live']['max_visible_slots'] = 6
     data['live']['alarms']['unselected'] = {
-        'title': 'Should not display', 'color': 'RED',
+        'title': 'Should not display',
+        'color': 'RED',
         'visual_target': {'tool_key': 'io', 'component_keys': ['not_selected']},
     }
-    data['live']['operator_view'] = [{'slot': 6, 'group': {
-        'kind': 'DISTRIBUTED',
-        'visible_by_area': {'MINE': ['a'], 'PLANT': ['b']},
-        'total_by_area': {'MINE': 2, 'PLANT': 2},
-    }}]
+    data['live']['operator_view'] = [
+        {
+            'slot': 6,
+            'group': {
+                'kind': 'DISTRIBUTED',
+                'visible_by_area': {'MINE': ['a'], 'PLANT': ['b']},
+                'total_by_area': {'MINE': 2, 'PLANT': 2},
+            },
+        }
+    ]
     group = build_live_alarm_cards(data, tool_key='io')[0]
     props = group.to_plotly_json()['props']
     assert props['role'] == 'group'
     assert props['style']['gridColumn'] == '6'
     slides = group.children[1].children
     assert len(slides) == 2
-    assert [item.to_plotly_json()['props']['data-ada-alarm-occurrence-id']
-            for item in slides] == ['a', 'b']
+    assert [item.to_plotly_json()['props']['data-ada-alarm-occurrence-id'] for item in slides] == [
+        'a',
+        'b',
+    ]
     assert [item.to_plotly_json()['props']['hidden'] for item in slides] == [False, True]
-    assert [item.to_plotly_json()['props']['data-ada-alarm-target-components']
-            for item in slides] == ['cmp_1', 'cmp_2']
+    assert [
+        item.to_plotly_json()['props']['data-ada-alarm-target-components'] for item in slides
+    ] == ['cmp_1', 'cmp_2']
 
 
 def test_distributed_group_with_no_visible_members_remains_noninteractive():
     data = _data()
     data['live']['max_visible_slots'] = 6
-    data['live']['operator_view'] = [{'slot': 6, 'group': {
-        'kind': 'DISTRIBUTED',
-        'visible_by_area': {'MINE': []},
-        'total_by_area': {'MINE': 3},
-    }}]
+    data['live']['operator_view'] = [
+        {
+            'slot': 6,
+            'group': {
+                'kind': 'DISTRIBUTED',
+                'visible_by_area': {'MINE': []},
+                'total_by_area': {'MINE': 3},
+            },
+        }
+    ]
     group = build_live_alarm_cards(data, tool_key='io')[0]
     props = group.to_plotly_json()['props']
     assert props['data-ada-alarm-grouped'] == 'true'
@@ -225,3 +283,32 @@ def test_process_cards_preserve_original_position_without_integrated_placement()
     assert props['style']['gridColumn'] == '1'
     assert props['data-ada-alarm-display-component-key'] == ''
     assert props['data-ada-alarm-target-components'] == 'cmp_1'
+
+
+def test_category_translations_and_icons_are_presentation_only():
+    expected = (
+        ('ECOLOGY', 'Medio Ambiente', 'ecology'),
+        ('PRODUCTIVITY', 'Productividad', 'productivity'),
+        ('SAFETY', 'Seguridad y Salud', 'safety'),
+        ('COSTS', 'Costos', 'costs'),
+    )
+    for category, label, icon in expected:
+        data = _data()
+        data['live']['alarms']['a']['business_category'] = category
+        _, cards = resolve_live_alarm_cards(data, tool_key='io')
+        assert cards[0].category == f'Impacto · {label}'
+        assert cards[0].category_icon == icon
+
+
+def test_alarm_card_has_original_header_body_and_inert_actions():
+    card = build_live_alarm_cards(_data(), tool_key='io')[0]
+    header, body, footer = card.children
+    assert 'ada-alarm-live-card__header' == header.className
+    assert 'ada-alarm-live-card__body' == body.className
+    assert 'ada-alarm-live-card__footer' == footer.className
+    header_icon = header.children[0].children[0]
+    assert header_icon.className.endswith('--productivity')
+    assert header_icon.to_plotly_json()['props']['aria-hidden'] == 'true'
+    actions = footer.children[1].children
+    assert [action.children for action in actions] == ['Información', 'Gestionar']
+    assert all(action.disabled for action in actions)

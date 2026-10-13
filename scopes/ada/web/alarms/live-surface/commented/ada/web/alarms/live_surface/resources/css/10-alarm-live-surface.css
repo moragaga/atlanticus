@@ -9,6 +9,7 @@
     min-width: 0;
 }
 
+/* Separación superior mínima sin aumentar la altura reservada ni mover la baseline. */
 .ada-alarm-live-board {
     display: grid;
     grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 1), minmax(0, 1fr));
@@ -17,34 +18,69 @@
     min-width: 0;
     align-items: stretch;
     gap: .15rem;
+    padding-block-start: .22rem;
+    box-sizing: border-box;
     overflow: hidden;
 }
 
+/* Borde completo y cabecera coloreada recuperados de la referencia de diseño. */
 .ada-alarm-live-card {
     min-width: 0;
     min-height: 0;
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: .3rem .4rem;
-    border: 1px solid #bdbdbd;
-    border-inline-start: 3px solid #6b6b6b;
+    box-sizing: border-box;
+    border: 1px solid var(--ada-alarm-live-card-tone, #6b6b6b);
     border-radius: .4rem;
-    background: #f2f2f2;
+    background: #ebebeb;
     color: #4d4d4d;
     font-size: var(--ada-alarm-live-card-font);
     overflow: hidden;
 }
 
-.ada-alarm-live-card--red { border-inline-start-color: var(--ada-alarm-live-red); }
-.ada-alarm-live-card--yellow { border-inline-start-color: var(--ada-alarm-live-yellow); }
-.ada-alarm-live-card__header { display: flex; align-items: center; gap: .3rem; min-width: 0; }
-.ada-alarm-live-card__criticality { font-weight: 800; flex: 0 0 auto; }
-.ada-alarm-live-card__category { min-width: 0; font-size: .85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ada-alarm-live-card__title { font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ada-alarm-live-card__cause { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ada-alarm-live-card__elapsed { font-size: .85em; text-align: end; }
+.ada-alarm-live-card--red { --ada-alarm-live-card-tone: var(--ada-alarm-live-red); }
+.ada-alarm-live-card--yellow { --ada-alarm-live-card-tone: var(--ada-alarm-live-yellow); }
+.ada-alarm-live-card--neutral { --ada-alarm-live-card-tone: #6b6b6b; }
+.ada-alarm-live-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .2rem;
+    min-width: 0;
+    min-height: 1.1rem;
+    padding: .12rem .35rem;
+    background: var(--ada-alarm-live-card-tone);
+    color: #fff;
+}
+.ada-alarm-live-card__header-content { display: flex; align-items: center; gap: .2rem; min-width: 0; }
+.ada-alarm-live-card__icon { display: block; flex: 0 0 auto; width: .8rem; height: .8rem; background-position: center; background-repeat: no-repeat; background-size: contain; }
+.ada-alarm-live-card__icon--ecology { background-image: url('../img/alarms/medio-ambiente.svg'); }
+.ada-alarm-live-card__icon--productivity { background-image: url('../img/alarms/productividad.svg'); }
+.ada-alarm-live-card__icon--safety { background-image: url('../img/alarms/seguridad-salud.svg'); }
+.ada-alarm-live-card__icon--costs { background-image: url('../img/alarms/costos.svg'); }
+.ada-alarm-live-card__criticality {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--ada-alarm-live-card-tone);
+    font-size: .72em;
+    font-weight: 800;
+}
+.ada-alarm-live-card__category { min-width: 0; font-size: .83em; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ada-alarm-live-card__body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: .06rem; padding: .18rem .35rem .02rem; }
+.ada-alarm-live-card__title { flex: 0 0 auto; min-width: 0; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ada-alarm-live-card__cause { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .9em; color: #5e5e5e; }
+.ada-alarm-live-card__footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: .2rem; min-width: 0; padding: .06rem .35rem .16rem; }
+.ada-alarm-live-card__elapsed { min-width: 0; font-size: .78em; color: #5e5e5e; white-space: nowrap; }
+.ada-alarm-live-card__actions { display: flex; flex: 0 0 auto; align-items: center; gap: .16rem; }
+.ada-alarm-live-card__action { border-radius: .24rem; padding: .08rem .22rem; border: 1px solid #5e5e5e; background: #fff; color: #5e5e5e; font: inherit; font-size: .73em; line-height: 1.15; }
+.ada-alarm-live-card__action--manage { border-color: #313131; background: #313131; color: #fff; }
+.ada-alarm-live-card__action:disabled { cursor: not-allowed; opacity: .78; }
 
 .ada-alarm-live-routes { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .ada-alarm-live-routes svg { width: 100%; height: 100%; overflow: visible; }
@@ -73,14 +109,19 @@
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card {
         flex-direction: row;
         align-items: center;
-        gap: .3rem;
+        gap: 0;
         border-radius: 999px;
-        padding: .15rem .4rem;
     }
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__header,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__header { align-self: stretch; padding: .1rem .3rem; }
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__body,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__body { padding: 0 .3rem; flex-direction: row; align-items: center; }
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__cause,
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__cause,
     #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__category,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__category { display: none; }
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__category,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__footer,
+    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__footer { display: none; }
 }
 
 @media only screen and (min-width: 2560px) {
@@ -224,7 +265,8 @@
 
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'] > .ada-alarm-live-card[data-ada-alarm-positioned='true'] {
     position: absolute;
-    inset-block: 0;
+    inset-block-start: .22rem;
+    inset-block-end: 0;
     left: var(--ada-alarm-live-display-x);
     width: var(--ada-alarm-live-display-width);
     transform: translateX(-50%);
