@@ -36,6 +36,7 @@ from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.runtime import (
+    TimeStatusDetailProvider,
     TimeStatusRuntimeBinding,
     create_time_status_runtime_module,
 )
@@ -154,7 +155,7 @@ def create_application_definition(
     alarm_baseline_projection: AlarmBaselineProjection | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
-    time_status_detail: TimeStatusDetailState | None = None,
+    time_status_detail: TimeStatusDetailState | TimeStatusDetailProvider | None = None,
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
     if application_descriptor is not None and not isinstance(
@@ -257,7 +258,7 @@ def _resolve_time_status_binding(
     *,
     source_consumption: ToolSourceConsumption | None,
     source_operational_participation: ToolSourceOperationalParticipation | None,
-    time_status_detail: TimeStatusDetailState | None,
+    time_status_detail: TimeStatusDetailState | TimeStatusDetailProvider | None,
 ) -> TimeStatusRuntimeBinding | None:
     if source_operational_participation is None:
         if time_status_detail is not None:

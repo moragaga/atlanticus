@@ -1,5 +1,5 @@
 # API pública del runtime de Time Status.
-from .binding import TimeStatusRuntimeBinding
+from .binding import TimeStatusDetailProvider, TimeStatusRuntimeBinding
 from .resolver import resolve_time_status_summary
 from .runtime import (
     TIME_STATUS_DESTINATION_KEY,
@@ -13,6 +13,7 @@ from .runtime import (
 __all__ = [
     'TIME_STATUS_DESTINATION_KEY',
     'TIME_STATUS_RUNTIME_HOST_TYPE',
+    'TimeStatusDetailProvider',
     'TimeStatusRuntimeBinding',
     'build_time_status_runtime_component',
     'build_time_status_runtime_host',

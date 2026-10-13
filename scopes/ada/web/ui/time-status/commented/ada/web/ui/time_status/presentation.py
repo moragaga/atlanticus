@@ -181,13 +181,18 @@ def _build_empty_detail() -> Component:
 
 def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
     # El rol es fijo: cualquier fuente del Detail es adicional e informativa.
+    timestamp = source.timestamp_iso
     return html.Div(
         className='ada-time-status-detail__source',
         children=[
             html.Span(className='ada-time-status-detail__source-label', children=source.label),
             html.Span(
                 className='ada-time-status-detail__source-value',
-                children=source.value,
+                children='----/--/-- --:--:--' if timestamp is not None else source.value,
+                **(
+                    {'data-ada-time-status-detail-timestamp-utc': timestamp}
+                    if timestamp is not None else {}
+                ),
             ),
         ],
         **{

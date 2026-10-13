@@ -48,7 +48,7 @@ def build_time_status_runtime_component(
     summary = resolve_time_status_summary(store_data, binding=binding, now_utc=now_utc)
     # No vuelve a leer el Collector: reutiliza los estados ya resueltos.
     detail = build_time_status_detail(
-        state=binding.detail,
+        state=binding.resolve_detail(store_data),
         control_sources=summary.required_sources,
     )
     return build_time_status(

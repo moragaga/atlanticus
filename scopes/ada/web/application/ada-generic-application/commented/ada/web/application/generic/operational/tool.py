@@ -19,6 +19,7 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     resolve_active_tool_projection,
 )
+from ada.web.time_status.runtime import TimeStatusDetailProvider
 from ada.web.ui.content_state import ContentStatePresentationMode
 from atlanticus.web.models import WebApplicationDefinition
 
@@ -78,12 +79,15 @@ def create_definition_from_tool_resolution(
     content_state_presentation_mode: ContentStatePresentationMode = (
         ContentStatePresentationMode.NORMAL
     ),
+    time_status_detail: TimeStatusDetailProvider | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
     if not isinstance(content_state_presentation_mode, ContentStatePresentationMode):
         raise TypeError('content_state_presentation_mode must be ContentStatePresentationMode')
     definition_options: dict[str, object] = {}
+    if time_status_detail is not None:
+        definition_options['time_status_detail'] = time_status_detail
     if application_descriptor is not None:
         definition_options['application_descriptor'] = application_descriptor
     if composition is not None:

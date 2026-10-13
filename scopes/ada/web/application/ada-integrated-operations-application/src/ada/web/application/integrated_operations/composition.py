@@ -10,6 +10,11 @@ from ada.web.application.integrated_operations.modules.dashboard.global_indicato
     INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS,
     INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE,
 )
+from ada.web.application.integrated_operations.modules.dashboard.time_status import (
+    DashboardTimeStatusSourceBinding,
+    INTEGRATED_OPERATIONS_TIME_STATUS_SOURCES,
+    create_dashboard_time_status_detail_provider,
+)
 from ada.web.operational_render_binding import OperationalRenderBinding
 
 
@@ -17,6 +22,7 @@ def create_integrated_operations_extension(
     binding: OperationalRenderBinding | None,
     *,
     global_indicator_bindings: tuple[DashboardGlobalIndicatorBinding, ...] | None = None,
+    time_status_sources: tuple[DashboardTimeStatusSourceBinding, ...] | None = None,
 ) -> AdaApplicationExtension:
     if (
         binding is not None
@@ -30,6 +36,12 @@ def create_integrated_operations_extension(
     )
     if not isinstance(resolved_global_indicator_bindings, tuple):
         raise TypeError('global_indicator_bindings must be a tuple')
+    resolved_time_status_sources = (
+        INTEGRATED_OPERATIONS_TIME_STATUS_SOURCES
+        if time_status_sources is None else time_status_sources
+    )
+    if not isinstance(resolved_time_status_sources, tuple):
+        raise TypeError('time_status_sources must be a tuple')
     modules = [create_dashboard_module(binding)]
     if resolved_global_indicator_bindings and binding is not None:
         modules.append(
@@ -41,7 +53,16 @@ def create_integrated_operations_extension(
                 )
             )
         )
+    detail = (
+        None
+        if binding is None or not resolved_time_status_sources
+        else create_dashboard_time_status_detail_provider(
+            binding.structure.tool_key,
+            resolved_time_status_sources,
+        )
+    )
     return AdaApplicationExtension(
         modules=tuple(modules),
         page_packages=(),
+        time_status_detail=detail,
     )

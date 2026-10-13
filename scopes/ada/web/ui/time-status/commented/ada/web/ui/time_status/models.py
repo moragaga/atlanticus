@@ -76,6 +76,7 @@ class TimeStatusDetailSourceState:
     key: str
     label: str
     value: str
+    timestamp_utc: datetime | None = None
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='detail source key')
@@ -86,6 +87,18 @@ class TimeStatusDetailSourceState:
             )
         _require_text(self.label, field_name='detail source label')
         _require_text(self.value, field_name='detail source value')
+        if self.timestamp_utc is not None:
+            if not isinstance(self.timestamp_utc, datetime):
+                raise TimeStatusDefinitionError('detail timestamp_utc must be datetime or None')
+            if self.timestamp_utc.tzinfo is None or self.timestamp_utc.utcoffset() is None:
+                raise TimeStatusDefinitionError('detail timestamp_utc must be timezone-aware')
+            object.__setattr__(self, 'timestamp_utc', self.timestamp_utc.astimezone(UTC))
+
+    @property
+    def timestamp_iso(self) -> str | None:
+        if self.timestamp_utc is None:
+            return None
+        return self.timestamp_utc.isoformat().replace('+00:00', 'Z')
 
 
 @dataclass(frozen=True, slots=True)

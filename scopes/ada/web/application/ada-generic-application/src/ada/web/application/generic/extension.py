@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from ada.web.operational_render_binding import OperationalRenderBinding
+from ada.web.time_status.runtime import TimeStatusDetailProvider
 from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import WebModule
 
@@ -12,8 +13,13 @@ from atlanticus.web.modules import WebModule
 class AdaApplicationExtension:
     modules: tuple[WebModule, ...] = ()
     page_packages: tuple[str, ...] | None = None
+    time_status_detail: TimeStatusDetailProvider | None = None
 
     def __post_init__(self) -> None:
+        if self.time_status_detail is not None and not isinstance(
+            self.time_status_detail, TimeStatusDetailProvider
+        ):
+            raise TypeError('Application time_status_detail must be TimeStatusDetailProvider')
         if not isinstance(self.modules, tuple):
             raise TypeError('Application extension modules must be a tuple')
         if any(not isinstance(module, WebModule) for module in self.modules):

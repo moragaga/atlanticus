@@ -46,7 +46,7 @@ def build_time_status_runtime_component(
     _require_binding(binding)
     summary = resolve_time_status_summary(store_data, binding=binding, now_utc=now_utc)
     detail = build_time_status_detail(
-        state=binding.detail,
+        state=binding.resolve_detail(store_data),
         control_sources=summary.required_sources,
     )
     return build_time_status(
