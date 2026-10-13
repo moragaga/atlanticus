@@ -81,6 +81,66 @@ def test_old_six_inline_rows_keep_names_units_and_order():
     ]
 
 
+def test_each_tank_metric_preserves_unit_value_and_inspection_with_inline_row():
+    root = build_selectiva(*_mapped(_store()))
+    definitions = {
+        metric.kpi_key: metric
+        for tank in ESPESADORES
+        for metric in tank.metrics
+    }
+    targets = [
+        node for node in _walk(root)
+        if getattr(node, 'data-kpi-inspection-key', None) in definitions
+    ]
+    assert len(targets) == 20
+    for target in targets:
+        definition = definitions[getattr(target, 'data-kpi-inspection-key')]
+        children = list(_walk(target))
+        rows = [
+            node for node in children
+            if 'ada-inline-value-row' in (getattr(node, 'className', '') or '').split()
+        ]
+        assert len(rows) == 1
+        label = next(
+            node for node in children
+            if getattr(node, 'className', None) == 'ada-inline-value-row__label'
+        )
+        unit = next(
+            node for node in children
+            if getattr(node, 'className', None) == 'ada-inline-value-row__unit'
+        )
+        value = next(
+            node for node in children
+            if getattr(node, 'className', None) == 'ada-inline-value-row__value'
+        )
+        assert label.children == definition.label
+        assert unit.children == f'({definition.unit})'
+        assert value.children == '25.6'
+        assert target.role == 'button' and target.tabIndex == 0
+
+
+def test_degraded_tank_metric_keeps_status_icon_in_inline_row():
+    source = _store()
+    key = ESPESADORES[0].metrics[0].kpi_key
+    source['latest']['values'][key] = {
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
+    root = build_selectiva(*_mapped(source))
+    target = next(
+        node for node in _walk(root)
+        if getattr(node, 'data-kpi-inspection-key', None) == key
+    )
+    value = next(
+        node for node in _walk(target)
+        if getattr(node, 'className', None) == 'ada-inline-value-row__value'
+    )
+    assert isinstance(value.children, Component)
+
+
 def test_latest_maps_five_tanks_and_six_indicators():
     tanks, indicators = _mapped(_store())
     assert len(tanks) == 5

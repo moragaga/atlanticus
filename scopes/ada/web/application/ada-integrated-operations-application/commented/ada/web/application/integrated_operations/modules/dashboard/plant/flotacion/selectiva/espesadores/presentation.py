@@ -11,6 +11,11 @@ from ada.web.ui.equipment_image import (
     LabelPosition,
     build_equipment_state_image,
 )
+from ada.web.ui.inline_row import (
+    InlineValueRowDefinition,
+    InlineValueRowState,
+    build_inline_value_row,
+)
 
 from .definitions import ESPESADORES
 from .models import EspesadorMetricReading, EspesadorReading
@@ -91,14 +96,17 @@ def _feed(reading: EspesadorReading) -> Component:
     )
 
 
-# La inspección del KPI se asocia a cada valor, no a todo el espesador.
+# Cada métrica del espesador usa InlineValueRow para etiqueta, unidad y valor.
+# Se conserva la inspección individual del KPI sin modificar el estado del equipo.
 def _metric(reading: EspesadorMetricReading) -> Component:
     definition = reading.definition
     return html.Div(
-        [
-            html.Span(f'{definition.label} ({definition.unit})'),
-            html.Span(_display(reading.value), className='ada-io-selectiva__metric-value'),
-        ],
+        build_inline_value_row(
+            InlineValueRowState(
+                definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
+                value=_display(reading.value),
+            )
+        ),
         className='ada-io-selectiva__tank-metric',
         role='button',
         tabIndex=0,

@@ -51,6 +51,7 @@ def _indicator(reading: ColectivaIndicatorReading) -> Component:
             InlineValueRowState(
                 definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
                 value=_display(reading.value),
+                class_name='ada-io-colectiva__inline-value-row'
             )
         ),
         className='ada-io-colectiva__indicator',

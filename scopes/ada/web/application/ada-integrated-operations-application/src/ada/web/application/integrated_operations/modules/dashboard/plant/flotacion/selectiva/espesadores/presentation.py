@@ -11,6 +11,11 @@ from ada.web.ui.equipment_image import (
     LabelPosition,
     build_equipment_state_image,
 )
+from ada.web.ui.inline_row import (
+    InlineValueRowDefinition,
+    InlineValueRowState,
+    build_inline_value_row,
+)
 
 from .definitions import ESPESADORES
 from .models import EspesadorMetricReading, EspesadorReading
@@ -91,10 +96,13 @@ def _feed(reading: EspesadorReading) -> Component:
 def _metric(reading: EspesadorMetricReading) -> Component:
     definition = reading.definition
     return html.Div(
-        [
-            html.Span(f'{definition.label} ({definition.unit})'),
-            html.Span(_display(reading.value), className='ada-io-selectiva__metric-value'),
-        ],
+        build_inline_value_row(
+            InlineValueRowState(
+                definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
+                value=_display(reading.value),
+                class_name='ada-io-selectiva__inline-value-row'
+            )
+        ),
         className='ada-io-selectiva__tank-metric',
         role='button',
         tabIndex=0,

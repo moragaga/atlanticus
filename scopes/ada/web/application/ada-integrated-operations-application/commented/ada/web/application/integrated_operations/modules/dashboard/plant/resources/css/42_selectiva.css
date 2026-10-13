@@ -106,31 +106,18 @@
     flex-direction: column;
     width: 100%;
     min-width: 0;
+    --atlanticus-inline-value-row-font-size: .55rem;
+    --atlanticus-inline-value-row-gap: .1rem;
+    --atlanticus-inline-value-row-padding: .1rem 0;
 }
 
 .ada-io-selectiva__tank-metric {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     min-width: 0;
-    gap: .1rem;
-    padding: .1rem 0;
+    cursor: help;
 }
 
-.ada-io-selectiva__tank-metric:nth-child(2n + 1) {
-    border-bottom: 1px solid var(--primary-border-color, #bdbdbd);
-}
-
-.ada-io-selectiva__tank-metric > span:first-child {
-    min-width: 0;
-}
-
-.ada-io-selectiva__metric-value {
-    flex: none;
-    font-weight: 700;
-}
-
-/* Los seis indicadores old se apilan en filas independientes. */
+/* Las cuatro métricas por espesador delegan bordes, etiquetas y unidades a InlineValueRow. */
+/* Los seis indicadores inferiores conservan sus filas reutilizables. */
 .ada-io-selectiva__indicators {
     --atlanticus-inline-value-row-font-size: .54rem;
 }

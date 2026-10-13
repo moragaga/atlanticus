@@ -176,3 +176,6 @@
 .ada-io-recuperacion__history-trend {
     height: 5.625rem !important;
 }
+.ada-io-colectiva__inline-value-row {
+    padding: 0;
+}
