@@ -238,3 +238,29 @@ def test_application_optimizes_published_assets_in_production(
     assert all(
         (runtime.assets.assets_root / entry).is_file() for entry in runtime.assets.js_entries
     )
+
+
+def test_local_asset_optimization_opt_in_keeps_local_runtime(tmp_path, monkeypatch):
+    package = _build_page_package(tmp_path, 'test_local_optimized_asset_pages')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
+    monkeypatch.setenv('ATLANTICUS_WEB_ASSETS_OPTIMIZED', 'true')
+
+    runtime = create_web_application(
+        WebApplicationDefinition(
+            import_name='test_local_optimized_web',
+            metadata=ApplicationMetadata(
+                application_id='test-local-optimized-web',
+                display_name='Optimized Local',
+                version='0.1.0',
+            ),
+            publications_root=tmp_path / 'optimized-publications',
+            layout=lambda _services: html.Main(page_container),
+            page_packages=(package,),
+            asset_layers=(_build_layer(tmp_path),),
+        ),
+    )
+
+    assert runtime.environment.value == 'local'
+    assert runtime.assets.css_entries == ('app.min.css',)
+    assert runtime.server.test_client().get('/health/live').status_code == 200

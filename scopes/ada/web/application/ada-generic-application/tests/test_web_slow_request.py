@@ -22,11 +22,16 @@ def test_ada_composition_explicitly_passes_threshold_to_framework(tmp_path, monk
     result = object()
     captured = {}
 
-    def capture(definition, *, external_sink, slow_request_threshold_ms):
+    def capture(definition, *, external_sink, slow_request_threshold_ms, assets_optimized):
         captured['threshold'] = slow_request_threshold_ms
         captured['external_sink'] = external_sink
+        captured['assets_optimized'] = assets_optimized
         return result
 
     monkeypatch.setattr(bootstrap, 'create_web_application', capture)
     assert bootstrap.create_operational_application_runtime(settings=settings) is result
-    assert captured == {'threshold': 4500, 'external_sink': None}
+    assert captured == {
+        'threshold': 4500,
+        'external_sink': None,
+        'assets_optimized': False,
+    }

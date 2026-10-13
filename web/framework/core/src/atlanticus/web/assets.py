@@ -5,6 +5,7 @@ import json
 import os
 import re
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path, PurePosixPath
@@ -97,6 +98,136 @@ def publish_asset_layers(
                 validate_asset_publication(target)
 
     return validate_asset_publication(root / revision)
+
+
+def resolve_asset_publication(
+    *,
+    layers: tuple[AssetLayer, ...],
+    publications_root: str | Path,
+    optimize: bool = False,
+) -> AssetPublication:
+    ordered_layers = _validate_layers(layers)
+    root = Path(publications_root).resolve()
+    source_revision = _asset_source_revision(ordered_layers, optimize=optimize)
+    prepared_record = root / '.prepared-assets' / f'{source_revision}.json'
+    with _prepared_record_lock(prepared_record):
+        return _resolve_prepared_publication_locked(
+            layers=ordered_layers, root=root, source_revision=source_revision,
+            record=prepared_record, optimize=optimize,
+        )
+
+
+def _resolve_prepared_publication_locked(
+    *, layers: tuple[AssetLayer, ...], root: Path, source_revision: str,
+    record: Path, optimize: bool,
+) -> AssetPublication:
+    if record.is_file():
+        try:
+            recorded = json.loads(record.read_text(encoding='utf-8'))
+        except (OSError, ValueError) as error:
+            raise WebAssetError('Prepared asset record is unreadable') from error
+        revision = recorded.get('revision') if isinstance(recorded, dict) else None
+        if (
+            not isinstance(revision, str)
+            or re.fullmatch(r'[a-f0-9]{16}', revision) is None
+            or recorded.get('source_revision') != source_revision
+            or recorded.get('optimized') is not optimize
+        ):
+            raise WebAssetError('Prepared asset record is invalid')
+        publication = validate_asset_publication(root / revision)
+        try:
+            manifest = json.loads(publication.manifest_path.read_text(encoding='utf-8'))
+        except (OSError, ValueError) as error:
+            raise WebAssetError('Prepared asset manifest is unreadable') from error
+        if manifest.get('optimized') is not optimize:
+            raise WebAssetError('Prepared asset optimization mode differs')
+        return publication
+
+    publication = publish_asset_layers(
+        layers=layers, publications_root=root, optimize=optimize,
+    )
+    record.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode='w', encoding='utf-8', dir=record.parent,
+        prefix='.asset-record-', suffix='.json', delete=False,
+    ) as temporary:
+        temporary_path = Path(temporary.name)
+        json.dump(
+            {
+                'source_revision': source_revision,
+                'revision': publication.revision,
+                'optimized': optimize,
+            },
+            temporary, sort_keys=True,
+        )
+        temporary.write('\n')
+    try:
+        os.replace(temporary_path, record)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return publication
+
+
+@contextmanager
+def _prepared_record_lock(record: Path):
+    record.parent.mkdir(parents=True, exist_ok=True)
+    with record.with_suffix('.lock').open('a+b') as lock:
+        if os.name == 'nt':
+            import errno
+            import msvcrt
+            import time
+
+            if lock.seek(0, os.SEEK_END) == 0:
+                lock.write(b'\0')
+                lock.flush()
+            lock.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as error:
+                    if error.errno not in {errno.EACCES, errno.EAGAIN, errno.EDEADLOCK}:
+                        raise
+                    time.sleep(0.05)
+            try:
+                yield
+            finally:
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def _asset_source_revision(layers: tuple[AssetLayer, ...], *, optimize: bool) -> str:
+    digest = hashlib.sha256()
+    digest.update(b'atlanticus-asset-inputs-v1\0')
+    digest.update(b'optimized\0' if optimize else b'source\0')
+    for layer in layers:
+        description = {
+            'name': layer.name,
+            'load_order': layer.load_order,
+            'package': layer.package,
+            'resource_directory': layer.resource_directory,
+            'source_directory': (
+                str(layer.source_directory.resolve())
+                if layer.source_directory is not None else None
+            ),
+            'filename_ordered': layer.filename_ordered,
+        }
+        digest.update(json.dumps(description, sort_keys=True).encode('utf-8'))
+        digest.update(b'\0')
+        source = _resolve_source_root(layer)
+        for relative, resource in _iter_source_files(source):
+            digest.update(relative.as_posix().encode('utf-8'))
+            digest.update(b'\0')
+            digest.update(hashlib.sha256(resource.read_bytes()).digest())
+    return digest.hexdigest()
 
 
 def validate_asset_publication(assets_root: str | Path) -> AssetPublication:

@@ -68,3 +68,34 @@ def test_operational_bootstrap_threads_authoring_setting_into_definition(monkeyp
 
     assert resolved is runtime
     assert captured['content_state_presentation_mode'] is ContentStatePresentationMode.AUTHORING
+
+
+def test_bootstrap_uses_resolved_dotenv_asset_optimization(monkeypatch):
+    from ada.web.application.generic import bootstrap
+    from ada.web.application.generic.application import create_application_definition
+    from ada.web.application.generic.settings import AdaGenericSettings
+    from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
+
+    settings = AdaGenericSettings.from_mapping({
+        'ATLANTICUS_ENVIRONMENT': 'local',
+        'ATLANTICUS_WEB_ASSETS_OPTIMIZED': 'true',
+        'ADA_TOOL_NAMESPACE': 'process',
+        'ADA_PERSISTENCE_MODE': 'local',
+    })
+    forwarded = {}
+    expected_runtime = object()
+    monkeypatch.setattr(
+        bootstrap, '_resolve_tool_projection',
+        lambda _settings: ToolProjectionResolution(state=ToolProjectionResolutionState.UNCONFIGURED),
+    )
+    monkeypatch.setattr(
+        bootstrap, 'create_definition_from_tool_resolution',
+        lambda _resolution, **_kwargs: create_application_definition(),
+    )
+    monkeypatch.setattr(
+        bootstrap, 'create_web_application',
+        lambda definition, **kwargs: forwarded.update(kwargs) or expected_runtime,
+    )
+
+    assert bootstrap.create_operational_application_runtime(settings=settings) is expected_runtime
+    assert forwarded['assets_optimized'] is True

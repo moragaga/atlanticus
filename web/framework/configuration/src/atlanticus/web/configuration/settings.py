@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
+ATLANTICUS_WEB_ASSETS_OPTIMIZED_VARIABLE = 'ATLANTICUS_WEB_ASSETS_OPTIMIZED'
 ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE = 'ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
 OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE = 'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED'
@@ -53,6 +54,10 @@ class WebSettings(BaseSettings):
         le=65535,
         validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
     )
+    assets_optimized: bool = Field(
+        default=False,
+        validation_alias=ATLANTICUS_WEB_ASSETS_OPTIMIZED_VARIABLE,
+    )
     slow_request_threshold_ms: int = Field(
         default=2000,
         gt=0,
@@ -63,6 +68,10 @@ class WebSettings(BaseSettings):
         repr=False,
         validation_alias=APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     )
+
+    @property
+    def optimize_assets(self) -> bool:
+        return self.environment.is_production or self.assets_optimized
 
     @classmethod
     def settings_customise_sources(

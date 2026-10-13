@@ -490,7 +490,7 @@ def test_time_status_definition_adds_ui_and_runtime_modules_from_control_sources
     assert 'ada-time-status-runtime' in module_names
 
 
-def test_time_status_without_additional_sources_preserves_explicit_empty_detail(
+def test_time_status_without_additional_sources_renders_control_detail(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -507,8 +507,9 @@ def test_time_status_without_additional_sources_preserves_explicit_empty_detail(
     payload = json.dumps(response.get_json(), ensure_ascii=False)
 
     assert response.status_code == 200
-    assert 'Sin fuentes adicionales' in payload
-    assert 'Esta herramienta no consume fuentes de datos adicionales.' in payload
+    assert 'Última actualización' in payload
+    assert 'data-ada-time-status-detail-control' in payload
+    assert 'data-ada-time-status-detail-source' not in payload
 
 
 def test_generic_application_public_api_no_longer_accepts_legacy_time_status_snapshot() -> None:

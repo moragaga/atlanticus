@@ -8,7 +8,7 @@ from threading import RLock
 from dash import Dash
 from flask import Flask, request
 
-from atlanticus.web.assets import AssetLayer, publish_asset_layers
+from atlanticus.web.assets import AssetLayer, resolve_asset_publication
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.health import HealthRegistry, register_health_routes
@@ -58,7 +58,10 @@ def create_web_application(
     *,
     external_sink: WebEventSink | None = None,
     slow_request_threshold_ms: int | None = None,
+    assets_optimized: bool | None = None,
 ) -> WebApplicationRuntime:
+    if assets_optimized is not None and not isinstance(assets_optimized, bool):
+        raise TypeError('assets_optimized must be a bool or None')
     _validate_definition(definition)
     web_settings = WebSettings()
     environment = web_settings.environment
@@ -78,6 +81,11 @@ def create_web_application(
         return _compose_web_application(
             definition=definition,
             environment=environment,
+            optimize_assets=(
+                web_settings.optimize_assets
+                if assets_optimized is None
+                else environment.is_production or assets_optimized
+            ),
             observability=observability,
         )
     except Exception as error:
@@ -108,6 +116,7 @@ def _compose_web_application(
     *,
     definition: WebApplicationDefinition,
     environment: WebEnvironment,
+    optimize_assets: bool,
     observability: WebObservability,
 ) -> WebApplicationRuntime:
     services = ServiceRegistry()
@@ -124,10 +133,11 @@ def _compose_web_application(
     _validate_module_service_requirements(definition.modules, services)
     services.freeze()
 
-    assets = publish_asset_layers(
+    # El consumidor verifica el fingerprint y aprovecha la publicación preparada.
+    assets = resolve_asset_publication(
         layers=_collect_asset_layers(definition),
         publications_root=definition.publications_root,
-        optimize=environment.is_production,
+        optimize=optimize_assets,
     )
 
     flask_paths = _resolve_namespace_flask_paths(definition.import_name)

@@ -277,7 +277,9 @@ def create_operational_application_runtime(
         return create_web_application(
             definition,
             external_sink=web_event_sink,
+            # Preservar el valor de .env resuelto por AdaGenericSettings.
             slow_request_threshold_ms=resolved_settings.slow_request_threshold_ms,
+            assets_optimized=resolved_settings.optimize_assets,
         )
     except Exception:
         _close_client(consumption_cosmos_client, 'Cosmos Consumption')

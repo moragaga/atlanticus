@@ -115,3 +115,22 @@ def test_web_settings_do_not_implicitly_load_dotenv(monkeypatch, tmp_path):
     settings = WebSettings()
 
     assert settings.environment is WebEnvironment.LOCAL
+
+
+def test_optional_local_asset_optimization_and_production_precedence():
+    local_default = WebSettings.from_mapping({'ATLANTICUS_ENVIRONMENT': 'local'})
+    local_optimized = WebSettings.from_mapping({
+        'ATLANTICUS_ENVIRONMENT': 'local',
+        'ATLANTICUS_WEB_ASSETS_OPTIMIZED': 'true',
+    })
+    production = WebSettings.from_mapping({
+        'ATLANTICUS_ENVIRONMENT': 'production',
+        'ATLANTICUS_WEB_ASSETS_OPTIMIZED': 'false',
+    })
+
+    assert local_default.optimize_assets is False
+    assert local_optimized.optimize_assets is True
+    assert production.optimize_assets is True
+
+    with pytest.raises(ValidationError):
+        WebSettings.from_mapping({'ATLANTICUS_WEB_ASSETS_OPTIMIZED': 'not-a-boolean'})

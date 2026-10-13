@@ -12,6 +12,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 # Puerto configurable para el servidor Flask local; sin variable, el valor es 8000.
 ATLANTICUS_WEB_PORT_VARIABLE = 'ATLANTICUS_WEB_PORT'
+# Activación opcional sólo para comparar assets optimizados en local.
+ATLANTICUS_WEB_ASSETS_OPTIMIZED_VARIABLE = 'ATLANTICUS_WEB_ASSETS_OPTIMIZED'
 # Umbral de lentitud del servidor configurable por destino, en milisegundos.
 ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS_VARIABLE = 'ATLANTICUS_WEB_SLOW_REQUEST_THRESHOLD_MS'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
@@ -61,6 +63,11 @@ class WebSettings(BaseSettings):
         le=65535,
         validation_alias=ATLANTICUS_WEB_PORT_VARIABLE,
     )
+    # La producción fuerza optimización, aunque la variable sea false.
+    assets_optimized: bool = Field(
+        default=False,
+        validation_alias=ATLANTICUS_WEB_ASSETS_OPTIMIZED_VARIABLE,
+    )
     # La connection string queda disponible para la integración Web de Application Insights.
     # Umbral entero positivo; 2000 ms son 2 segundos.
     slow_request_threshold_ms: int = Field(
@@ -73,6 +80,11 @@ class WebSettings(BaseSettings):
         repr=False,
         validation_alias=APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     )
+
+    # La política efectiva no puede desactivar minificación en producción.
+    @property
+    def optimize_assets(self) -> bool:
+        return self.environment.is_production or self.assets_optimized
 
     @classmethod
     def settings_customise_sources(
