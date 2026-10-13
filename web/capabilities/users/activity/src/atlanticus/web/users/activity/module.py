@@ -27,7 +27,7 @@ def create_user_activity_module(
     application_key: str,
     users_runtime: UsersRuntime,
     route_resolver: ActivityRouteResolver | None = None,
-    heartbeat_seconds: int = 30,
+    heartbeat_seconds: int = 300,
     track_local: bool = False,
 ) -> WebModule:
     if heartbeat_seconds < 5:

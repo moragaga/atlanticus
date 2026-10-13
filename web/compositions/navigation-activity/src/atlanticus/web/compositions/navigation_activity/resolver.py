@@ -37,7 +37,7 @@ def create_navigation_user_activity_module(
     repository: UserActivityRepository,
     application_key: str,
     users_runtime: UsersRuntime,
-    heartbeat_seconds: int = 30,
+    heartbeat_seconds: int = 300,
     track_local: bool = False,
 ):
     return create_user_activity_module(

@@ -61,4 +61,4 @@ def test_composition_factory_builds_activity_module() -> None:
     )
 
     assert module.name == 'user-activity'
-    assert module.index.runtime_config['heartbeat_ms'] == 30000
+    assert module.index.runtime_config['heartbeat_ms'] == 300000

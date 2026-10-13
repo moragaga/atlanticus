@@ -23,3 +23,22 @@ def test_module_publishes_assets_runtime_config_and_service() -> None:
         'event_endpoint': '/_atlanticus/activity/events',
         'heartbeat_ms': 30000,
     }
+
+
+def test_default_heartbeat_is_five_minutes_without_losing_explicit_override() -> None:
+    repository = MemoryUserActivityRepository()
+    users = UsersRuntime()
+    default_module = create_user_activity_module(
+        repository=repository,
+        application_key='app',
+        users_runtime=users,
+    )
+    fast_module = create_user_activity_module(
+        repository=repository,
+        application_key='app',
+        users_runtime=users,
+        heartbeat_seconds=30,
+    )
+
+    assert default_module.index.runtime_config['heartbeat_ms'] == 300_000
+    assert fast_module.index.runtime_config['heartbeat_ms'] == 30_000

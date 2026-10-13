@@ -96,3 +96,26 @@ def test_cosmos_adapter_maps_precondition_failure_to_conflict() -> None:
 
     with pytest.raises(UserActivityConflictError, match='revision conflict'):
         repository.save(_document(), expected_revision='stale')
+
+
+def test_cosmos_activity_updates_same_session_without_overriding_container_ttl() -> None:
+    from dataclasses import replace
+    from datetime import timedelta
+
+    container = _Container()
+    repository = CosmosUserActivityRepository(container)
+    original = _document()
+    created = repository.save(original, expected_revision=None)
+    updated = replace(
+        original,
+        last_seen_at_utc=original.last_seen_at_utc + timedelta(minutes=5),
+        last_sequence=2,
+        last_event_id='event-2',
+    )
+    stored = repository.save(updated, expected_revision=created.revision)
+
+    assert stored.document.id == original.id
+    assert stored.document.client_session_id == original.client_session_id
+    assert stored.document.last_seen_at_utc == updated.last_seen_at_utc
+    assert stored.revision != created.revision
+    assert 'ttl' not in container.item

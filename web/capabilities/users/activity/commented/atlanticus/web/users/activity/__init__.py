@@ -16,6 +16,10 @@ from atlanticus.web.users.activity.module import (
     create_user_activity_module,
 )
 from atlanticus.web.users.activity.services import UserActivityService
+from atlanticus.web.users.activity.storage import (
+    USER_ACTIVITY_STORAGE_RESOURCE,
+    USER_ACTIVITY_STORAGE_RESOURCES,
+)
 
 __all__ = [
     'ActivityRoute',
@@ -24,6 +28,8 @@ __all__ = [
     'MemoryUserActivityRepository',
     'Screen',
     'USER_ACTIVITY_ASSET_LAYER',
+    'USER_ACTIVITY_STORAGE_RESOURCE',
+    'USER_ACTIVITY_STORAGE_RESOURCES',
     'UserActivityDocument',
     'UserActivityEvent',
     'UserActivityEventType',
