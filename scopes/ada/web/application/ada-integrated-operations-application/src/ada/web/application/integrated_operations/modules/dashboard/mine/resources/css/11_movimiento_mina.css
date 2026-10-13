@@ -10,6 +10,7 @@
     --movimiento-mina-state-size: .32rem;
     --movimiento-mina-row-gap: .03rem;
     --movimiento-mina-metric-gap: .07rem;
+    --movimiento-mina-state-message: .46rem;
     display: flex;
     width: 100%;
     /*height: 100%;*/
@@ -162,7 +163,7 @@
 .movimiento-mina__state-message {
     min-width: 0;
     margin: 0;
-    font-size: var(--movimiento-mina-state-size);
+    font-size: var(--movimiento-mina-state-message);
     font-weight: 600;
     line-height: 1.1;
     text-align: center;
@@ -170,7 +171,7 @@
 }
 
 .movimiento-mina__state-icon {
-    --ada-status-icon-size: 2em;
+    --ada-status-icon-size: 2.6em;
 }
 
 .movimiento-mina--unavailable {
@@ -196,6 +197,7 @@
         --movimiento-mina-state-size: .48rem;
         --movimiento-mina-row-gap: .05rem;
         --movimiento-mina-metric-gap: .09rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }
 
@@ -212,6 +214,7 @@
         --movimiento-mina-state-size: .52rem;
         --movimiento-mina-row-gap: .06rem;
         --movimiento-mina-metric-gap: .1rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }
 
@@ -228,6 +231,7 @@
         --movimiento-mina-state-size: .34rem;
         --movimiento-mina-row-gap: .03rem;
         --movimiento-mina-metric-gap: .07rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }
 
@@ -239,6 +243,7 @@
         --movimiento-mina-value-size: .39rem;
         --movimiento-mina-plan-size: .31rem;
         --movimiento-mina-state-size: .3rem;
+        --movimiento-mina-state-message: .46rem;
     }
 
     [data-ada-io-presentation='mine'] .movimiento-mina {
@@ -252,6 +257,7 @@
         --movimiento-mina-state-size: .4rem;
         --movimiento-mina-row-gap: .04rem;
         --movimiento-mina-metric-gap: .09rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }
 
@@ -263,6 +269,7 @@
         --movimiento-mina-value-size: .42rem;
         --movimiento-mina-plan-size: .33rem;
         --movimiento-mina-state-size: .32rem;
+        --movimiento-mina-state-message: .46rem;
     }
 
     [data-ada-io-presentation='mine'] .movimiento-mina {
@@ -276,6 +283,7 @@
         --movimiento-mina-state-size: .43rem;
         --movimiento-mina-row-gap: .05rem;
         --movimiento-mina-metric-gap: .1rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }
 
@@ -290,6 +298,7 @@
         --movimiento-mina-plan-size: .37rem;
         --movimiento-mina-state-size: .36rem;
         --movimiento-mina-metric-gap: .08rem;
+        --movimiento-mina-state-message: .46rem;
     }
 
     [data-ada-io-presentation='mine'] .movimiento-mina {
@@ -303,7 +312,9 @@
         --movimiento-mina-state-size: .49rem;
         --movimiento-mina-row-gap: .06rem;
         --movimiento-mina-metric-gap: .11rem;
+        --movimiento-mina-state-message: .46rem;
     }
+
 }
 
 @media only screen and (min-width: 2560px) {
@@ -320,5 +331,6 @@
         --movimiento-mina-state-size: .44rem;
         --movimiento-mina-row-gap: .05rem;
         --movimiento-mina-metric-gap: .1rem;
+        --movimiento-mina-state-message: .46rem;
     }
 }

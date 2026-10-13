@@ -1,3 +1,9 @@
+/* El gris corresponde al lienzo de Operaciones Integradas; no cambia el fondo del encabezado ni de las cards. */
+#ada-generic-application:has(.ada-io-dashboard),
+.ada-io-dashboard {
+    background-color: #939292;
+}
+
 /* Dashboard conserva geometría y gaps; Card Display aporta el mínimo intrínseco y el documento absorbe el overflow final. */
 .ada-io-dashboard {
     --ada-io-gap: .2rem;

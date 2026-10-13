@@ -36,6 +36,7 @@ def map_stockpile_chacay_readings(readings: Mapping[str, DisplayValue]) -> Stock
                 label=definition.label,
                 kpi_key=definition.kpi_key,
                 value=readings[definition.kpi_key],
+                unit=definition.unit
             )
             for definition in STOCKPILE_CHACAY_ROWS
         ),

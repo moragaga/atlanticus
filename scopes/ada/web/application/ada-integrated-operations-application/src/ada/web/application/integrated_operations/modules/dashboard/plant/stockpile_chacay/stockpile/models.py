@@ -14,6 +14,7 @@ class ChacayMetric:
     label: str
     kpi_key: str
     value: DisplayValue
+    unit: str
 
 
 @dataclass(frozen=True, slots=True)

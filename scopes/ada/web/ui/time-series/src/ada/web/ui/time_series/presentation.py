@@ -17,31 +17,29 @@ _SANTIAGO = ZoneInfo('America/Santiago')
 def build_time_series_component(
     series: TimeSeriesValues,
     *,
-    height_px: int = 116,
+    class_name: str | None = None,
 ) -> Component:
     if not isinstance(series, TimeSeriesValues):
         raise TypeError('series must be TimeSeriesValues')
-    if type(height_px) is not int or height_px <= 0:
-        raise ValueError('height_px must be a positive integer')
     if series.status in (DisplayStatus.INVALID, DisplayStatus.ERROR):
         icon = build_display_status_icon(series.status, class_name='ada-time-series__status-icon')
         if icon is None:
             raise ValueError('Time series status icon cannot be resolved')
         return html.Div(icon, className='ada-time-series__unavailable')
     return dcc.Graph(
-        figure=_figure(series, height_px),
+        figure=_figure(series),
         config={
             'displayModeBar': False,
             'staticPlot': True,
             'responsive': True,
         },
         responsive=True,
-        style={'width': '100%', 'height': f'{height_px}px'},
-        className='ada-time-series__graph',
+        # style={'width': '100%', 'height': f'{height_px}px'},
+        className=f'ada-time-series__graph {class_name or ""}'.strip(),
     )
 
 
-def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
+def _figure(series: TimeSeriesValues) -> go.Figure:
     moments = [point.timestamp_utc for point in series.points]
     values = [point.value for point in series.points]
     ticks = _tick_indices(len(moments), 3 if _offset_changes(moments) else 5)
@@ -78,8 +76,7 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
     )
     figure.update_layout(
         autosize=True,
-        height=height_px,
-        margin={'l': 8, 'r': 8, 't': 5, 'b': 26},
+        margin={'l': 8, 'r': 8, 't': 5, 'b': 5},
         showlegend=False,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',

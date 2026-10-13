@@ -1,3 +1,8 @@
+#ada-generic-application:has(.ada-io-dashboard),
+.ada-io-dashboard {
+    background-color: #939292;
+}
+
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-edge-inset: .3rem;

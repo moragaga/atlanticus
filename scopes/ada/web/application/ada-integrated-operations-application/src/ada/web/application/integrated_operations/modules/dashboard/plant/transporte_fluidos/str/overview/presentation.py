@@ -34,7 +34,7 @@ def build_str_overview(reading: StrOverviewReading) -> Component:
                 ],
                 className='ada-io-str__trend-header',
             ),
-            build_time_series_component(reading.history),
+            build_time_series_component(reading.history, class_name='ada-io-relave__history-trend'),
         ],
         className='ada-io-str__trend',
     )

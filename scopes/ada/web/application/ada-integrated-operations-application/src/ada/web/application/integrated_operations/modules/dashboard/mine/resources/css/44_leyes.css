@@ -33,7 +33,7 @@
 .ada-io-leyes__head,
 .ada-io-leyes__row-header,
 .ada-io-leyes__cell {
-    padding: .2rem .15rem;
+    padding: .1rem 0;
     border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
 }
 

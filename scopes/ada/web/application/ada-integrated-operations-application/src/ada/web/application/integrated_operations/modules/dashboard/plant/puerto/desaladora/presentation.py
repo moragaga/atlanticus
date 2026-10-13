@@ -35,7 +35,7 @@ def build_desaladora(reading: DesaladoraReading) -> Component:
                         ],
                         className='ada-io-desaladora__trend-header',
                     ),
-                    build_time_series_component(reading.trend_history),
+                    build_time_series_component(reading.trend_history, class_name='ada-io-flujo-desaladora__history-trend'),
                 ],
                 className='ada-io-desaladora__trend',
             ),

@@ -31,7 +31,7 @@ def build_colectiva_overview(reading: ColectivaOverviewReading) -> Component:
                         ],
                         className='ada-io-colectiva__trend-header',
                     ),
-                    build_time_series_component(reading.trend_history),
+                    build_time_series_component(reading.trend_history, class_name='ada-io-recuperacion__history-trend'),
                 ],
                 className='ada-io-colectiva__trend',
             ),

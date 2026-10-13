@@ -164,3 +164,7 @@
     outline: 2px solid currentColor;
     outline-offset: 2px;
 }
+
+.ada-io-recuperacion__history-trend {
+    height: 5.625rem !important;
+}

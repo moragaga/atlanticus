@@ -21,6 +21,7 @@ class ChacayRowDefinition:
     key: str
     label: str
     kpi_key: str
+    unit: str
 
 
 STOCKPILE_CHACAY_PILES = tuple(
@@ -36,8 +37,8 @@ STOCKPILE_CHACAY_PILES = tuple(
 )
 
 STOCKPILE_CHACAY_ROWS = (
-    ChacayRowDefinition('plan', 'Plan', 'ton_stockpile_plan'),
-    ChacayRowDefinition('capacidad', 'Capacidad', 'ton_stockpile_capacidad'),
-    ChacayRowDefinition('real', 'Real', 'ton_stockpile_real'),
-    ChacayRowDefinition('lidar', 'LIDAR', 'toneladas_stockpile_lidar'),
+    ChacayRowDefinition('plan', 'Plan', 'ton_stockpile_plan', 'kt'),
+    ChacayRowDefinition('capacidad', 'Capacidad', 'ton_stockpile_capacidad', 'kt'),
+    ChacayRowDefinition('balance_masa', 'Balance de Masa', 'balance_masa', 'tms'),
+    ChacayRowDefinition('topografia_linea', 'Topografía en Línea', 'topografia_linea', 'tms'),
 )

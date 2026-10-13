@@ -38,7 +38,7 @@ def _trend(reading: AlimentadoTrendReading) -> Component:
                 ],
                 className='ada-io-alimentado__heading',
             ),
-            build_time_series_component(reading.history),
+            build_time_series_component(reading.history, class_name='ada-io-alimentado__history-trend'),
         ],
         className='ada-io-alimentado__trend',
         role='button',

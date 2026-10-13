@@ -52,7 +52,7 @@ def _trend(state: MoliendaOverviewReading) -> Component:
                 ],
                 className='ada-io-molienda__trend-header',
             ),
-            build_time_series_component(state.trend_history),
+            build_time_series_component(state.trend_history, class_name='ada-io-rendimiento__history-trend'),
         ],
         className='ada-io-molienda__trend',
     )

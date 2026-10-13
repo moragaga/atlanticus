@@ -40,7 +40,7 @@ def build_puerto(reading: PuertoReading) -> Component:
                         ],
                         className='ada-io-puerto__trend-header',
                     ),
-                    build_time_series_component(reading.trend_history),
+                    build_time_series_component(reading.trend_history, class_name='ada-io-filtrado__history-trend'),
                 ],
                 className='ada-io-puerto__trend',
             ),
