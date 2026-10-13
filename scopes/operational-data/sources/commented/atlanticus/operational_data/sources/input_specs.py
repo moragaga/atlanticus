@@ -226,6 +226,18 @@ class MeteodataData:
         )
 
 
+# La proyección Meteodata publica un único latest; no se agrega un selector temporal.
+class MeteodataProjection:
+    @staticmethod
+    def latest(*, input_key: str, columns: tuple[DataColumn, ...]) -> DataInputSpec:
+        return _input(
+            input_key=input_key,
+            source=DataSource.METEODATA_PROJECTION,
+            view=DataView.LATEST,
+            columns=columns,
+        )
+
+
 # Centraliza la creación del contrato neutral; los builders de fuente deciden qué combinaciones exponen.
 def _input(
     *,

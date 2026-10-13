@@ -217,6 +217,17 @@ class MeteodataData:
         )
 
 
+class MeteodataProjection:
+    @staticmethod
+    def latest(*, input_key: str, columns: tuple[DataColumn, ...]) -> DataInputSpec:
+        return _input(
+            input_key=input_key,
+            source=DataSource.METEODATA_PROJECTION,
+            view=DataView.LATEST,
+            columns=columns,
+        )
+
+
 def _input(
     *,
     input_key: str,
