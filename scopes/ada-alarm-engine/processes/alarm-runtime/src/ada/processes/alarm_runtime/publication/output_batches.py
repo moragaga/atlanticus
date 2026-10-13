@@ -326,11 +326,7 @@ class AlarmCommittedFactsExporter:
             if not pending:
                 return
             relative = working['segment_path']
-            previous_end = (
-                checkpoint['record_end']
-                if checkpoint['segment_path'] == relative
-                else 0
-            )
+            previous_end = checkpoint['record_end'] if checkpoint['segment_path'] == relative else 0
             path = self.root / relative
             with context.fenced_mutation():
                 if store.read(_CURSOR) != checkpoint:

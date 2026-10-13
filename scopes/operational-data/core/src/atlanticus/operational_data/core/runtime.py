@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
+from atlanticus.operational_data.core.contracts import normalize_utc_second
 from atlanticus.operational_data.core.errors import DataInputNotRequestedError
 
 
@@ -23,6 +25,7 @@ class RuntimeFrameContext(Protocol):
 @dataclass(frozen=True, slots=True)
 class DataInputContext:
     frames: Mapping[str, RuntimeFrameContext]
+    as_of: datetime | None = None
 
     def __post_init__(self) -> None:
         normalized: dict[str, RuntimeFrameContext] = {}
@@ -35,6 +38,8 @@ class DataInputContext:
                 raise TypeError(f'{input_key}: invalid runtime frame')
             normalized[input_key] = frame
         object.__setattr__(self, 'frames', MappingProxyType(normalized))
+        if self.as_of is not None:
+            object.__setattr__(self, 'as_of', normalize_utc_second(self.as_of, field_name='as_of'))
 
     @property
     def input_keys(self) -> tuple[str, ...]:

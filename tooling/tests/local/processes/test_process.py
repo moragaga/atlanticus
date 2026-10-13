@@ -68,6 +68,33 @@ def test_ada_kpi_engine_target_resolves_scope_layout(tmp_path: Path) -> None:
     assert roots == (expected,)
 
 
+def test_ada_alarm_engine_prepare_all_discovers_five_processes(tmp_path: Path) -> None:
+    commands = (
+        "alarm-runtime",
+        "alarm-historian",
+        "alarm-materialization",
+        "alarm-modeler",
+        "alarm-delivery",
+    )
+    expected = {
+        _write_process(
+            tmp_path,
+            f"scopes/ada-alarm-engine/processes/{command}",
+            command=f"ada-{command}",
+            project_name=f"ada-{command}-process",
+        )
+        for command in commands
+    }
+    roots = process_tool._resolve_prepare_processes(
+        tmp_path,
+        ("ada-alarm-engine",),
+        all_target=True,
+        bundle=BundleStub(),
+    )
+    assert set(roots) == expected
+    assert len(roots) == 5
+
+
 def test_operational_data_target_resolves_scope_layout(tmp_path: Path) -> None:
     expected = _write_process(
         tmp_path,

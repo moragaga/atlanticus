@@ -39,13 +39,21 @@ def public_tool_projection(tool: Mapping[str, object]) -> dict[str, object]:
     raw_alarms = tool.get('alarms')
     raw_view = tool.get('operator_view')
     meta = tool.get('meta')
-    if not isinstance(raw_alarms, dict) or not isinstance(raw_view, list) or not isinstance(meta, dict):
+    if (
+        not isinstance(raw_alarms, dict)
+        or not isinstance(raw_view, list)
+        or not isinstance(meta, dict)
+    ):
         raise AlarmLiveProjectionError('Live Tool content is invalid')
     if not isinstance(tool.get('retired'), bool):
         raise AlarmLiveProjectionError('Live Tool retired flag is invalid')
     alarms: dict[str, dict[str, object]] = {}
     for occurrence_id, record in raw_alarms.items():
-        if not isinstance(occurrence_id, str) or not occurrence_id or not isinstance(record, Mapping):
+        if (
+            not isinstance(occurrence_id, str)
+            or not occurrence_id
+            or not isinstance(record, Mapping)
+        ):
             raise AlarmLiveProjectionError('Live alarm record is invalid')
         alarms[occurrence_id] = {
             name: deepcopy(record[name]) for name in _ALARM_FIELDS if name in record
@@ -76,19 +84,27 @@ def public_tool_projection(tool: Mapping[str, object]) -> dict[str, object]:
                 totals[area] = totals.get(area, 0) + 1
         for area, selected in visible.items():
             if (
-                area not in totals or not isinstance(selected, list)
-                or len(selected) > slots or len(selected) != len(set(selected))
-                or any(member not in members or area not in raw_alarms[member].get('operational_areas', []) for member in selected)
+                area not in totals
+                or not isinstance(selected, list)
+                or len(selected) > slots
+                or len(selected) != len(set(selected))
+                or any(
+                    member not in members
+                    or area not in raw_alarms[member].get('operational_areas', [])
+                    for member in selected
+                )
             ):
                 raise AlarmLiveProjectionError('Live distributed area selection is invalid')
-        view.append({
-            'slot': item['slot'],
-            'group': {
-                'kind': 'DISTRIBUTED',
-                'visible_by_area': deepcopy(visible),
-                'total_by_area': totals,
-            },
-        })
+        view.append(
+            {
+                'slot': item['slot'],
+                'group': {
+                    'kind': 'DISTRIBUTED',
+                    'visible_by_area': deepcopy(visible),
+                    'total_by_area': totals,
+                },
+            }
+        )
     return {
         'retired': tool['retired'],
         'alarms': alarms,

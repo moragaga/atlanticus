@@ -11,8 +11,6 @@ from ada.processes.alarm_materialization.job import (
     AlarmMaterializationJob,
     AlarmMaterializationOutcome,
 )
-
-
 from ada.processes.alarm_materialization.repository import (
     AlarmConfigurationReader,
     CosmosAlarmConfigurationRepository,

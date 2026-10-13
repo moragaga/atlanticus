@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ada-alarms-history"
 version = "1.0.0"
 description = "Durable Alarm Historian dataset contracts and Parquet materialization."
-requires-python = ">=3.14,<3.15"
+requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload", "Programming Language :: Python :: 3.14", "Typing :: Typed"]
 dependencies = [
     "ada-contracts-alarms==1.0.0",

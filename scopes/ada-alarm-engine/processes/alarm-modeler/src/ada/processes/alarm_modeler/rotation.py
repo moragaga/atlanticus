@@ -19,8 +19,9 @@ class AlarmRotationError(ValueError):
 
 def _digest(value: Mapping[str, object]) -> str:
     return hashlib.sha256(
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False)
-        .encode('utf-8')
+        json.dumps(
+            value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False
+        ).encode('utf-8')
     ).hexdigest()
 
 
@@ -44,14 +45,22 @@ def _parse_timestamp(value: object) -> datetime:
 
 def _rotation_state(value: object) -> dict:
     if isinstance(value, dict) and set(value) == {'normal', 'areas'}:
-        if not isinstance(value['normal'], dict) or set(value['normal']) != {'queue', 'visible', 'next_due_at'}:
+        if not isinstance(value['normal'], dict) or set(value['normal']) != {
+            'queue',
+            'visible',
+            'next_due_at',
+        }:
             raise AlarmRotationError('Distributed normal rotation state is invalid')
         _rotation_state(value['normal'])
         areas = value['areas']
         if not isinstance(areas, dict) or set(areas) - {'MINE', 'PLANT'}:
             raise AlarmRotationError('Distributed area states are invalid')
         for area_state in areas.values():
-            if not isinstance(area_state, dict) or set(area_state) != {'queue', 'visible', 'next_due_at'}:
+            if not isinstance(area_state, dict) or set(area_state) != {
+                'queue',
+                'visible',
+                'next_due_at',
+            }:
                 raise AlarmRotationError('Distributed area rotation state is invalid')
             _rotation_state(area_state)
         return value
@@ -129,7 +138,7 @@ def plan_rotation(
         due = now + timedelta(seconds=rotation_seconds)
     elif due is None:
         visible = previous_visible[:slots]
-        visible += [item for item in queue if item not in visible][:slots - len(visible)]
+        visible += [item for item in queue if item not in visible][: slots - len(visible)]
         queue = [item for item in queue if item not in visible] + visible
         due = now + timedelta(seconds=rotation_seconds)
     elif now >= due:
@@ -138,16 +147,22 @@ def plan_rotation(
         due = now + timedelta(seconds=rotation_seconds)
     else:
         visible = previous_visible[:slots]
-        visible += [item for item in queue if item not in visible][:slots - len(visible)]
+        visible += [item for item in queue if item not in visible][: slots - len(visible)]
         queue = [item for item in queue if item not in visible] + visible
     updated = dict(tool)
     updated['operator_view'] = [
         {'slot': index, 'occurrence_id': item} for index, item in enumerate(visible, start=1)
     ]
-    updated['meta'] = {**tool['meta'], 'operator_count': len(visible),
-                       'rotation_pending': len(pool) > slots}
-    result = {'queue': queue, 'visible': visible,
-              'next_due_at': None if due is None else _timestamp(due)}
+    updated['meta'] = {
+        **tool['meta'],
+        'operator_count': len(visible),
+        'rotation_pending': len(pool) > slots,
+    }
+    result = {
+        'queue': queue,
+        'visible': visible,
+        'next_due_at': None if due is None else _timestamp(due),
+    }
     return updated, result, due
 
 
@@ -201,8 +216,13 @@ class ToolRotationMemory:
         raise AlarmRotationError('Rotation memory disagrees with the published Tool')
 
     def prepare(
-        self, *, tool_key: str, previous_tool: dict | None,
-        old_state: dict | None, next_tool: dict, next_state: dict,
+        self,
+        *,
+        tool_key: str,
+        previous_tool: dict | None,
+        old_state: dict | None,
+        next_tool: dict,
+        next_state: dict,
     ) -> None:
         _rotation_state(next_state)
         path = self._path(tool_key)
@@ -210,8 +230,9 @@ class ToolRotationMemory:
             'schema_version': SCHEMA_VERSION,
             'tool_key': tool_key,
             'committed': (
-                None if previous_tool is None or old_state is None else
-                {'tool_sha256': _digest(previous_tool), 'state': old_state}
+                None
+                if previous_tool is None or old_state is None
+                else {'tool_sha256': _digest(previous_tool), 'state': old_state}
             ),
             'prepared': {'tool_sha256': _digest(next_tool), 'state': next_state},
         }
@@ -227,7 +248,14 @@ class ToolRotationMemory:
         prepared = document['prepared']
         if prepared is None or prepared['tool_sha256'] != _digest(current_tool):
             raise AlarmRotationError('Rotation memory confirmation differs from publication')
-        self._store().replace(path, self._seal({
-            'schema_version': SCHEMA_VERSION, 'tool_key': tool_key,
-            'committed': prepared, 'prepared': None,
-        }))
+        self._store().replace(
+            path,
+            self._seal(
+                {
+                    'schema_version': SCHEMA_VERSION,
+                    'tool_key': tool_key,
+                    'committed': prepared,
+                    'prepared': None,
+                }
+            ),
+        )

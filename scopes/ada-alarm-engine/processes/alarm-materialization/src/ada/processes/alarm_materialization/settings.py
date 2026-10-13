@@ -35,7 +35,6 @@ class AlarmMaterializationSettings:
         except CosmosConfigurationError as error:
             raise AlarmMaterializationSettingsError(str(error)) from error
 
-
         poll_interval_seconds = _positive_float(
             configuration.require(POLL_INTERVAL_VARIABLE),
             POLL_INTERVAL_VARIABLE,
@@ -73,8 +72,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             sensitive=True,
         ),
     )
-
-
 
 
 def _positive_float(value: str, name: str) -> float:

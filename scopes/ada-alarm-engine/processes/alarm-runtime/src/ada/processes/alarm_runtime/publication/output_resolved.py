@@ -52,7 +52,7 @@ def _cause_values(values: Mapping[object, object]) -> dict[str, str | int | floa
             continue
         try:
             json.dumps(value, allow_nan=False, ensure_ascii=False).encode('utf-8')
-        except (TypeError, ValueError, OverflowError, UnicodeEncodeError):
+        except TypeError, ValueError, OverflowError, UnicodeEncodeError:
             continue
         normalized[key] = value
     return normalized
@@ -114,9 +114,9 @@ def build_resolved_current_document(
     identities = set()
     for group in result.lifecycle.groups:
         resolution = group.decision.priority_resolution
-        priorities = {} if resolution is None else {
-            item.alarm_identity: item for item in resolution.alarms
-        }
+        priorities = (
+            {} if resolution is None else {item.alarm_identity: item for item in resolution.alarms}
+        )
         for current in group.decision.state.alarms:
             occurrence = current.occurrence
             if occurrence is None:
@@ -188,7 +188,10 @@ def build_resolved_current_document(
                         else {'started_at': _utc(hold.started_at), 'due_at': _utc(hold.due_at)}
                     ),
                     'assignments': [
-                        {'tool_key': assignment.tool_key, 'assigned_at': _utc(assignment.assigned_at)}
+                        {
+                            'tool_key': assignment.tool_key,
+                            'assigned_at': _utc(assignment.assigned_at),
+                        }
                         for assignment in current.assignments
                     ],
                     'pending_assignments': [
@@ -214,14 +217,18 @@ def build_resolved_current_document(
 
 def _validate_previous(document: object) -> dict:
     if not isinstance(document, dict) or set(document) != {
-        'document_type', 'schema_version', 'artifact_ref', 'journal_position', 'state', 'sha256'
+        'document_type',
+        'schema_version',
+        'artifact_ref',
+        'journal_position',
+        'state',
+        'sha256',
     }:
         raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT has invalid fields')
     if document['document_type'] != DOCUMENT_TYPE or document['schema_version'] != SCHEMA_VERSION:
         raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT schema is invalid')
-    if (
-        not isinstance(document['sha256'], str)
-        or document['sha256'] != _digest({key: value for key, value in document.items() if key != 'sha256'})
+    if not isinstance(document['sha256'], str) or document['sha256'] != _digest(
+        {key: value for key, value in document.items() if key != 'sha256'}
     ):
         raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT checksum mismatch')
     state = document['state']
@@ -229,8 +236,12 @@ def _validate_previous(document: object) -> dict:
         raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT state is invalid')
     if not isinstance(state['as_of'], str) or not isinstance(state['alarms'], list):
         raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT state is invalid')
-    if not isinstance(document['artifact_ref'], dict) or not isinstance(document['journal_position'], dict):
-        raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT provenance is invalid')
+    if not isinstance(document['artifact_ref'], dict) or not isinstance(
+        document['journal_position'], dict
+    ):
+        raise EngineResolvedCurrentPublicationError(
+            'Existing resolved CURRENT provenance is invalid'
+        )
     return document
 
 
@@ -242,12 +253,19 @@ class AlarmResolvedCurrentPublisher:
     def __post_init__(self) -> None:
         if not isinstance(self.root, Path) or not self.root.is_absolute():
             raise ValueError('Resolved CURRENT output root must be an absolute Path')
-        if not isinstance(self.source_key, str) or not self.source_key or self.source_key.strip() != self.source_key:
+        if (
+            not isinstance(self.source_key, str)
+            or not self.source_key
+            or self.source_key.strip() != self.source_key
+        ):
             raise ValueError('Resolved CURRENT source_key must be non-empty normalized text')
 
     def publish(
-        self, *, context: ResolvedCurrentContext, persistence: AlarmPersistence,
-        result: AlarmRuntimeIterationResult
+        self,
+        *,
+        context: ResolvedCurrentContext,
+        persistence: AlarmPersistence,
+        result: AlarmRuntimeIterationResult,
     ) -> bool:
         if result.cycle is None or result.lifecycle is None:
             return False
@@ -255,10 +273,14 @@ class AlarmResolvedCurrentPublisher:
         effective = persistence.read_effective_head()
         head = persistence.read_head()
         if effective is None or not head.aligned or head.durable is None:
-            raise EngineResolvedCurrentPublicationError('Resolved CURRENT requires durable EFFECTIVE')
+            raise EngineResolvedCurrentPublicationError(
+                'Resolved CURRENT requires durable EFFECTIVE'
+            )
         reference = effective.target_artifact_ref
         if reference.source_key != self.source_key:
-            raise EngineResolvedCurrentPublicationError('Resolved CURRENT source differs from EFFECTIVE')
+            raise EngineResolvedCurrentPublicationError(
+                'Resolved CURRENT source differs from EFFECTIVE'
+            )
         document = build_resolved_current_document(
             result=result,
             artifact_ref=reference.as_document(),
@@ -267,14 +289,20 @@ class AlarmResolvedCurrentPublisher:
         store = AtomicJsonStore(root_path=self.root, max_document_bytes=None)
         with context.fenced_mutation():
             if persistence.read_effective_head() != effective or persistence.read_head() != head:
-                raise EngineResolvedCurrentPublicationError('Durable authority changed during CURRENT publication')
+                raise EngineResolvedCurrentPublicationError(
+                    'Durable authority changed during CURRENT publication'
+                )
             previous = store.read(_LATEST)
             if previous is not None:
                 previous = _validate_previous(previous)
                 if previous['artifact_ref'].get('source_key') != self.source_key:
-                    raise EngineResolvedCurrentPublicationError('Existing resolved CURRENT source differs')
+                    raise EngineResolvedCurrentPublicationError(
+                        'Existing resolved CURRENT source differs'
+                    )
                 if previous['state']['as_of'] > document['state']['as_of']:
-                    raise EngineResolvedCurrentPublicationError('Resolved CURRENT cannot move backward')
+                    raise EngineResolvedCurrentPublicationError(
+                        'Resolved CURRENT cannot move backward'
+                    )
                 if (
                     previous['artifact_ref'] == document['artifact_ref']
                     and previous['state']['alarms'] == document['state']['alarms']

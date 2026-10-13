@@ -109,7 +109,7 @@ class LoadedDataInputs:
         frames = {
             input_spec.input_key: self._frame_for(input_spec=input_spec) for input_spec in inputs
         }
-        return DataInputContext(frames=frames)
+        return DataInputContext(frames=frames, as_of=self.as_of)
 
     def _frame_for(self, *, input_spec: DataInputSpec) -> PandasRuntimeFrameContext:
         key = input_spec.source, input_spec.view

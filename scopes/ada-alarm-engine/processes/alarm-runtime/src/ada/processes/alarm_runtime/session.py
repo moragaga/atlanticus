@@ -149,7 +149,9 @@ class AlarmExecutionSession:
         if self.unregistered_alarms != missing:
             raise AlarmExecutionSessionError('missing contract identities do not match session')
         if self.unreferenced_contracts != tuple(sorted(set(self.unreferenced_contracts))):
-            raise AlarmExecutionSessionError('unreferenced evaluator contracts must be unique and sorted')
+            raise AlarmExecutionSessionError(
+                'unreferenced evaluator contracts must be unique and sorted'
+            )
 
     @property
     def resolution_key(self) -> AlarmResolutionKey:
@@ -205,7 +207,11 @@ def build_alarm_execution_session(
         data_plan=DataInputPlanner().plan(inputs_by_key),
         unregistered_alarms=tuple(missing),
         unreferenced_contracts=tuple(
-            sorted(contract.key for contract in evaluator_registry.contracts if contract.key not in referenced)
+            sorted(
+                contract.key
+                for contract in evaluator_registry.contracts
+                if contract.key not in referenced
+            )
         ),
     )
 

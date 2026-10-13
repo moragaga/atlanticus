@@ -159,15 +159,16 @@ def prepare_operational_adoption(
             if incident.priority_group == group
         )
         source_plans = tuple(
-            item for item in previous.configuration.planned_alarms
-            if item.priority_group == group
+            item for item in previous.configuration.planned_alarms if item.priority_group == group
         )
         previous_evaluations = (
             alarm.last_evaluation.evaluated_at
-            for alarm in prior.alarms if alarm.last_evaluation is not None
+            for alarm in prior.alarms
+            if alarm.last_evaluation is not None
         )
         previous_cascades = resolve_management_cascades(
-            prior, planned_alarms=source_plans,
+            prior,
+            planned_alarms=source_plans,
             at=max(previous_evaluations, default=cycle_at),
         )
         operational_change = bool(

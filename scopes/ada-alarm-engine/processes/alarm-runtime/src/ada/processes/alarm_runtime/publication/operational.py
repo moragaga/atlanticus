@@ -31,10 +31,7 @@ class AlarmDurablePublications:
             raise TypeError('facts publisher must be AlarmCommittedFactsExporter')
         if not isinstance(self.current, AlarmDurableCurrentPublisher):
             raise TypeError('current publisher must be AlarmDurableCurrentPublisher')
-        if (
-            self.facts.root != self.current.root
-            or self.facts.source_key != self.current.source_key
-        ):
+        if self.facts.root != self.current.root or self.facts.source_key != self.current.source_key:
             raise ValueError('durable publications must share output root and source_key')
 
     def reconcile(

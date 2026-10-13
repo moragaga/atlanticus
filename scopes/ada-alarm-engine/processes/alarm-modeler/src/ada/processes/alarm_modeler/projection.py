@@ -210,7 +210,7 @@ def _render_cause(template: str, values: object) -> str:
             if type(value) is float and not math.isfinite(value):
                 return template
         return template.format_map(values)
-    except (KeyError, ValueError, TypeError, IndexError, AttributeError, OverflowError):
+    except KeyError, ValueError, TypeError, IndexError, AttributeError, OverflowError:
         return template
 
 
@@ -371,7 +371,9 @@ def project(
             raise AlarmModelerProjectionError('Resolved alarm evaluation or priority is invalid')
         if evaluation.get('status') != 'ACTIVE':
             raise AlarmModelerProjectionError('Live alarm evaluation must be ACTIVE')
-        public_evaluation = {key: value for key, value in evaluation.items() if key != 'cause_values'}
+        public_evaluation = {
+            key: value for key, value in evaluation.items() if key != 'cause_values'
+        }
         if priority.get('disposition') not in (
             'PREDOMINANT',
             'ECLIPSED',

@@ -155,8 +155,94 @@ def test_deployment_catalog_is_stable() -> None:
         ("21", "ada-kpi-runtime", "kpis-runtime"),
         ("22", "ada-kpi-historian", "kpis-historian"),
         ("23", "ada-kpi-materialization", "kpis-materialization"),
+        ("24", "ada-alarm-runtime", "alarm-runtime"),
+        ("25", "ada-alarm-historian", "alarm-historian"),
+        ("26", "ada-alarm-materialization", "alarm-materialization"),
+        ("27", "ada-alarm-modeler", "alarm-modeler"),
         ("41", "ada-kpi-delivery", "kpis-delivery"),
         ("42", "ada-kpi-timeseries-delivery", "kpis-timeseries-delivery"),
+        ("43", "ada-alarm-delivery", "alarm-delivery"),
+    ]
+
+
+def test_alarm_engine_source_container_contracts_are_discoverable() -> None:
+    repository_root = MODULE_PATH.parents[3]
+    assert set(distribution._target_commands(repository_root, "ada-alarm-engine")) == {
+        "ada-alarm-runtime",
+        "ada-alarm-historian",
+        "ada-alarm-materialization",
+        "ada-alarm-modeler",
+        "ada-alarm-delivery",
+    }
+
+
+def test_alarm_engine_distribution_preserves_slots_and_artifact_names(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    process_names = (
+        "alarm-runtime",
+        "alarm-historian",
+        "alarm-materialization",
+        "alarm-modeler",
+        "alarm-delivery",
+    )
+    roots = {
+        f"ada-{name}": _write_source(
+            tmp_path,
+            f"scopes/ada-alarm-engine/processes/{name}",
+            f"ada-{name}",
+        )
+        for name in process_names
+    }
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(roots)
+    target = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="alarm-suite",
+        selections=(),
+        targets=("ada-alarm-engine",),
+        bundle=bundle,
+    )
+    services = json.loads((target / "services.json").read_text(encoding="utf-8"))
+    assert [
+        (item["container_name"], item["execution_file"], item["config_file"])
+        for item in services
+    ] == [
+        ("job24", "alarm-runtime", "processes/alarm-runtime/config.json"),
+        ("job25", "alarm-historian", "processes/alarm-historian/config.json"),
+        ("job26", "alarm-materialization", "processes/alarm-materialization/config.json"),
+        ("job27", "alarm-modeler", "processes/alarm-modeler/config.json"),
+        ("job43", "alarm-delivery", "processes/alarm-delivery/config.json"),
+    ]
+    manifest = json.loads((target / "distribution.json").read_text(encoding="utf-8"))
+    assert [item["process"] for item in manifest["processes"]] == [
+        "ada-alarm-runtime",
+        "ada-alarm-historian",
+        "ada-alarm-materialization",
+        "ada-alarm-modeler",
+        "ada-alarm-delivery",
+    ]
+    for item in services:
+        folder = target / "processes" / item["execution_file"]
+        assert (folder / ".env.detail").is_file()
+        assert (folder / "config.detail.json").is_file()
+        assert (folder / "secrets.detail.json").is_file()
+        assert (folder / "uv.lock").is_file()
+        assert (folder / "wheels").is_dir()
+
+    single = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="alarm-runtime-only",
+        selections=("ada-alarm-runtime",),
+        targets=(),
+        bundle=bundle,
+    )
+    single_services = json.loads((single / "services.json").read_text(encoding="utf-8"))
+    assert [(item["container_name"], item["execution_file"]) for item in single_services] == [
+        ("job24", "alarm-runtime"),
     ]
 
 

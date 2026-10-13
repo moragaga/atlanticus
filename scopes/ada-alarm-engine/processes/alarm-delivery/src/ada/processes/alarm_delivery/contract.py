@@ -152,11 +152,13 @@ def plan_tool_deliveries(
     pending: list[ToolDeliveryCandidate] = []
     unchanged: list[str] = []
     for tool_key, tool in sorted(tools.items()):
-        fingerprint = _hash({
-            'schema_version': LIVE_PUBLIC_SCHEMA_VERSION,
-            'artifact_ref': source['artifact_ref'],
-            'tool': public_tool_projection(tool),
-        })
+        fingerprint = _hash(
+            {
+                'schema_version': LIVE_PUBLIC_SCHEMA_VERSION,
+                'artifact_ref': source['artifact_ref'],
+                'tool': public_tool_projection(tool),
+            }
+        )
         previous = confirmations.get(tool_key)
         if previous is not None:
             _monotonic(previous.source_journal_position, source['source_journal_position'])

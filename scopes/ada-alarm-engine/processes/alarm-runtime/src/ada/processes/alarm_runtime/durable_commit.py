@@ -99,12 +99,14 @@ class AlarmDurableCycleCommitter:
                 item for item in cycle.evaluations if known.get(item.alarm_identity) == group_key
             )
             planned = tuple(
-                plan for plan in previous.configuration.planned_alarms
+                plan
+                for plan in previous.configuration.planned_alarms
                 if plan.priority_group == group_key
             )
             previous_evaluations = (
                 alarm.last_evaluation.evaluated_at
-                for alarm in old.alarms if alarm.last_evaluation is not None
+                for alarm in old.alarms
+                if alarm.last_evaluation is not None
             )
             prior_at = max(previous_evaluations, default=cycle.cycle_at)
             if prior_at > cycle.cycle_at:

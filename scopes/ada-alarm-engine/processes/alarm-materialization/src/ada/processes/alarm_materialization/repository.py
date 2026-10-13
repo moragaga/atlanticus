@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from ada.contracts.alarms import (
-    ALARM_CONFIGURATION_SOURCE_KEY,
     ALARM_CONFIGURATION_CONTAINER_NAME,
+    ALARM_CONFIGURATION_SOURCE_KEY,
     AlarmConfigurationProjection,
     AlarmConfigurationProjectionValidationError,
     alarm_configuration_projection_item_id,
@@ -25,11 +25,10 @@ class AlarmConfigurationReader(Protocol):
     def read_active(self) -> AlarmMaterializationCandidate: ...
 
 
-
-
 @dataclass(slots=True)
 class CosmosAlarmConfigurationRepository:
     client: CosmosClient
+
     def read_active(self) -> AlarmMaterializationCandidate:
         item_id = alarm_configuration_projection_item_id(ALARM_CONFIGURATION_SOURCE_KEY)
         try:

@@ -34,7 +34,8 @@ def load_configuration(
         manifest = SecretsManifest.from_path(root / 'secrets.json')
         keys = frozenset(spec.key for spec in specs)
         secret_entries = tuple(
-            entry for entry in manifest.entries
+            entry
+            for entry in manifest.entries
             if entry.var_name in keys and entry.exists_in_key_vault
         )
         if not secret_entries:

@@ -12,18 +12,18 @@ from ada.alarms.persistence.operational import (
     AlarmEffectiveConfigurationHead,
 )
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada.processes.alarm_modeler.distributed_rotation import plan_distributed_rotation
+from ada.processes.alarm_modeler.integrated_selection import is_integrated_tool
+from ada.processes.alarm_modeler.presentation_policy import (
+    QUEUE_IN_QUEUE_ROTATION_SECONDS,
+    QUEUE_IN_QUEUE_SLOTS_PER_AREA,
+)
 from ada.processes.alarm_modeler.projection import (
     AlarmModelerProjectionError,
     digest,
     has_semantic_change,
     project,
     validate_document,
-)
-from ada.processes.alarm_modeler.distributed_rotation import plan_distributed_rotation
-from ada.processes.alarm_modeler.integrated_selection import is_integrated_tool
-from ada.processes.alarm_modeler.presentation_policy import (
-    QUEUE_IN_QUEUE_ROTATION_SECONDS,
-    QUEUE_IN_QUEUE_SLOTS_PER_AREA,
 )
 from ada.processes.alarm_modeler.rotation import ToolRotationMemory, is_grouped, plan_rotation
 from atlanticus.state import AtomicJsonStore
@@ -138,30 +138,40 @@ class AlarmModelerProcessor:
             old_state = memory.read(tool_key=tool_key, previous_tool=old_tool)
             if is_grouped(tool):
                 planned_tool, planned_state, due_at = plan_distributed_rotation(
-                    tool=tool, previous_tool=old_tool, state=old_state, now=now,
+                    tool=tool,
+                    previous_tool=old_tool,
+                    state=old_state,
+                    now=now,
                     carousel_seconds=self.rotation_seconds,
                     queue_seconds=self.queue_rotation_seconds,
                     slots_per_area=self.queue_slots_per_area,
                 )
             else:
                 rotation_state = (
-                    None if isinstance(old_state, dict) and 'normal' in old_state
-                    else old_state
+                    None if isinstance(old_state, dict) and 'normal' in old_state else old_state
                 )
                 if rotation_state is None and old_tool is not None and not is_grouped(old_tool):
                     _, rotation_state, _ = plan_rotation(
-                        tool=old_tool, previous_tool=old_tool, state=None,
-                        now=now, rotation_seconds=self.rotation_seconds,
+                        tool=old_tool,
+                        previous_tool=old_tool,
+                        state=None,
+                        now=now,
+                        rotation_seconds=self.rotation_seconds,
                     )
                 planned_tool, planned_state, due_at = plan_rotation(
-                    tool=tool, previous_tool=old_tool, state=rotation_state,
-                    now=now, rotation_seconds=self.rotation_seconds,
+                    tool=tool,
+                    previous_tool=old_tool,
+                    state=rotation_state,
+                    now=now,
+                    rotation_seconds=self.rotation_seconds,
                 )
             document['tools'][tool_key] = planned_tool
             prepared[tool_key] = (old_tool, old_state, planned_tool, planned_state)
             if due_at is not None:
                 due_times.append(due_at)
-        document['sha256'] = digest({key: value for key, value in document.items() if key != 'sha256'})
+        document['sha256'] = digest(
+            {key: value for key, value in document.items() if key != 'sha256'}
+        )
         changed = has_semantic_change(previous, document)
         context.assert_lease_current()
         with context.fenced_mutation():
@@ -177,8 +187,11 @@ class AlarmModelerProcessor:
                 return AlarmModelerCycleResult(status='OUTPUT_CHANGED')
             for tool_key, (old_tool, old_state, planned_tool, planned_state) in prepared.items():
                 memory.prepare(
-                    tool_key=tool_key, previous_tool=old_tool, old_state=old_state,
-                    next_tool=planned_tool, next_state=planned_state,
+                    tool_key=tool_key,
+                    previous_tool=old_tool,
+                    old_state=old_state,
+                    next_tool=planned_tool,
+                    next_state=planned_state,
                 )
             if changed:
                 output.replace(_CURRENT, document)

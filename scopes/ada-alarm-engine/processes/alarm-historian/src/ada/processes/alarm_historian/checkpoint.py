@@ -46,8 +46,12 @@ class AlarmHistorianCheckpointStore:
         if document is None:
             return None
         if not isinstance(document, dict) or set(document) != {
-            'document_type', 'schema_version', 'stream_id', 'producer_application',
-            'position', 'sha256',
+            'document_type',
+            'schema_version',
+            'stream_id',
+            'producer_application',
+            'position',
+            'sha256',
         }:
             raise AlarmHistorianCheckpointError('Historian checkpoint shape is invalid')
         if (
@@ -102,15 +106,19 @@ def _identity(value: str, name: str) -> str:
 
 def _digest(document: dict) -> str:
     return hashlib.sha256(
-        json.dumps(document, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False)
-        .encode('utf-8')
+        json.dumps(
+            document, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False
+        ).encode('utf-8')
     ).hexdigest()
 
 
 def _encode_position(position: FactsStreamPosition) -> dict:
     if not isinstance(position, FactsStreamPosition):
         raise TypeError('position must be a FactsStreamPosition')
-    if not isinstance(position.segment_path, str) or _SEGMENT.fullmatch(position.segment_path) is None:
+    if (
+        not isinstance(position.segment_path, str)
+        or _SEGMENT.fullmatch(position.segment_path) is None
+    ):
         raise AlarmHistorianCheckpointError('Historian checkpoint segment is invalid')
     if (
         not isinstance(position.record_start, int)
@@ -121,7 +129,10 @@ def _encode_position(position: FactsStreamPosition) -> dict:
         or position.record_end <= position.record_start
     ):
         raise AlarmHistorianCheckpointError('Historian checkpoint offsets are invalid')
-    if not isinstance(position.record_sha256, str) or _DIGEST.fullmatch(position.record_sha256) is None:
+    if (
+        not isinstance(position.record_sha256, str)
+        or _DIGEST.fullmatch(position.record_sha256) is None
+    ):
         raise AlarmHistorianCheckpointError('Historian checkpoint record digest is invalid')
     if not isinstance(position.artifact_ref, dict):
         raise AlarmHistorianCheckpointError('Historian checkpoint artifact is invalid')
@@ -136,7 +147,11 @@ def _encode_position(position: FactsStreamPosition) -> dict:
 
 def _decode_position(value: object) -> FactsStreamPosition:
     if not isinstance(value, dict) or set(value) != {
-        'segment_path', 'record_start', 'record_end', 'record_sha256', 'artifact_ref',
+        'segment_path',
+        'record_start',
+        'record_end',
+        'record_sha256',
+        'artifact_ref',
     }:
         raise AlarmHistorianCheckpointError('Historian checkpoint position shape is invalid')
     position = FactsStreamPosition(**value)

@@ -94,16 +94,24 @@ def plan_distributed_rotation(
     previous_normal = []
     if previous_tool is not None:
         previous_normal = [
-            item['occurrence_id'] for item in previous_tool['operator_view']
+            item['occurrence_id']
+            for item in previous_tool['operator_view']
             if 'occurrence_id' in item
         ]
     grouped_state = state if state is not None and set(state) == {'normal', 'areas'} else None
-    normal_state = state if state is not None and grouped_state is None else (
-        None if grouped_state is None else grouped_state['normal']
+    normal_state = (
+        state
+        if state is not None and grouped_state is None
+        else (None if grouped_state is None else grouped_state['normal'])
     )
     normal_visible, next_normal, normal_due = _plan_pool(
-        key=tool['tool_key'], pool=normal_pool, slots=5, state=normal_state,
-        previous_visible=previous_normal, now=now, seconds=carousel_seconds,
+        key=tool['tool_key'],
+        pool=normal_pool,
+        slots=5,
+        state=normal_state,
+        previous_visible=previous_normal,
+        now=now,
+        seconds=carousel_seconds,
     )
     area_pools = _area_members(tool, distributed)
     next_areas = {}
@@ -112,8 +120,13 @@ def plan_distributed_rotation(
     for area, members in area_pools.items():
         area_state = None if grouped_state is None else grouped_state['areas'].get(area)
         visible, updated, due = _plan_pool(
-            key=tool['tool_key'], pool=members, slots=slots_per_area,
-            state=area_state, previous_visible=[], now=now, seconds=queue_seconds,
+            key=tool['tool_key'],
+            pool=members,
+            slots=slots_per_area,
+            state=area_state,
+            previous_visible=[],
+            now=now,
+            seconds=queue_seconds,
         )
         visible_areas[area] = visible
         next_areas[area] = updated
@@ -121,17 +134,17 @@ def plan_distributed_rotation(
             deadlines.append(due)
     result = dict(tool)
     result['operator_view'] = [
-        {'slot': index, 'occurrence_id': item}
-        for index, item in enumerate(normal_visible, start=1)
+        {'slot': index, 'occurrence_id': item} for index, item in enumerate(normal_visible, start=1)
     ] + grouped_view
     result['meta'] = {
         **tool['meta'],
-        'rotation_pending': len(normal_pool) > 5 or any(
-            len(members) > slots_per_area for members in area_pools.values()
-        ),
+        'rotation_pending': len(normal_pool) > 5
+        or any(len(members) > slots_per_area for members in area_pools.values()),
         'operator_count': len(result['operator_view']),
         'queue_in_queue': {'slots_per_area': slots_per_area, 'visible_by_area': visible_areas},
     }
-    return result, {'normal': next_normal, 'areas': next_areas}, (
-        min(deadlines) if deadlines else None
+    return (
+        result,
+        {'normal': next_normal, 'areas': next_areas},
+        (min(deadlines) if deadlines else None),
     )

@@ -115,12 +115,17 @@ DEPLOYMENT_CATALOG = (
     ProcessDeployment("21", "ada-kpi-runtime", "kpis-runtime"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
     ProcessDeployment("23", "ada-kpi-materialization", "kpis-materialization"),
+    ProcessDeployment("24", "ada-alarm-runtime", "alarm-runtime"),
+    ProcessDeployment("25", "ada-alarm-historian", "alarm-historian"),
+    ProcessDeployment("26", "ada-alarm-materialization", "alarm-materialization"),
+    ProcessDeployment("27", "ada-alarm-modeler", "alarm-modeler"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),
     ProcessDeployment(
         "42",
         "ada-kpi-timeseries-delivery",
         "kpis-timeseries-delivery",
     ),
+    ProcessDeployment("43", "ada-alarm-delivery", "alarm-delivery"),
 )
 DEPLOYMENT_BY_PROCESS = {item.process: item for item in DEPLOYMENT_CATALOG}
 

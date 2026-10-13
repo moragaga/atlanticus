@@ -28,7 +28,10 @@ def is_integrated_tool(tool: Mapping[str, object]) -> bool:
 
 
 def project_integrated_slots(
-    operator_pool: list[str], alarms: Mapping[str, object], *, max_visible_slots: int,
+    operator_pool: list[str],
+    alarms: Mapping[str, object],
+    *,
+    max_visible_slots: int,
 ) -> list[dict[str, object]]:
     if max_visible_slots != 6:
         raise IntegratedAlarmSelectionError('Integrated Operations requires six visible slots')
@@ -47,10 +50,14 @@ def project_integrated_slots(
         if not isinstance(scope, str) or scope not in selected:
             raise IntegratedAlarmSelectionError('Integrated Operations display scope is invalid')
         if (
-            not isinstance(component, str) or not component
-            or not isinstance(affected, list) or component not in affected
+            not isinstance(component, str)
+            or not component
+            or not isinstance(affected, list)
+            or component not in affected
         ):
-            raise IntegratedAlarmSelectionError('Integrated Operations display component is invalid')
+            raise IntegratedAlarmSelectionError(
+                'Integrated Operations display component is invalid'
+            )
         if component in seen_components:
             continue
         seen_components.add(component)
@@ -76,7 +83,9 @@ def validate_integrated_slots(tool: Mapping[str, object]) -> None:
             raise IntegratedAlarmSelectionError('Integrated Operations operator slot is invalid')
         record = alarms.get(item['occurrence_id'])
         if not isinstance(record, Mapping):
-            raise IntegratedAlarmSelectionError('Integrated Operations operator occurrence is invalid')
+            raise IntegratedAlarmSelectionError(
+                'Integrated Operations operator occurrence is invalid'
+            )
         target = record.get('visual_target')
         if not isinstance(target, Mapping):
             raise IntegratedAlarmSelectionError('Integrated Operations visual target is invalid')
@@ -90,10 +99,16 @@ def validate_integrated_slots(tool: Mapping[str, object]) -> None:
         else:
             valid_slot = False
         if not valid_slot or not isinstance(component, str) or component in occupied_components:
-            raise IntegratedAlarmSelectionError('Integrated Operations placement conflicts with a component')
+            raise IntegratedAlarmSelectionError(
+                'Integrated Operations placement conflicts with a component'
+            )
         occupied_components.add(component)
     expected = project_integrated_slots(
-        tool['operator_pool'], alarms, max_visible_slots=6,
+        tool['operator_pool'],
+        alarms,
+        max_visible_slots=6,
     )
     if tool['operator_view'] != expected:
-        raise IntegratedAlarmSelectionError('Integrated Operations view must show first eligible occurrences')
+        raise IntegratedAlarmSelectionError(
+            'Integrated Operations view must show first eligible occurrences'
+        )

@@ -80,7 +80,12 @@ def _read_authority(
 
 def _validate_document(document: object) -> tuple[AlarmArtifactRefSnapshot, JournalPosition]:
     if not isinstance(document, dict) or set(document) != {
-        'document_type', 'schema_version', 'artifact_ref', 'journal_position', 'state', 'sha256'
+        'document_type',
+        'schema_version',
+        'artifact_ref',
+        'journal_position',
+        'state',
+        'sha256',
     }:
         raise EngineDurableCurrentPublicationError('Existing CURRENT document has invalid fields')
     if document['document_type'] != DOCUMENT_TYPE or document['schema_version'] != SCHEMA_VERSION:
@@ -109,7 +114,8 @@ def _validate_document(document: object) -> tuple[AlarmArtifactRefSnapshot, Jour
         ) from error
     if any(
         group.as_document()['snapshot_schema_version'] != GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION
-        or group.as_document()['state_basis'] != {
+        or group.as_document()['state_basis']
+        != {
             'alarm_configuration_revision': artifact.alarm_configuration_revision,
             'tool_registry_revision': artifact.confirmed_tool_catalog_revision,
         }
@@ -141,9 +147,7 @@ class AlarmDurableCurrentPublisher:
         ):
             raise ValueError('CURRENT source_key must be non-empty text')
 
-    def publish(
-        self, *, context: DurableCurrentContext, persistence: AlarmPersistence
-    ) -> bool:
+    def publish(self, *, context: DurableCurrentContext, persistence: AlarmPersistence) -> bool:
         if not isinstance(persistence, AlarmPersistence):
             raise TypeError('persistence must be AlarmPersistence')
         context.assert_lease_current()
@@ -167,7 +171,9 @@ class AlarmDurableCurrentPublisher:
                 persistence=persistence, source_key=self.source_key
             )
             if (verified_artifact, verified_position, verified_groups) != (
-                artifact, position, groups
+                artifact,
+                position,
+                groups,
             ):
                 raise EngineDurableCurrentPublicationError(
                     'Durable authority changed during CURRENT publication'
