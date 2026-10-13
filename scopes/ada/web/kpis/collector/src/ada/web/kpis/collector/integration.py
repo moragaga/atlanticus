@@ -251,7 +251,7 @@ def _build_runtime_components(
         dcc.Store(
             id=settings.revision_store_id,
             storage_type='memory',
-            data=snapshot.browser_revision,
+            data=None,
         ),
         *_build_store_components(structure=structure, snapshot=snapshot),
     )

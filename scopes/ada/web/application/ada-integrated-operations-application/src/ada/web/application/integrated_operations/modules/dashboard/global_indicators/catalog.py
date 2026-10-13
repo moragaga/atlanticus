@@ -41,7 +41,6 @@ def _build_test() -> tuple[DashboardGlobalIndicatorBinding, ...]:
             ),
             scopes=scopes,
         ))
-    print(data)
     return tuple(data)
 
 

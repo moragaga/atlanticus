@@ -40,7 +40,10 @@ def test_shared_application_keeps_runtime_and_modeler_current_paths_separate(tmp
     modeler_current = composition.processor.output_root / 'current' / 'latest.json'
 
     assert composition.processor.runtime_root == tmp_path / application
-    assert composition.processor.output_root == tmp_path / application / 'alarms' / 'modeler' / 'output'
+    assert (
+        composition.processor.output_root
+        == tmp_path / application / 'alarms' / 'modeler' / 'output'
+    )
     assert runtime_current != modeler_current
     assert composition.definition.job_key == 'alarm-modeler'
 

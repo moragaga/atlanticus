@@ -125,6 +125,20 @@ def resolve_kpi_collector_browser_update(
         raise ValueError('browser_component_data must contain one value per Tool component')
     if len(browser_system_data) != len(system_destination_keys):
         raise ValueError('browser_system_data must contain one value per system KPI destination')
+    if browser_revision is None:
+        component_stores = {store.component_key: store for store in snapshot.stores}
+        system_stores = {store.destination_key: store for store in snapshot.system_stores}
+        return (
+            tuple(
+                project_component_store_data(component_stores[component.key])
+                for component in structure.components
+            ),
+            tuple(
+                project_system_store_data(system_stores[destination_key])
+                for destination_key in system_destination_keys
+            ),
+            snapshot.browser_revision,
+        )
     if not snapshot.has_delivery_data:
         return (
             tuple(no_update for _ in structure.components),

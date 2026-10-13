@@ -60,7 +60,8 @@ def create_dashboard_global_indicators_module(
         @dash_app.callback(
             Output(GLOBAL_INDICATORS_SLOT_ID, 'children'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-slot-empty'),
-            Input(store_id, 'data', allow_optional=True),
+            # El store de destino de sistema siempre está presente en el layout operativo.
+            Input(store_id, 'data'),
         )
         def refresh_global_indicators(store_data: object):
             return (

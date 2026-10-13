@@ -256,10 +256,11 @@ def _build_runtime_components(
             interval=int(settings.refresh_interval_seconds * 1000),
             n_intervals=0,
         ),
+        # None diferencia una nueva pestaña del snapshot ya sincronizado.
         dcc.Store(
             id=settings.revision_store_id,
             storage_type='memory',
-            data=snapshot.browser_revision,
+            data=None,
         ),
         *_build_store_components(structure=structure, snapshot=snapshot),
     )

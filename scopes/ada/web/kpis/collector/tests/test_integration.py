@@ -207,6 +207,7 @@ def test_layout_wrapper_mounts_component_and_system_stores() -> None:
     assert children[0].id == 'existing'
     assert children[1].id == 'ada-kpi-collector-refresh'
     assert children[2].id == 'ada-kpi-collector-browser-revision'
+    assert children[2].data is None
     assert children[3].id == component_kpi_store_id('process', 'mine')
     assert children[4].id == component_kpi_store_id('process', 'plant')
     assert children[5].id == system_kpi_store_id('process', 'global_indicators')
@@ -217,6 +218,37 @@ def test_layout_wrapper_mounts_component_and_system_stores() -> None:
         'latest': None,
         'timeseries': None,
     }
+
+
+def test_empty_snapshot_publishes_all_stores_once_before_no_update() -> None:
+    collector = PresentationCollectorStub(_structure())
+
+    components, systems, revision = resolve_kpi_collector_browser_update(
+        collector,
+        browser_revision=None,
+        browser_component_data=(None, None),
+        browser_system_data=(None, None),
+    )
+
+    assert tuple(store['component_key'] for store in components) == ('mine', 'plant')
+    assert tuple(store['destination_key'] for store in systems) == (
+        'global_indicators',
+        'time_status',
+    )
+    assert all(store['latest'] is None for store in (*components, *systems))
+    assert all(store['timeseries'] is None for store in (*components, *systems))
+    assert revision == {'latest': None, 'timeseries': None}
+
+    component_updates, system_updates, revision_update = resolve_kpi_collector_browser_update(
+        collector,
+        browser_revision=revision,
+        browser_component_data=components,
+        browser_system_data=systems,
+    )
+
+    assert component_updates == (no_update, no_update)
+    assert system_updates == (no_update, no_update)
+    assert revision_update is no_update
 
 
 def test_store_projection_is_json_serializable_for_both_store_families() -> None:
