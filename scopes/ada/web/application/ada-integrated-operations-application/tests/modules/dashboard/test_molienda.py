@@ -104,6 +104,42 @@ def test_legacy_kpi_contract_and_four_sag_line_associations():
     assert [item.label for item in MOLIENDA_LINES[0].metrics] == ['F80', 'P80', 'Rend.']
 
 
+def test_general_molienda_metrics_preserve_kpis_and_expected_units():
+    assert [(item.label, item.unit, item.kpi_key) for item in MOLIENDA_GENERAL_METRICS] == [
+        ('Avance Pebbles', 't/h', 'avance_pebbles_real'),
+        ('Recirculación Pebbles', 't/h', 'recirculacion_pebbles_mean_hora'),
+        ('CEE Planta', 'kW/t', 'cee_planta_mean_hora'),
+        ('P80 Planta', 'µm', 'p80_planta_real'),
+    ]
+
+
+def test_four_sag_lines_delegate_metrics_and_inspection_to_inline_rows(monkeypatch):
+    from ada.web.application.integrated_operations.modules.dashboard.plant.molienda.sags import (
+        presentation as sags_presentation,
+    )
+
+    states = []
+    original = sags_presentation.build_inline_value_row
+
+    def capture(state):
+        states.append(state)
+        return original(state)
+
+    monkeypatch.setattr(sags_presentation, 'build_inline_value_row', capture)
+    sags_presentation.build_molienda_sags(_sags(_store()))
+
+    definitions = [metric for line in MOLIENDA_LINES for metric in line.metrics]
+    assert len(states) == len(definitions) == 12
+    assert [(state.definition.label, state.definition.unit) for state in states] == [
+        (definition.label, definition.unit) for definition in definitions
+    ]
+    assert [getattr(state.value, 'data-kpi-inspection-key', None) for state in states] == [
+        definition.kpi_key for definition in definitions
+    ]
+    assert all(state.value.children == '7' for state in states)
+    assert all(state.value.role == 'button' and state.value.tabIndex == 0 for state in states)
+
+
 def test_latest_independent_values_and_operational_states():
     state = _overview(_store())
     assert state.trend_current.value == '234.5'

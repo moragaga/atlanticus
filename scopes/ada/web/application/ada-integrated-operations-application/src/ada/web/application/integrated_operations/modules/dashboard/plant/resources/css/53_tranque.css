@@ -4,4 +4,5 @@
     min-width: 0;
     width: 100%;
     --atlanticus-inline-value-row-font-size: .54rem;
+    padding: .08rem .18rem;
 }

@@ -125,6 +125,7 @@ def _equipment(reading: ColectivaEquipmentReading) -> Component:
                     image=definition.image,
                     state=reading.state,
                     label=definition.label,
+                    label_class_name='ada-io-colectiva__equipment-label'
                 )
             ),
             className='ada-io-colectiva__equipment-image',

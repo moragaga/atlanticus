@@ -12,6 +12,16 @@
 
 .ada-io-molienda__line-metrics {
     --atlanticus-inline-value-row-font-size: .51rem;
+    --atlanticus-inline-value-row-gap: .16rem;
+    width: 100%;
+}
+
+.ada-io-molienda__metric {
+    min-width: 0;
+}
+
+.ada-io-molienda__metric-value {
+    cursor: help;
 }
 
 .ada-io-molienda__trend {
@@ -112,8 +122,9 @@
 }
 
 .ada-io-molienda__status-icon {
-    max-width: 1rem;
-    max-height: 1rem;
+    max-width: .8rem;
+    /*max-height: 1rem;*/
+    min-inline-size: .8rem;
 }
 
 .ada-io-molienda [data-kpi-inspection-key]:focus-visible {

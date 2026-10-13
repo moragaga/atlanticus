@@ -1,4 +1,5 @@
 /* Presentación interna y tipografía contextual de Molienda. */
+/* Las filas SAG siguen ocupando la columna izquierda junto a las imágenes; la inspección se limita al valor. */
 .ada-io-molienda__overview {
     display: flex;
     flex-direction: column;
@@ -13,6 +14,16 @@
 
 .ada-io-molienda__line-metrics {
     --atlanticus-inline-value-row-font-size: .51rem;
+    --atlanticus-inline-value-row-gap: .16rem;
+    width: 100%;
+}
+
+.ada-io-molienda__metric {
+    min-width: 0;
+}
+
+.ada-io-molienda__metric-value {
+    cursor: help;
 }
 
 .ada-io-molienda__trend {

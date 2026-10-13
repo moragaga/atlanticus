@@ -1,4 +1,5 @@
 # Compone la vista y preserva las claves KPI inspeccionables.
+# Las tres métricas de cada SAG comparten espacio con las imágenes y usan InlineValueRow; solo el valor abre inspección.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -106,15 +107,15 @@ def _metric(reading: MoliendaSagMetricReading) -> Component:
         build_inline_value_row(
             InlineValueRowState(
                 definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
-                value=_display(reading.value),
+                value=_inspection(
+                    reading.value,
+                    definition.kpi_key,
+                    'ada-io-molienda__metric-value',
+                ),
                 tone=_tone(reading.tone),
             )
         ),
         className='ada-io-molienda__metric',
-        role='button',
-        tabIndex=0,
-        title=definition.kpi_key,
-        **{'data-kpi-inspection-key': definition.kpi_key},
     )
 
 

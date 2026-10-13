@@ -106,15 +106,15 @@ def _metric(reading: MoliendaSagMetricReading) -> Component:
         build_inline_value_row(
             InlineValueRowState(
                 definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
-                value=_display(reading.value),
+                value=_inspection(
+                    reading.value,
+                    definition.kpi_key,
+                    'ada-io-molienda__metric-value',
+                ),
                 tone=_tone(reading.tone),
             )
         ),
         className='ada-io-molienda__metric',
-        role='button',
-        tabIndex=0,
-        title=definition.kpi_key,
-        **{'data-kpi-inspection-key': definition.kpi_key},
     )
 
 

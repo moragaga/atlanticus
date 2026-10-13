@@ -1,4 +1,4 @@
-.ada-io-puerto { display: flex; flex-direction: column; width: 100%; min-width: 0; gap: .55rem; }
+.ada-io-puerto { display: flex; flex-direction: column; width: 100%; min-width: 0; gap: .55rem; padding: .08rem .18rem;}
 .ada-io-puerto__trend { width: 100%; min-width: 0; }
 .ada-io-puerto__trend-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-weight: 600; }
 .ada-io-puerto__tanks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; gap: .25rem; }
