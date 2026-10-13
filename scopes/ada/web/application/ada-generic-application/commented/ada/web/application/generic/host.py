@@ -9,6 +9,7 @@ from contextlib import ExitStack
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
+from ada.web.application.generic.activity import open_durable_activity_repository
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
 from ada.web.application.generic.descriptor import (
     GENERIC_APPLICATION_DESCRIPTOR,
@@ -24,6 +25,7 @@ from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.observability_azure import create_web_azure_event_sink
+from atlanticus.web.users.activity import MemoryUserActivityRepository
 from atlanticus.web.users.local import select_local_user
 
 ProductionIdentityFactory = Callable[[], IdentityProvider]
@@ -83,6 +85,7 @@ def create_worker_runtime(
                 settings=settings,
                 manager_stores=create_local_configuration_manager_stores(),
                 identity_provider=_local_identity(),
+                activity_repository=MemoryUserActivityRepository(),
                 manager_source_name='Local Source',
                 manager_projection_name='Local Projection',
                 web_event_sink=azure_sink,
@@ -96,10 +99,19 @@ def create_worker_runtime(
                 if settings.environment.is_production
                 else _local_identity()
             )
+            activity_repository = resources.enter_context(
+                open_durable_activity_repository(
+                    settings=deployment.connections.cosmos[
+                        deployment.activity_resource.connection_ref
+                    ].settings,
+                    container_name=deployment.activity_resource.physical_name,
+                )
+            )
             application = create_operational_application_runtime(
                 settings=settings,
                 manager_stores=deployment.stores,
                 identity_provider=identity,
+                activity_repository=activity_repository,
                 manager_source_name='Blob Storage',
                 manager_projection_name='Cosmos DB',
                 web_event_sink=azure_sink,

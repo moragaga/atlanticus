@@ -14,6 +14,8 @@ dependencies = [
     "ada-configuration-manager==0.7.1",
     "ada-web-operational-identification==0.1.0",
     "atlanticus-web-users-cosmos==0.1.0",
+    "atlanticus-web-users-activity==0.1.0",
+    "azure-cosmos==4.16.3",
     "atlanticus-web-users-blob==0.1.0",
     "atlanticus-web-source-blob==0.1.0",
     "atlanticus-web-storage-topology==0.1.0",
@@ -84,6 +86,7 @@ ada-generic-local-resources = "ada.web.application.generic.local_resources:main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
+atlanticus-web-users-activity = { path = "../../../../../web/capabilities/users/activity", editable = true }
 atlanticus-web-storage-preparation = { path = "../../../../../web/capabilities/storage/preparation", editable = true }
 atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
 atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }

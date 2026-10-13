@@ -196,3 +196,24 @@ def test_corrupt_projection_keeps_base_web_runtime_available_and_logs_invalid(
     assert isinstance(runtime, WebApplicationRuntime)
     assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
     assert 'Operational Tool configuration is invalid' in caplog.text
+
+def test_activity_module_is_bound_to_promoted_users_runtime(tmp_path: Path) -> None:
+    from ada.web.application.configuration_manager.local_runtime import (
+        create_local_configuration_manager_stores,
+    )
+    from atlanticus.web.identity.local import LocalIdentityProvider
+    from atlanticus.web.users.activity import MemoryUserActivityRepository
+    from atlanticus.web.users.activity.routes import USER_ACTIVITY_SERVICE_KEY
+
+    runtime = create_operational_application_runtime(
+        settings=_local_settings(tmp_path),
+        manager_stores=create_local_configuration_manager_stores(),
+        identity_provider=LocalIdentityProvider(subject_id='local:john-doe'),
+        activity_repository=MemoryUserActivityRepository(),
+    )
+    assert runtime.services.contains(USER_ACTIVITY_SERVICE_KEY)
+    client = runtime.server.test_client()
+    assert client.get('/').status_code == 200
+    response = client.get('/_atlanticus/activity/bootstrap')
+    assert response.status_code == 200
+    assert response.get_json()['enabled'] is True

@@ -15,7 +15,7 @@ def test_module_publishes_assets_runtime_config_and_service() -> None:
     module.register_services(services)
 
     assert module.name == 'user-activity'
-    assert module.asset_layers[0].load_order == 30
+    assert module.asset_layers[0].load_order == 45
     assert services.contains(USER_ACTIVITY_SERVICE_KEY)
     assert module.index.runtime_config == {
         'enabled': True,

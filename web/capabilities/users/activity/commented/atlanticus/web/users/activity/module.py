@@ -17,9 +17,10 @@ from atlanticus.web.users.activity.routes import (
 from atlanticus.web.users.activity.services import UserActivityService
 from atlanticus.web.users.runtime import UsersRuntime
 
+# Activity se publica después de las capas Bootstrap (30 y 40).
 USER_ACTIVITY_ASSET_LAYER = AssetLayer(
     name='atlanticus_web_user_activity',
-    load_order=30,
+    load_order=45,
     package='atlanticus.web.users.activity',
 )
 

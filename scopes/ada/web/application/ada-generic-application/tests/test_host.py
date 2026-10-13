@@ -51,6 +51,7 @@ def test_local_host_owns_runtime(tmp_path, monkeypatch) -> None:
     assert calls[0]['identity_provider'] == 'local-identity'
     assert calls[0]['manager_source_name'] == 'Local Source'
     assert calls[0]['manager_projection_name'] == 'Local Projection'
+    assert calls[0]['activity_repository'] is not None
     assert calls[0]['extension_factory'] is extension_factory
     assert calls[1] == {'dash': 'dash'}
     worker.close()
@@ -117,6 +118,8 @@ def test_durable_local_host_keeps_resources_open(
     )
     deployment = SimpleNamespace(
         stores='durable-stores',
+        activity_resource=SimpleNamespace(connection_ref='ada-cosmos', physical_name='users-activity'),
+        connections=SimpleNamespace(cosmos={'ada-cosmos': SimpleNamespace(settings='test-settings')}),
     )
     events = []
     captured = {}
@@ -133,6 +136,16 @@ def test_durable_local_host_keeps_resources_open(
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(host, 'open_durable_manager', opened)
     monkeypatch.setattr(host, '_local_identity', lambda: 'local-identity')
+    @contextmanager
+    def activity(*, settings, container_name):
+        assert settings == 'test-settings'
+        assert container_name == 'users-activity'
+        events.append('activity-opened')
+        try:
+            yield 'activity-repository'
+        finally:
+            events.append('activity-closed')
+    monkeypatch.setattr(host, 'open_durable_activity_repository', activity)
 
     monkeypatch.setattr(
         host,
@@ -143,13 +156,14 @@ def test_durable_local_host_keeps_resources_open(
 
     worker = host.create_worker_runtime()
 
-    assert events == ['opened']
+    assert events == ['opened', 'activity-opened']
     assert captured['manager_stores'] == 'durable-stores'
+    assert captured['activity_repository'] == 'activity-repository'
     assert captured['identity_provider'] == 'local-identity'
     assert captured['manager_source_name'] == 'Blob Storage'
     assert captured['manager_projection_name'] == 'Cosmos DB'
     worker.close()
-    assert events == ['opened', 'closed']
+    assert events == ['opened', 'activity-opened', 'activity-closed', 'closed']
 
 
 def test_production_host_requires_injected_identity(monkeypatch) -> None:

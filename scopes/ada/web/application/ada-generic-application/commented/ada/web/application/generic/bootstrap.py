@@ -17,7 +17,10 @@ from ada.web.application.configuration_manager.wiring import (
     ConfigurationManagerStores,
 )
 from ada.web.application.generic.composition import create_operational_navigation_modules
-from ada.web.application.generic.descriptor import AdaApplicationDescriptor
+from ada.web.application.generic.descriptor import (
+    GENERIC_APPLICATION_DESCRIPTOR,
+    AdaApplicationDescriptor,
+)
 from ada.web.application.generic.extension import (
     AdaApplicationExtension,
     AdaApplicationExtensionFactory,
@@ -90,6 +93,8 @@ from atlanticus.web.observability import WebEventSink
 from atlanticus.web.projection.errors import ProjectionStoreError
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.errors import SourceUnavailableError
+from atlanticus.web.users.activity import create_user_activity_module
+from atlanticus.web.users.activity.contracts import UserActivityRepository
 from atlanticus.web.users.errors import UsersStoreUnavailableError
 from atlanticus.web.users.module import create_users_module
 from atlanticus.web.users.resolver import UsersAccessResolver
@@ -116,6 +121,7 @@ def create_operational_application_runtime(
     manager_dependencies: ConfigurationManagerDependencies | None = None,
     manager_stores: ConfigurationManagerStores | None = None,
     identity_provider: IdentityProvider | None = None,
+    activity_repository: UserActivityRepository | None = None,
     manager_source_name: str = 'Source',
     manager_projection_name: str = 'Projection',
     application_descriptor: AdaApplicationDescriptor | None = None,
@@ -196,6 +202,20 @@ def create_operational_application_runtime(
             users_runtime,
             resolver,
         )
+        if activity_repository is not None:
+            descriptor = application_descriptor or GENERIC_APPLICATION_DESCRIPTOR
+            definition = replace(
+                definition,
+                modules=(
+                    *definition.modules,
+                    create_user_activity_module(
+                        repository=activity_repository,
+                        application_key=descriptor.application_id,
+                        users_runtime=users_runtime,
+                        track_local=resolved_settings.environment.is_local,
+                    ),
+                ),
+            )
     elif manager_dependencies is not None and isinstance(
         manager_dependencies.principal_provider, ManagerPrincipalBinding
     ):

@@ -16,7 +16,7 @@ from atlanticus.web.users.runtime import UsersRuntime
 
 USER_ACTIVITY_ASSET_LAYER = AssetLayer(
     name='atlanticus_web_user_activity',
-    load_order=30,
+    load_order=45,
     package='atlanticus.web.users.activity',
 )
 

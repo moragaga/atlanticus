@@ -27,6 +27,14 @@ from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.storage.namespace import StorageNamespace
+from atlanticus.web.storage.topology import (
+    CosmosContainerTopology,
+    ResolvedStoragePlan,
+    ResolvedStorageResource,
+    StorageResourceOverride,
+    resolve_storage_plan,
+)
+from atlanticus.web.users.activity import USER_ACTIVITY_STORAGE_RESOURCE
 from atlanticus.web.storage.preparation import (
     BlobContainerResource,
     ResourceObserver,
@@ -63,6 +71,7 @@ class DurableManagerConfiguration:
     resources: ManagerPersistenceResources
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
+    activity_resource: ResolvedStorageResource[CosmosContainerTopology]
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +80,7 @@ class DurableManagerRuntime:
     application_artifacts: ManagerBlobResource
     resources: ManagerPersistenceResources
     connections: ManagerPersistenceConnections
+    activity_resource: ResolvedStorageResource[CosmosContainerTopology]
 
 
 def resolve_durable_manager_configuration(
@@ -107,6 +117,15 @@ def resolve_durable_manager_configuration(
         ),
         storage_settings=storage_settings,
         cosmos_settings=cosmos_settings,
+        activity_resource=resolve_storage_plan(
+            (USER_ACTIVITY_STORAGE_RESOURCE,),
+            (
+                StorageResourceOverride(
+                    logical_id=USER_ACTIVITY_STORAGE_RESOURCE.logical_id,
+                    connection_ref=_COSMOS_CONNECTION,
+                ),
+            ),
+        ).resources[0],
     )
 
 
@@ -134,6 +153,7 @@ def open_durable_manager(
             application_artifacts=resolved.application_artifacts,
             resources=resolved.resources,
             connections=connections,
+            activity_resource=resolved.activity_resource,
         )
 
 
@@ -164,7 +184,12 @@ def prepare_durable_manager_resources(
                 )
                 for connection_ref, container_name in sorted(blobs)
             ),
-            cosmos_plan=deployment.resources.cosmos_plan,
+            cosmos_plan=ResolvedStoragePlan(
+                resources=(
+                    *deployment.resources.cosmos_plan.resources,
+                    deployment.activity_resource,
+                ),
+            ),
         ),
         connections=ResourcePreparationConnections(
             storage=deployment.connections.storage,

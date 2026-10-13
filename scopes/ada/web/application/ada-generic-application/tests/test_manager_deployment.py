@@ -197,7 +197,9 @@ def test_preparation_wrapper_adapts_ada_resources_to_shared_coordinator(tmp_path
             (item.logical_id, item.connection_ref, item.container_name)
             for item in call['resources'].blob_containers
         ] == [('ada-blob', 'ada-blob', 'configuration')]
-        assert call['resources'].cosmos_plan is runtime.resources.cosmos_plan
+        prepared = call['resources'].cosmos_plan.resources
+        assert prepared[:-1] == runtime.resources.cosmos_plan.resources
+        assert prepared[-1] == runtime.activity_resource
         assert call['connections'].storage is runtime.connections.storage
         assert call['connections'].cosmos is runtime.connections.cosmos
         assert call['action'] == 'prepare'
@@ -211,3 +213,17 @@ def test_unsupported_action_rejected_before_provider_access(tmp_path):
             prepare_durable_manager_resources(
                 runtime, action='repair', environment=WebEnvironment.LOCAL
             )
+
+def test_activity_resource_is_separate_from_manager_plan(tmp_path):
+    from atlanticus.web.users.activity import USER_ACTIVITY_STORAGE_RESOURCE
+    from ada.web.application.generic.manager.deployment import resolve_durable_manager_configuration
+
+    settings = _settings(tmp_path)
+    configured = resolve_durable_manager_configuration(settings)
+    assert configured.activity_resource.logical_id == USER_ACTIVITY_STORAGE_RESOURCE.logical_id
+    assert configured.activity_resource.physical_name == 'users-activity'
+    assert configured.activity_resource.topology.default_ttl_seconds == 86_400
+    assert configured.activity_resource.connection_ref == 'ada-cosmos'
+    assert configured.activity_resource.logical_id not in {
+        resource.logical_id for resource in configured.resources.cosmos_plan.resources
+    }
