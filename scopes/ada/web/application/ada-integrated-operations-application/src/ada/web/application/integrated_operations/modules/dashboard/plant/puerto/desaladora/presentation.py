@@ -40,11 +40,14 @@ def build_desaladora(reading: DesaladoraReading) -> Component:
                 className='ada-io-desaladora__trend',
             ),
             html.Div(
-                build_inline_value_row(
-                    InlineValueRowState(
-                        InlineValueRowDefinition(VOLUMEN.label, unit=VOLUMEN.unit),
-                        _display(reading.volume),
-                    )
+                html.Div(
+                    build_inline_value_row(
+                        InlineValueRowState(
+                            InlineValueRowDefinition(VOLUMEN.label, unit=VOLUMEN.unit),
+                            _display(reading.volume),
+                        )
+                    ),
+                    className='ada-io-desaladora__impulsion',
                 ),
                 role='button',
                 tabIndex=0,

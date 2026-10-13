@@ -9,6 +9,11 @@ from ada.web.ui.equipment_image import (
     LabelPosition,
     build_equipment_state_image,
 )
+from ada.web.ui.inline_row import (
+    InlineValueRowDefinition,
+    InlineValueRowState,
+    build_inline_value_row,
+)
 from ada.web.ui.level_gauge import build_level_gauge
 
 from ..indicators import build_metric_rows, display_value_component
@@ -57,6 +62,8 @@ def build_stc(reading: StcReading) -> Component:
     )
 
 
+# Las métricas del TK-711 usan el componente compartido sin alterar claves KPI.
+# El wrapper conserva la inspección y los estados degradados.
 def _espesador(reading) -> Component:
     d = reading.definition
     if len(reading.metrics) != len(STC_ESPESADOR.metrics):
@@ -94,10 +101,17 @@ def _espesador(reading) -> Component:
             html.Div(
                 [
                     html.Div(
-                        [
-                            html.Span(f'{metric.definition.label} ({metric.definition.unit})'),
-                            html.Span(display_value_component(metric.value)),
-                        ],
+                        build_inline_value_row(
+                            InlineValueRowState(
+                                definition=InlineValueRowDefinition(
+                                    metric.definition.label, unit=metric.definition.unit
+                                ),
+                                value=display_value_component(
+                                    metric.value, class_name='ada-io-stc__status-icon'
+                                ),
+                                class_name='ada-io-stc__inline-value-row',
+                            )
+                        ),
                         className='ada-io-stc__metric',
                         role='button',
                         tabIndex=0,

@@ -13,4 +13,5 @@ class MetricDefinition:
 
 
 FLUJO_TREND = MetricDefinition('Flujo Desaladora', 'flujo_real_mean_hora')
-VOLUMEN = MetricDefinition('Volumen acumulado día', 'volumen_real_acc_dia')
+# El cambio de etiqueta y unidad es visual: la clave y los datos permanecen intactos.
+VOLUMEN = MetricDefinition('Impulsión Día', 'volumen_real_acc_dia', 'l/s')

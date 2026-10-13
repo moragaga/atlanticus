@@ -2,5 +2,8 @@
 .ada-io-desaladora__trend { width: 100%; min-width: 0; }
 .ada-io-desaladora__trend-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-weight: 600; }
 .ada-io-flujo-desaladora__history-trend {
-    height: 5.625rem !important;
+    height: 4.5rem !important;
+}
+.ada-io-desaladora__impulsion {
+    --atlanticus-inline-value-row-font-size: .54rem;
 }

@@ -89,17 +89,14 @@
     max-height: 2.9rem;
 }
 
+/* Se usa el tamaño compartido de InlineValueRow, sin bordes dobles. */
 .ada-io-stc__metric {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--soft-border-color,#d7d7d7);
-    gap: .12rem;
-    font-size: .49rem;
+    min-width: 0;
+    cursor: help;
 }
 
-.ada-io-stc__metric > :last-child {
-    font-weight: 700;
+.ada-io-stc__inline-value-row {
+    padding: 0;
 }
 
 .ada-io-stc__levels {

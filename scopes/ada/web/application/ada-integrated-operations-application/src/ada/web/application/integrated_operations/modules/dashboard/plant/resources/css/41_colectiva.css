@@ -16,9 +16,14 @@
 }
 
 .ada-io-colectiva__indicators {
-    display: flex;
-    flex-direction: column;
+    /*display: flex;*/
+    /*flex-direction: column;*/
     --atlanticus-inline-value-row-font-size: .54rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .ada-io-colectiva__trend-header {
@@ -174,7 +179,7 @@
 }
 
 .ada-io-recuperacion__history-trend {
-    height: 5.625rem !important;
+    height: 4.5rem !important;
 }
 .ada-io-colectiva__inline-value-row {
     padding: 0;

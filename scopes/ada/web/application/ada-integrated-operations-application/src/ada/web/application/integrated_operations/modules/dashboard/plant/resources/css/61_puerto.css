@@ -7,12 +7,15 @@
 .ada-io-puerto__section-title { margin: 0; font-size: .92rem; }
 .ada-io-puerto__filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
 .ada-io-puerto__filter { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; border: 1px solid var(--ada-border, #777); border-radius: .3rem; padding: .25rem; }
-.ada-io-puerto__filter-label { font-size: .7rem; font-weight: 600; }
+.ada-io-puerto__filter-label { font-size: .6rem; font-weight: 600; }
 .ada-io-puerto__image--filtro { width: 100%; height: auto; }
 .ada-io-puerto__shipment { display: flex; align-items: center; gap: .6rem; min-width: 0; }
-.ada-io-puerto__shipment-rows { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.ada-io-puerto__shipment-rows { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; --atlanticus-inline-value-row-font-size: .54rem;}
 .ada-io-puerto__image--barco { width: 76px; height: auto; max-width: 100%; }
 
 .ada-io-filtrado__history-trend {
-    height: 5.625rem !important;
+    height: 4.5rem !important;
+}
+.ada-io-puerto__conc-accumulated {
+    --atlanticus-inline-value-row-font-size: .54rem;
 }

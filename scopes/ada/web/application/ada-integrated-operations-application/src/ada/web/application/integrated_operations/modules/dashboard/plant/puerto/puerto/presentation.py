@@ -44,7 +44,10 @@ def build_puerto(reading: PuertoReading) -> Component:
                 ],
                 className='ada-io-puerto__trend',
             ),
-            _row(FILTRADO_ACCUMULATED, reading.accumulated),
+            html.Div(
+                _row(FILTRADO_ACCUMULATED, reading.accumulated),
+                className='ada-io-puerto__conc-accumulated',
+            ),
             html.Div(
                 [
                     _inspect_wrap(build_level_gauge(view), definition.level_key)

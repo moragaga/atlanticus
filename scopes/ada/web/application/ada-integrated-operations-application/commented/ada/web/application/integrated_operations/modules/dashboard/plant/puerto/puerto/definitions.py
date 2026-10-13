@@ -33,7 +33,7 @@ class ShipmentDefinition:
 
 
 FILTRADO_TREND = MetricDefinition('Filtrado', 'filtrado_real_mean_hora')
-FILTRADO_ACCUMULATED = MetricDefinition('Filtrado acumulado día', 'filtrado_acumulado_dia')
+FILTRADO_ACCUMULATED = MetricDefinition('Concentrado Filtrado Día', 'filtrado_acumulado_dia', 'TMH')
 TANKS = tuple(
     TankDefinition(f'TK-{number}', f'nivel_tk_0{number}_inst', f'tk{number}_nivel_color')
     for number in ('60', '61', '62', '63')

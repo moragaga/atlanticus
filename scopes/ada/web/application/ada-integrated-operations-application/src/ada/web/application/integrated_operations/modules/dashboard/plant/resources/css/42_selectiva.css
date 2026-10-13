@@ -8,8 +8,7 @@
 }
 
 .ada-io-selectiva__espesadores,
-.ada-io-selectiva__tanks,
-.ada-io-selectiva__indicators {
+.ada-io-selectiva__tanks {
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -116,6 +115,11 @@
 
 .ada-io-selectiva__indicators {
     --atlanticus-inline-value-row-font-size: .54rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .ada-io-selectiva__status-icon {
