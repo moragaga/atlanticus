@@ -79,7 +79,7 @@ def _cell(metric: LeyesMetric) -> Component:
 def _display(value: DisplayValue) -> str | Component:
     if value.status is DisplayStatus.OK:
         return str(value.value)
-    icon = build_display_status_icon(value.status)
+    icon = build_display_status_icon(value.status, class_name='ada-io-leyes__status-icon')
     if icon is None:
         raise ValueError('Leyes status icon cannot be resolved')
     return icon

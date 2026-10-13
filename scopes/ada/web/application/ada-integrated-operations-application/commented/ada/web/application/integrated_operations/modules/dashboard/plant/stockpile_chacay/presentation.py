@@ -7,6 +7,11 @@ from dash import html
 from dash.development.base_component import Component
 
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
+from ada.web.ui.inline_row import (
+    InlineValueRowDefinition,
+    InlineValueRowState,
+    build_inline_value_row,
+)
 from ada.web.ui.stockpile import build_stockpile_component
 
 from .feeders import build_chacay_feeders
@@ -135,11 +140,13 @@ def _pile(definition, reading) -> Component:
     )
 
 
+# La fila genérica gestiona descriptor, unidad y separación sin duplicar diseño CSS.
+# El botón de inspección permanece en el valor para conservar el contrato funcional.
 def _row(metric: ChacayMetric) -> Component:
-    return html.Div(
-        [
-            html.Span(metric.label, className='ada-io-stockpile-chacay__row-label'),
-            html.Span(
+    return build_inline_value_row(
+        InlineValueRowState(
+            definition=InlineValueRowDefinition(metric.label, unit=metric.unit),
+            value=html.Span(
                 _display(metric.value),
                 className='ada-io-stockpile-chacay__row-value',
                 role='button',
@@ -147,8 +154,8 @@ def _row(metric: ChacayMetric) -> Component:
                 title=metric.kpi_key,
                 **{'data-kpi-inspection-key': metric.kpi_key},
             ),
-        ],
-        className='ada-io-stockpile-chacay__row',
+            class_name='ada-io-stockpile-chacay__row',
+        )
     )
 
 

@@ -185,6 +185,31 @@ def test_all_25_kpis_are_individually_inspectable():
     assert [node.children for node in targets[-4:]] == ['1234567890123'] * 4
 
 
+def test_metric_rows_render_labels_units_without_changing_inspection_values():
+    values = {definition.kpi_key: _entry('123,45') for definition in STOCKPILE_CHACAY_ROWS}
+    presentation = build_stockpile_chacay(_map_stockpile(_store(values)))
+
+    def text_content(value):
+        if isinstance(value, Component):
+            return text_content(value.children)
+        if isinstance(value, list | tuple):
+            return ''.join(text_content(item) for item in value)
+        return value if isinstance(value, str) else ''
+
+    rendered = text_content(presentation)
+    for definition in STOCKPILE_CHACAY_ROWS:
+        assert f'{definition.label}({definition.unit})' in rendered
+    targets = [
+        node for node in _components(presentation)
+        if getattr(node, 'data-kpi-inspection-key', None)
+        in {definition.kpi_key for definition in STOCKPILE_CHACAY_ROWS}
+    ]
+    assert [target.title for target in targets] == [
+        definition.kpi_key for definition in STOCKPILE_CHACAY_ROWS
+    ]
+    assert [target.children for target in targets] == ['123,45'] * len(STOCKPILE_CHACAY_ROWS)
+
+
 @pytest.mark.parametrize(
     ('entry', 'expected'),
     [

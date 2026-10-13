@@ -56,7 +56,7 @@
 
 .ada-io-stockpile-chacay__cart--upper {
     align-items: flex-end;
-    --ada-status-icon-size: 1.05rem;
+    --ada-status-icon-size: .9rem;
 }
 
 .ada-io-stockpile-chacay__cart--lower {
@@ -90,9 +90,9 @@
     background: var(--ada-color-border-primary, #a0a0a0);
 }
 
-.ada-io-stockpile-chacay__position--active .ada-io-stockpile-chacay__marker {
-    background: var(--ada-color-text-primary, #424750);
-}
+/*.ada-io-stockpile-chacay__position--active .ada-io-stockpile-chacay__marker {*/
+/*    background: var(--ada-color-text-primary, #424750);*/
+/*}*/
 
 .ada-io-stockpile-chacay__drop,
 .ada-io-stockpile-chacay__lower-connector {
@@ -154,36 +154,18 @@
 }
 
 .ada-io-stockpile-chacay__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .3rem;
-    min-width: max-content;
-    padding: .18rem .04rem;
-    border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
-}
-
-.ada-io-stockpile-chacay__row-label {
-    overflow: hidden;
-    min-width: 0;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: .51rem;
+    /*--atlanticus-inline-value-row-padding: .18rem .04rem;*/
+    font-size: .52rem;
 }
 
 .ada-io-stockpile-chacay__row-value {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    font-size: .51rem;
-    font-weight: 700;
-    white-space: nowrap;
     cursor: help;
 }
 
 .ada-io-stockpile-chacay__status-icon {
     max-width: 1.2em;
-    max-height: 1.2em;
+    /*max-height: 1.2em;*/
+    min-inline-size: 1.5em;
 }
 
 .ada-io-stockpile-chacay [data-kpi-inspection-key]:focus-visible {
@@ -193,12 +175,10 @@
 
 @media only screen and (min-width: 480px) and (max-width: 1279px) {
     .ada-io-stockpile-chacay__position-label { font-size: .55rem; }
-    .ada-io-stockpile-chacay__row-label,
-    .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
+    .ada-io-stockpile-chacay__row { font-size: .59rem; }
 }
 
 @media only screen and (min-width: 1366px) {
     [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__position-label { font-size: .56rem; }
-    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-label,
-    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
+    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row { font-size: .59rem; }
 }

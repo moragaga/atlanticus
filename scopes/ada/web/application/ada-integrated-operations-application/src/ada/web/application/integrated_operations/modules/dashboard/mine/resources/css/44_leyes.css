@@ -50,6 +50,7 @@
 .ada-io-leyes__head--period {
     width: 16.25%;
     text-align: right;
+    font-size: .46rem;
 }
 
 .ada-io-leyes__row-header {
@@ -76,4 +77,10 @@
     overflow: visible;
     text-overflow: clip;
     white-space: nowrap;
+}
+
+.ada-io-leyes__status-icon {
+    max-width: 1.2em;
+    /*max-height: 1.2em;*/
+    min-inline-size: 1.5em;
 }

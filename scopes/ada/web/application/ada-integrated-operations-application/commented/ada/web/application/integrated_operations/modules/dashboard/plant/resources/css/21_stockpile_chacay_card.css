@@ -159,31 +159,14 @@
     overflow-x: auto;
 }
 
+/* InlineValueRow dibuja etiquetas, unidades, valores y bordes. */
+/* Esta card ajusta solo escala, espaciado y cursor de inspección. */
 .ada-io-stockpile-chacay__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .3rem;
-    min-width: max-content;
-    padding: .18rem .04rem;
-    border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
-}
-
-.ada-io-stockpile-chacay__row-label {
-    overflow: hidden;
-    min-width: 0;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: .51rem;
+    --atlanticus-inline-value-row-padding: .18rem .04rem;
+    font-size: .52rem;
 }
 
 .ada-io-stockpile-chacay__row-value {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    font-size: .51rem;
-    font-weight: 700;
-    white-space: nowrap;
     cursor: help;
 }
 
@@ -199,12 +182,10 @@
 
 @media only screen and (min-width: 480px) and (max-width: 1279px) {
     .ada-io-stockpile-chacay__position-label { font-size: .55rem; }
-    .ada-io-stockpile-chacay__row-label,
-    .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
+    .ada-io-stockpile-chacay__row { font-size: .59rem; }
 }
 
 @media only screen and (min-width: 1366px) {
     [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__position-label { font-size: .56rem; }
-    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-label,
-    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
+    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row { font-size: .59rem; }
 }
