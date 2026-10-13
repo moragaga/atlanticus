@@ -121,32 +121,23 @@
     font-size: .55rem;
 }
 
+/* Las 12 métricas de espesadores usan InlineValueRow; se preservan las imágenes. */
 .ada-io-str__tank-metrics {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    --atlanticus-inline-value-row-font-size: .55rem;
+    --atlanticus-inline-value-row-gap: .1rem;
+    --atlanticus-inline-value-row-padding: .1rem 0;
 }
 
 .ada-io-str__tank-metric {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .1rem;
     min-width: 0;
-    padding: .1rem 0;
+    cursor: help;
 }
 
-.ada-io-str__tank-metric:nth-child(2n + 1) {
-    border-bottom: 1px solid var(--primary-border-color, #bdbdbd);
-}
-
-.ada-io-str__tank-metric > span:first-child {
-    min-width: 0;
-}
-
-.ada-io-str__metric-value {
-    flex: none;
-    font-weight: 700;
+.ada-io-str__inline-value-row {
+    padding: 0;
 }
 
 .ada-io-str__ducts-section {

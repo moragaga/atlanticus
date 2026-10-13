@@ -109,6 +109,87 @@ def test_old_trend_and_current_equipment_contracts():
     ]
 
 
+def test_str_espesadores_use_inline_rows_with_existing_units_and_inspection():
+    data = _store()
+    readings = decode_transporte_fluidos_store(data)
+    root = build_str(
+        map_str_overview_readings(readings, data),
+        map_str_espesadores_readings(readings),
+        map_str_ductos_readings(readings),
+    )
+    definitions = {
+        metric.kpi_key: metric
+        for tank in STR_ESPESADORES
+        for metric in tank.metrics
+    }
+    targets = [
+        node for node in _walk(root)
+        if getattr(node, 'data-kpi-inspection-key', None) in definitions
+    ]
+    assert len(targets) == 12
+    assert [(metric.label, metric.unit) for metric in STR_ESPESADORES[0].metrics] == [
+        ('Altura', '%'),
+        ('Torque', '%'),
+        ('Pendiente', None),
+        ('Interfaz', 'cms'),
+    ]
+    for target in targets:
+        key = getattr(target, 'data-kpi-inspection-key')
+        definition = definitions[key]
+        nodes = list(_walk(target))
+        rows = [
+            node for node in nodes
+            if 'ada-inline-value-row' in (getattr(node, 'className', '') or '').split()
+        ]
+        assert len(rows) == 1
+        label = next(
+            node for node in nodes
+            if getattr(node, 'className', None) == 'ada-inline-value-row__label'
+        )
+        units = [
+            node for node in nodes
+            if getattr(node, 'className', None) == 'ada-inline-value-row__unit'
+        ]
+        value = next(
+            node for node in nodes
+            if getattr(node, 'className', None) == 'ada-inline-value-row__value'
+        )
+        assert label.children == definition.label
+        assert [unit.children for unit in units] == (
+            [] if definition.unit is None else [f'({definition.unit})']
+        )
+        assert value.children == '50'
+        assert target.role == 'button' and target.tabIndex == 0
+
+
+def test_str_degraded_thickener_metric_keeps_status_icon_in_inline_row():
+    data = _store()
+    key = STR_ESPESADORES[0].metrics[0].kpi_key
+    data['latest']['values'][key] = {
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
+    readings = decode_transporte_fluidos_store(data)
+    root = build_str(
+        map_str_overview_readings(readings, data),
+        map_str_espesadores_readings(readings),
+        map_str_ductos_readings(readings),
+    )
+    target = next(
+        node for node in _walk(root)
+        if getattr(node, 'data-kpi-inspection-key', None) == key
+    )
+    value = next(
+        node for node in _walk(target)
+        if getattr(node, 'className', None) == 'ada-inline-value-row__value'
+    )
+    assert isinstance(value.children, Component)
+    assert target.role == 'button' and target.tabIndex == 0
+
+
 def test_latest_mappings_preserve_independent_state_and_numbers():
     readings = decode_transporte_fluidos_store(_store())
     tanks = map_str_espesadores_readings(readings)

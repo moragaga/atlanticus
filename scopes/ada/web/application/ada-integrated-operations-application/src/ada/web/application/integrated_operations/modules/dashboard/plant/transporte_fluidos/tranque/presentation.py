@@ -9,4 +9,4 @@ from .definitions import TRANQUE_INDICATORS
 def build_tranque(readings: Sequence[FluidMetricReading]) -> Component:
     if len(readings) != len(TRANQUE_INDICATORS):
         raise ValueError('TRANQUE indicator count is inconsistent')
-    return build_metric_rows(readings, class_name='ada-io-tranque__indicators')
+    return build_metric_rows(readings, class_name='ada-io-tranque')

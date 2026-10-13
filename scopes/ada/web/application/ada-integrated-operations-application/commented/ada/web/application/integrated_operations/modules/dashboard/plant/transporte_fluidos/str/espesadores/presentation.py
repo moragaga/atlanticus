@@ -14,6 +14,11 @@ from ada.web.ui.equipment_image import (
     LabelPosition,
     build_equipment_state_image,
 )
+from ada.web.ui.inline_row import (
+    InlineValueRowDefinition,
+    InlineValueRowState,
+    build_inline_value_row,
+)
 
 from .definitions import STR_ESPESADORES
 from .models import StrEspesadorReading, StrMetricReading
@@ -89,16 +94,18 @@ def _feeding(reading: StrEspesadorReading) -> Component:
     )
 
 
+# Cada espesador reutiliza InlineValueRow, con unidad opcional y estados intactos.
+# La selección conserva la clave KPI individual y no altera imágenes ni alimentación.
 def _metric(reading: StrMetricReading) -> Component:
     definition = reading.definition
-    label = (
-        definition.label if definition.unit is None else f'{definition.label} ({definition.unit})'
-    )
     return html.Div(
-        [
-            html.Span(label),
-            html.Span(_display(reading.value), className='ada-io-str__metric-value'),
-        ],
+        build_inline_value_row(
+            InlineValueRowState(
+                definition=InlineValueRowDefinition(definition.label, unit=definition.unit),
+                value=_display(reading.value),
+                class_name='ada-io-str__inline-value-row',
+            )
+        ),
         className='ada-io-str__tank-metric',
         role='button',
         tabIndex=0,

@@ -23,7 +23,7 @@ def build_stc(reading: StcReading) -> Component:
         raise ValueError('STC requires two level indicators')
     return html.Section(
         [
-            build_metric_rows(reading.indicators, class_name='ada-io-stc__indicators'),
+            build_metric_rows(reading.indicators, class_name='ada-io-stc'),
             html.Section(
                 [
                     html.H3('Espesadores', className='ada-io-stc__title'),
@@ -95,7 +95,7 @@ def _espesador(reading) -> Component:
                     html.Div(
                         [
                             html.Span(f'{metric.definition.label} ({metric.definition.unit})'),
-                            html.Span(display_value_component(metric.value)),
+                            html.Span(display_value_component(metric.value, class_name='ada-io-stc__status-icon')),
                         ],
                         className='ada-io-stc__metric',
                         role='button',

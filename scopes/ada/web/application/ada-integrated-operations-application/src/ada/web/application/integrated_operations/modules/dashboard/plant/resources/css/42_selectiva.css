@@ -119,10 +119,11 @@
 }
 
 .ada-io-selectiva__status-icon {
-    display: block;
-    width: .9rem;
-    height: .9rem;
-    object-fit: contain;
+    width: .8rem;
+    /*height: 1rem;*/
+    /*object-fit: contain;*/
+    min-inline-size: .8rem;
+    flex: 0;
 }
 
 .ada-io-selectiva [data-kpi-inspection-key]:focus-visible {

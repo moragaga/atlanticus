@@ -6,3 +6,9 @@
     --atlanticus-inline-value-row-font-size: .54rem;
     padding: .08rem .18rem;
 }
+
+.ada-io-tranque__status-icon {
+    width: .8rem;
+    flex: 0;
+    min-inline-size: .8rem;
+}

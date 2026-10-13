@@ -22,7 +22,7 @@ def build_metric_rows(readings: Sequence[FluidMetricReading], *, class_name: str
                 build_inline_value_row(
                     InlineValueRowState(
                         InlineValueRowDefinition(item.definition.label, unit=item.definition.unit),
-                        display_value_component(item.value),
+                        display_value_component(item.value, class_name=f'{class_name}__status-icon'),
                     )
                 ),
                 role='button',
@@ -32,14 +32,14 @@ def build_metric_rows(readings: Sequence[FluidMetricReading], *, class_name: str
             )
             for item in readings
         ],
-        className=class_name,
+        className=f'{class_name}__indicators',
     )
 
 
-def display_value_component(value: DisplayValue) -> str | Component:
+def display_value_component(value: DisplayValue, class_name: str) -> str | Component:
     if value.status is DisplayStatus.OK:
         return str(value.value)
-    icon = build_display_status_icon(value.status)
+    icon = build_display_status_icon(value.status, class_name=class_name)
     if icon is None:
         raise ValueError('Fluid metric icon cannot be resolved')
     return icon

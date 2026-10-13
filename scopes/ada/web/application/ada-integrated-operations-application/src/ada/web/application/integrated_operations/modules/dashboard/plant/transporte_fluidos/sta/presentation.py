@@ -9,4 +9,4 @@ from .definitions import STA_INDICATORS
 def build_sta(readings: Sequence[FluidMetricReading]) -> Component:
     if len(readings) != len(STA_INDICATORS):
         raise ValueError('STA indicator count is inconsistent')
-    return build_metric_rows(readings, class_name='ada-io-sta__indicators')
+    return build_metric_rows(readings, class_name='ada-io-sta')
