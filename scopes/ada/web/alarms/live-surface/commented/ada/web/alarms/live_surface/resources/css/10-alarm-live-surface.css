@@ -1,274 +1,316 @@
-/* Espejo pedagógico: el agrupador no aumenta la altura reservada del tablero. */
+/* Espejo pedagógico: adaptación del diseño operacional_trace de isolated-web-functions. */
+/* La posición de los chevrons y el trazado los determina el JavaScript usando puntos reales del Tool. */
 .ada-alarm-live-surface {
-    --ada-alarm-live-board-height: 5.75rem;
-    --ada-alarm-live-card-font: .7rem;
     --ada-alarm-live-red: #dc3545;
     --ada-alarm-live-yellow: #e0a800;
+    --ada-alarm-live-neutral: #6b6b6b;
+    --ada-alarm-live-muted: #b8b8b8;
+    --ada-alarm-live-baseline: #e1e1e1;
+    --ada-alarm-live-preview-duration: 4000ms;
+    --ada-alarm-live-fade-duration: 3000ms;
+    --ada-alarm-live-route-y: 28%;
     position: relative;
     width: 100%;
     min-width: 0;
+    isolation: isolate;
 }
 
-/* Separación superior mínima sin aumentar la altura reservada ni mover la baseline. */
+/* Las tarjetas mantienen el orden y los slots de operator_view. */
 .ada-alarm-live-board {
     display: grid;
     grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 1), minmax(0, 1fr));
     width: 100%;
-    height: var(--ada-alarm-live-board-height);
     min-width: 0;
+    min-height: 2.75rem;
     align-items: stretch;
     gap: .15rem;
-    padding-block-start: .22rem;
-    box-sizing: border-box;
-    overflow: hidden;
+    position: relative;
+    z-index: 3;
 }
 
-/* Borde completo y cabecera coloreada recuperados de la referencia de diseño. */
 .ada-alarm-live-card {
-    min-width: 0;
-    min-height: 0;
-    align-self: stretch;
-    display: flex;
-    flex-direction: column;
+    --ada-alarm-live-tone: var(--ada-alarm-live-neutral);
     box-sizing: border-box;
-    border: 1px solid var(--ada-alarm-live-card-tone, #6b6b6b);
-    border-radius: .4rem;
-    background: #ebebeb;
-    color: #4d4d4d;
-    font-size: var(--ada-alarm-live-card-font);
-    overflow: hidden;
-}
-
-.ada-alarm-live-card--red { --ada-alarm-live-card-tone: var(--ada-alarm-live-red); }
-.ada-alarm-live-card--yellow { --ada-alarm-live-card-tone: var(--ada-alarm-live-yellow); }
-.ada-alarm-live-card--neutral { --ada-alarm-live-card-tone: #6b6b6b; }
-.ada-alarm-live-card__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: .2rem;
+    gap: .3rem;
     min-width: 0;
-    min-height: 1.1rem;
-    padding: .12rem .35rem;
-    background: var(--ada-alarm-live-card-tone);
-    color: #fff;
+    min-height: 2.75rem;
+    margin-inline: .15rem;
+    padding: .28rem .4rem;
+    border: 1px solid #bdbdbd;
+    border-inline-start: 3px solid var(--ada-alarm-live-tone);
+    border-radius: .4rem;
+    background: #f2f2f2;
+    color: #4d4d4d;
+    font-size: .7rem;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .16s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
 }
-.ada-alarm-live-card__header-content { display: flex; align-items: center; gap: .2rem; min-width: 0; }
-.ada-alarm-live-card__icon { display: block; flex: 0 0 auto; width: .8rem; height: .8rem; background-position: center; background-repeat: no-repeat; background-size: contain; }
-.ada-alarm-live-card__icon--ecology { background-image: url('../img/alarms/medio-ambiente.svg'); }
-.ada-alarm-live-card__icon--productivity { background-image: url('../img/alarms/productividad.svg'); }
-.ada-alarm-live-card__icon--safety { background-image: url('../img/alarms/seguridad-salud.svg'); }
-.ada-alarm-live-card__icon--costs { background-image: url('../img/alarms/costos.svg'); }
+
+.ada-alarm-live-card--red { --ada-alarm-live-tone: var(--ada-alarm-live-red); }
+.ada-alarm-live-card--yellow { --ada-alarm-live-tone: var(--ada-alarm-live-yellow); }
+.ada-alarm-live-card--neutral { --ada-alarm-live-tone: var(--ada-alarm-live-neutral); }
+.ada-alarm-live-card[data-ada-alarm-selected='true'] {
+    border-color: var(--ada-alarm-live-tone);
+    border-inline-start-width: 4px;
+    box-shadow: inset 0 0 0 1px var(--ada-alarm-live-tone), 0 1px 6px #00000015;
+}
+.ada-alarm-live-card[data-ada-alarm-previewing='true'] {
+    border-color: var(--ada-alarm-live-tone);
+    box-shadow: inset 0 0 0 1px var(--ada-alarm-live-tone);
+}
+.ada-alarm-live-card[role='button']:hover { border-color: var(--ada-alarm-live-tone); }
+.ada-alarm-live-card[role='button']:focus-visible {
+    outline: 2px solid var(--ada-alarm-live-tone);
+    outline-offset: 2px;
+}
+.ada-alarm-live-surface[data-ada-alarm-has-selection='true']
+.ada-alarm-live-card[data-ada-alarm-selected='false'] { opacity: .65; }
+
+.ada-alarm-live-card__header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    padding: 0;
+    min-width: 0;
+    background: none;
+    color: inherit;
+}
+.ada-alarm-live-card__header-content { display: none; }
 .ada-alarm-live-card__criticality {
     display: grid;
     place-items: center;
-    flex: 0 0 auto;
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 50%;
+    min-width: 1.3rem;
+    min-height: 1.3rem;
+    padding: .1rem .24rem;
+    border-radius: .25rem;
     background: #fff;
-    color: var(--ada-alarm-live-card-tone);
-    font-size: .72em;
+    color: var(--ada-alarm-live-tone);
+    font-size: .68rem;
     font-weight: 800;
 }
-.ada-alarm-live-card__category { min-width: 0; font-size: .83em; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ada-alarm-live-card__body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: .06rem; padding: .18rem .35rem .02rem; }
-.ada-alarm-live-card__title { flex: 0 0 auto; min-width: 0; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ada-alarm-live-card__cause { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .9em; color: #5e5e5e; }
-.ada-alarm-live-card__footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: .2rem; min-width: 0; padding: .06rem .35rem .16rem; }
-.ada-alarm-live-card__elapsed { min-width: 0; font-size: .78em; color: #5e5e5e; white-space: nowrap; }
-.ada-alarm-live-card__actions { display: flex; flex: 0 0 auto; align-items: center; gap: .16rem; }
-.ada-alarm-live-card__action { border-radius: .24rem; padding: .08rem .22rem; border: 1px solid #5e5e5e; background: #fff; color: #5e5e5e; font: inherit; font-size: .73em; line-height: 1.15; }
-.ada-alarm-live-card__action--manage { border-color: #313131; background: #313131; color: #fff; }
-.ada-alarm-live-card__action:disabled { cursor: not-allowed; opacity: .78; }
-
-.ada-alarm-live-routes { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.ada-alarm-live-routes svg { width: 100%; height: 100%; overflow: visible; }
-.ada-alarm-live-route { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.ada-alarm-live-route--red { stroke: var(--ada-alarm-live-red); }
-.ada-alarm-live-route--yellow { stroke: var(--ada-alarm-live-yellow); }
-.ada-alarm-baseline-surface__trace { pointer-events: none; }
-.ada-card-display[data-ada-alarm-affection='red'] { box-shadow: inset 3px 0 0 #dc3545; }
-.ada-card-display[data-ada-alarm-affection='yellow'] { box-shadow: inset 3px 0 0 #e0a800; }
-.ada-card-display[data-ada-alarm-affection='mixed'] { box-shadow: inset 3px 0 0 #dc3545, inset -3px 0 0 #e0a800; }
-
-@media only screen and (max-width: 1279px) {
-    .ada-alarm-live-board, .ada-alarm-live-routes { display: none; }
-}
-
-@media only screen and (min-width: 1280px) and (max-width: 1365px) {
-    .ada-alarm-live-surface { --ada-alarm-live-board-height: 5.4rem; --ada-alarm-live-card-font: .67rem; }
-}
-
-@media only screen and (min-width: 1366px) and (max-width: 2559px) {
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-surface,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-surface {
-        --ada-alarm-live-board-height: 2rem;
-    }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card {
-        flex-direction: row;
-        align-items: center;
-        gap: 0;
-        border-radius: 999px;
-    }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__header,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__header { align-self: stretch; padding: .1rem .3rem; }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__body,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__body { padding: 0 .3rem; flex-direction: row; align-items: center; }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__cause,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__cause,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__category,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__category,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__footer,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__footer { display: none; }
-}
-
-@media only screen and (min-width: 2560px) {
-    .ada-alarm-live-surface { --ada-alarm-live-board-height: 8rem; --ada-alarm-live-card-font: 1rem; }
-    .ada-alarm-live-route { stroke-width: 4; }
-}
-
-.ada-alarm-live-card[role='button'] { cursor: pointer; }
-.ada-alarm-live-card[role='button']:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
-.ada-alarm-live-card[data-ada-alarm-selected='true'] { box-shadow: inset 0 0 0 2px currentColor; }
-.ada-alarm-live-card[data-ada-alarm-previewing='true'] { box-shadow: inset 0 0 0 1px currentColor; }
-.ada-alarm-live-surface[data-ada-alarm-has-selection='true'] .ada-alarm-live-card[data-ada-alarm-selected='false'] { opacity: .6; }
-.ada-alarm-live-route { stroke: #b8b8b8; opacity: .45; transition: stroke .15s ease, opacity .25s ease; }
-.ada-alarm-live-route[data-ada-alarm-muted='true'] { stroke: #b8b8b8; opacity: .18; }
-.ada-alarm-live-route--red[data-ada-alarm-focus='selected'],
-.ada-alarm-live-route--red[data-ada-alarm-focus='reveal'],
-.ada-alarm-live-route--red[data-ada-alarm-focus='hold'],
-.ada-alarm-live-route--red[data-ada-alarm-focus='steady'],
-.ada-alarm-live-route--red[data-ada-alarm-focus='fade'] { stroke: var(--ada-alarm-live-red); opacity: 1; }
-.ada-alarm-live-route--yellow[data-ada-alarm-focus='selected'],
-.ada-alarm-live-route--yellow[data-ada-alarm-focus='reveal'],
-.ada-alarm-live-route--yellow[data-ada-alarm-focus='hold'],
-.ada-alarm-live-route--yellow[data-ada-alarm-focus='steady'],
-.ada-alarm-live-route--yellow[data-ada-alarm-focus='fade'] { stroke: var(--ada-alarm-live-yellow); opacity: 1; }
-.ada-alarm-live-route[data-ada-alarm-focus='reveal'] { animation: ada-alarm-live-reveal 4s ease both; }
-.ada-alarm-live-route[data-ada-alarm-focus='fade'] { opacity: 0; transition: opacity 3s ease; }
-.ada-alarm-live-surface .ada-alarm-baseline-surface__point[data-ada-alarm-live-focus='red'] .ada-alarm-baseline-surface__point-core { background: var(--ada-alarm-live-red); }
-.ada-alarm-live-surface .ada-alarm-baseline-surface__point[data-ada-alarm-live-focus='yellow'] .ada-alarm-baseline-surface__point-core { background: var(--ada-alarm-live-yellow); }
-
-@keyframes ada-alarm-live-reveal {
-    from { stroke-dashoffset: var(--ada-alarm-live-route-length, 0px); }
-    to { stroke-dashoffset: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .ada-alarm-live-route,
-    .ada-alarm-live-card { animation: none !important; transition: none !important; }
-}
-
-/* Los slides comparten el mismo slot; solo uno queda visible para trazado. */
-.ada-alarm-live-group {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    border-radius: .4rem;
-    background: #ededed;
-}
-
-.ada-alarm-live-group__header {
-    position: absolute;
-    inset: .12rem 1.3rem auto;
+.ada-alarm-live-card__body {
     display: flex;
-    justify-content: space-between;
-    gap: .2rem;
+    flex: 1 1 auto;
+    align-items: center;
     min-width: 0;
-    color: #4d4d4d;
-    font-size: .6rem;
+    padding: 0;
+    gap: .2rem;
+}
+.ada-alarm-live-card__title {
+    overflow: hidden;
     white-space: nowrap;
-    overflow: hidden;
-}
-
-.ada-alarm-live-group__header span {
-    overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.ada-alarm-live-group__slides {
-    position: absolute;
-    inset: 1rem 1.1rem .1rem;
-}
-
-.ada-alarm-live-group__slides > .ada-alarm-live-card {
-    box-sizing: border-box;
-    height: 100%;
-    width: 100%;
-}
-
-/* La regla autoritaria hidden evita que display:flex revele miembros inactivos. */
-.ada-alarm-live-group__slides > .ada-alarm-live-card[hidden] {
-    display: none;
-}
-
-.ada-alarm-live-card__area {
-    font-size: .8em;
+    min-width: 0;
+    font-size: .75rem;
     font-weight: 700;
 }
+.ada-alarm-live-card__cause { display: none; }
+.ada-alarm-live-card__footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+    padding: 0;
+}
+.ada-alarm-live-card__elapsed { white-space: nowrap; font-size: .65rem; }
+.ada-alarm-live-card__actions { display: flex; align-items: center; gap: .2rem; }
+.ada-alarm-live-card__action {
+    padding: .2rem .5rem;
+    border: 1px solid #4d4d4d;
+    border-radius: .35rem;
+    background: transparent;
+    color: #2b2b2b;
+    font-size: .68rem;
+    font-weight: 700;
+}
+.ada-alarm-live-card__action--information { display: none; }
+.ada-alarm-live-card__action:disabled { cursor: default; opacity: .62; }
+.ada-alarm-live-card__area { white-space: nowrap; font-weight: 700; font-size: .64rem; }
 
-.ada-alarm-live-group__navigation {
+.ada-alarm-live-surface .ada-alarm-baseline-surface {
+    position: relative;
+    z-index: 2;
+}
+.ada-alarm-live-surface .ada-alarm-baseline-surface__trace {
+    height: 2.45rem;
+    overflow: visible;
+    pointer-events: none;
+}
+.ada-alarm-live-surface .ada-alarm-baseline-surface__baseline {
+    background: var(--ada-alarm-live-baseline);
+}
+.ada-alarm-live-surface .ada-alarm-baseline-surface__point { z-index: 5; }
+.ada-alarm-live-routes {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    z-index: 1;
 }
+.ada-alarm-live-routes svg { width: 100%; height: 100%; overflow: visible; }
+/* Las rutas neutrales reciben foco solo en la alarma seleccionada o previsualizada. */
+.ada-alarm-live-route {
+    --ada-alarm-live-route-tone: var(--ada-alarm-live-neutral);
+    fill: none;
+    stroke: var(--ada-alarm-live-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    opacity: .54;
+    transition: stroke .12s ease, opacity var(--ada-alarm-live-fade-duration) ease;
+}
+.ada-alarm-live-route--red { --ada-alarm-live-route-tone: var(--ada-alarm-live-red); }
+.ada-alarm-live-route--yellow { --ada-alarm-live-route-tone: var(--ada-alarm-live-yellow); }
+.ada-alarm-live-route[data-ada-alarm-focus='selected'],
+.ada-alarm-live-route[data-ada-alarm-focus='steady'],
+.ada-alarm-live-route[data-ada-alarm-focus='reveal'],
+.ada-alarm-live-route[data-ada-alarm-focus='hold'] {
+    stroke: var(--ada-alarm-live-route-tone);
+    opacity: 1;
+}
+.ada-alarm-live-route[data-ada-alarm-focus='reveal'] {
+    stroke-dasharray: var(--ada-alarm-live-route-length) var(--ada-alarm-live-route-length);
+    animation: ada-alarm-live-trace-reveal var(--ada-alarm-live-preview-duration) ease both;
+}
+.ada-alarm-live-route[data-ada-alarm-focus='fade'] {
+    stroke: var(--ada-alarm-live-route-tone);
+    opacity: 0;
+}
+.ada-alarm-live-surface[data-ada-alarm-has-selection='true']
+.ada-alarm-live-route[data-ada-alarm-focus='idle'] { opacity: .3; }
 
-.ada-alarm-live-group__previous,
-.ada-alarm-live-group__next {
+/* Los chevrons se generan sobre los puntos operacionales ya publicados. */
+.ada-alarm-live-marker {
+    --ada-alarm-live-marker-tone: var(--ada-alarm-live-neutral);
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: none;
+    place-items: center;
+    border: 1px solid var(--ada-alarm-live-baseline);
+    border-radius: 50%;
+    background: var(--ada-alarm-live-marker-tone);
+    color: #fff;
+    z-index: 6;
+    opacity: 1;
+    transition: opacity var(--ada-alarm-live-fade-duration) ease;
+}
+.ada-alarm-live-marker--red { --ada-alarm-live-marker-tone: var(--ada-alarm-live-red); }
+.ada-alarm-live-marker--yellow { --ada-alarm-live-marker-tone: var(--ada-alarm-live-yellow); }
+.ada-alarm-live-marker[data-ada-alarm-focus='reveal'],
+.ada-alarm-live-marker[data-ada-alarm-focus='hold'],
+.ada-alarm-live-marker[data-ada-alarm-focus='steady'],
+.ada-alarm-live-marker[data-ada-alarm-focus='selected'] { display: grid; }
+.ada-alarm-live-marker[data-ada-alarm-focus='reveal'] {
+    animation: ada-alarm-live-marker-reveal 220ms ease both;
+    animation-delay: calc(var(--ada-alarm-live-preview-duration) * .74);
+}
+.ada-alarm-live-marker[data-ada-alarm-focus='fade'] { display: grid; opacity: 0; }
+.ada-alarm-live-marker__chevron {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+}
+.ada-alarm-live-marker__chevron--up { transform: translateY(1px) rotate(225deg); }
+.ada-alarm-live-marker__chevron--down { transform: translateY(-1px) rotate(45deg); }
+.ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron { width: 5px; height: 5px; }
+.ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--up { transform: translateY(-2px) rotate(225deg); }
+.ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--down { transform: translateY(2px) rotate(45deg); }
+
+.ada-card-display[data-ada-alarm-affection='red'] { box-shadow: inset 3px 0 0 var(--ada-alarm-live-red); }
+.ada-card-display[data-ada-alarm-affection='yellow'] { box-shadow: inset 3px 0 0 var(--ada-alarm-live-yellow); }
+.ada-card-display[data-ada-alarm-affection='mixed'] {
+    box-shadow: inset 3px 0 0 var(--ada-alarm-live-red), inset -3px 0 0 var(--ada-alarm-live-yellow);
+}
+.ada-card-display[data-ada-alarm-focused='true'] { outline: 1px solid var(--ada-alarm-live-muted); outline-offset: -1px; }
+
+/* El carrusel no inventa miembros fuera de operator_view. */
+.ada-alarm-live-group {
+    position: relative;
+    min-width: 0;
+    min-height: 2.75rem;
+    margin-inline: .15rem;
+    border-radius: .4rem;
+    background: #ededed;
+}
+.ada-alarm-live-group__header {
+    position: absolute;
+    inset: .08rem 1.5rem auto;
+    display: flex;
+    justify-content: space-between;
+    gap: .3rem;
+    font-size: .56rem;
+    white-space: nowrap;
+    color: #4d4d4d;
+    z-index: 2;
+}
+.ada-alarm-live-group__header span { overflow: hidden; text-overflow: ellipsis; }
+.ada-alarm-live-group__slides { position: absolute; inset: .85rem 1.1rem .08rem; }
+.ada-alarm-live-group__slides > .ada-alarm-live-card { width: 100%; height: 100%; min-height: 0; margin: 0; }
+.ada-alarm-live-group__slides > .ada-alarm-live-card[hidden] { display: none; }
+.ada-alarm-live-group__navigation { position: absolute; inset: 0; pointer-events: none; }
+.ada-alarm-live-group__previous, .ada-alarm-live-group__next {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    padding: 0;
     width: 1.05rem;
     height: 2rem;
-    padding: 0;
+    border: 0;
     background: transparent;
     color: #404040;
-    border: 0;
-    cursor: pointer;
     font-size: 1.2rem;
+    cursor: pointer;
     pointer-events: auto;
 }
-
 .ada-alarm-live-group__previous { left: 0; }
 .ada-alarm-live-group__next { right: 0; }
-.ada-alarm-live-group__previous:focus-visible,
-.ada-alarm-live-group__next:focus-visible { outline: 2px solid currentColor; }
-
 .ada-alarm-live-group__counter {
     position: absolute;
-    right: 1.3rem;
-    top: .16rem;
-    font-size: .55rem;
+    top: .05rem;
+    right: 1.2rem;
+    font-size: .56rem;
     font-weight: 700;
-    color: #404040;
 }
 
-@media only screen and (min-width: 1366px) and (max-width: 2559px) {
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-group__header,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-group__header,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-group__counter,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-group__counter { display: none; }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-group__slides,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-group__slides { inset: .08rem 1.1rem; }
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine']) .ada-alarm-live-card__area,
-    #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant']) .ada-alarm-live-card__area { display: none; }
-}
-
-/* Una card por Component, alineada al punto real. El ancho evita solapes. */
-
-.ada-alarm-live-board[data-ada-alarm-layout='integrated'] {
-    position: relative;
-}
-
-.ada-alarm-live-board[data-ada-alarm-layout='integrated'] > .ada-alarm-live-card[data-ada-alarm-positioned='true'] {
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'] { position: relative; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'] >
+.ada-alarm-live-card[data-ada-alarm-positioned='true'] {
     position: absolute;
-    inset-block-start: .22rem;
+    inset-block-start: 0;
     inset-block-end: 0;
     left: var(--ada-alarm-live-display-x);
     width: var(--ada-alarm-live-display-width);
     transform: translateX(-50%);
-    box-sizing: border-box;
+    margin-inline: 0;
+}
+
+@keyframes ada-alarm-live-trace-reveal {
+    from { stroke-dashoffset: var(--ada-alarm-live-route-length); }
+    to { stroke-dashoffset: 0; }
+}
+@keyframes ada-alarm-live-marker-reveal {
+    from { opacity: 0; transform: scale(.55); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@media only screen and (max-width: 1279px) {
+    .ada-alarm-live-board, .ada-alarm-live-routes { display: none; }
+}
+@media only screen and (min-width: 2560px) {
+    .ada-alarm-live-board, .ada-alarm-live-group { min-height: 3.5rem; }
+    .ada-alarm-live-card { min-height: 3.5rem; font-size: 1rem; }
+    .ada-alarm-live-route { stroke-width: 4; }
+    .ada-alarm-live-marker__chevron { width: 12px; height: 12px; }
+    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 2.9rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card { animation: none !important; transition: none !important; }
 }
