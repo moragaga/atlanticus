@@ -10,6 +10,10 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import pandas as pd
+import pyarrow as pa
+
+from atlanticus.data_producers.remanentes.errors import RemanentesContractError
 from atlanticus.data_producers.remanentes.models import (
     RemanentesSourceBlob,
     RemanentesStocksStreamDefinition,
@@ -131,7 +135,7 @@ class RemanentesMaterializer:
         publication = self._runtime.replace(
             definition=self._dataset,
             target=target,
-            data=merged,
+            data=_publication_table(merged),
         )
         return RemanentesMaterializationResult(
             source_blob=source_blob,
@@ -211,7 +215,7 @@ class RemanentesLatestMaterializer(RemanentesMaterializer):
         publication = self._runtime.replace(
             definition=self._dataset,
             target=target,
-            data=transformed.dataframe,
+            data=_publication_table(transformed.dataframe),
         )
         return RemanentesMaterializationResult(
             source_blob=source_blob,
@@ -230,6 +234,37 @@ class RemanentesLatestMaterializer(RemanentesMaterializer):
         except DatasetRuntimeNotFoundError:
             return False
         return True
+
+
+# Fijamos el contrato físico temporal una sola vez, justo antes de entrar al DatasetRuntime.
+def _publication_table(frame: pd.DataFrame) -> pa.Table:
+    table = pa.Table.from_pandas(frame, preserve_index=False)
+    if 'timestamp' not in table.column_names:
+        raise RemanentesContractError('timestamp column is required')
+    utc_microseconds = pa.timestamp('us', tz='UTC')
+    for index, field in enumerate(table.schema):
+        if field.name == 'timestamp' and not pa.types.is_timestamp(field.type):
+            raise RemanentesContractError('timestamp column must be UTC')
+        if not pa.types.is_timestamp(field.type):
+            continue
+        # No interpretamos ni convertimos silenciosamente zonas horarias distintas de UTC.
+        if field.type.tz != 'UTC':
+            raise RemanentesContractError(f'timestamp column {field.name} must be UTC')
+        try:
+            # La conversión segura impide perder los nanosegundos que no caben en microsegundos.
+            values = table.column(index).cast(utc_microseconds, safe=True)
+        except (pa.ArrowException, ValueError) as error:
+            raise RemanentesContractError(
+                f'timestamp column {field.name} cannot be converted to microseconds '
+                'without data loss'
+            ) from error
+        table = table.set_column(
+            index,
+            pa.field(field.name, utc_microseconds, nullable=field.nullable),
+            values,
+        )
+    # Evitamos que el metadato técnico de Pandas altere el esquema estable publicado.
+    return table.replace_schema_metadata(None)
 
 
 def _build_dataset_definition(
