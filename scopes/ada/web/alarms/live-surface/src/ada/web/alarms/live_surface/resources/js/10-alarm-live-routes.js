@@ -268,7 +268,7 @@
         svg.setAttribute('viewBox', '0 0 100 100');
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('aria-hidden', 'true');
-        ['M 50 0 H 0 V 100 H 50', 'M 50 0 H 100 V 100 H 50'].forEach((d) => {
+        ['M 50 0 H 100 V 100 H 0 V 0 H 50'].forEach((d) => {
             const path = document.createElementNS(NS, 'path');
             path.setAttribute('d', d);
             path.setAttribute('pathLength', '100');
@@ -297,7 +297,7 @@
     function buildGeometry(controller, board, cards, points, integrated) {
         const surface = controller.surface;
         const overlay = surface.querySelector(ROUTES);
-        const origin = surface.getBoundingClientRect();
+        const origin = overlay.getBoundingClientRect();
         const width = Math.max(1, origin.width);
         const height = Math.max(1, origin.height);
         const definitions = [];
@@ -349,11 +349,14 @@
         const sameAnchors = controller.anchorNodes.length === points.length
             && points.every((point, index) => controller.anchorNodes[index] === point);
         const previousPaths = [...overlay.querySelectorAll(ROUTE)];
-        const sameTopology = sameAnchors && controller.routeTopology === topology
+        const previousSvg = overlay.querySelector('svg');
+        const sameTopology = Boolean(previousSvg) && sameAnchors
+            && controller.routeTopology === topology
             && previousPaths.length === definitions.length
             && surface.querySelectorAll(MARKER).length === markerDefinitions.length;
         if (signature !== controller.geometrySignature || !sameTopology) {
             if (sameTopology) {
+                previousSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
                 definitions.forEach(({d, length, delay, duration}, index) => {
                     const path = previousPaths[index];
                     path.setAttribute('d', d);
@@ -667,6 +670,14 @@
             const resize = new ResizeObserver(() => schedule(surface));
             resize.observe(surface);
             resize.observe(board);
+            const baseline = surface.querySelector('.ada-alarm-baseline-surface');
+            const overlay = surface.querySelector(ROUTES);
+            if (baseline) {
+                resize.observe(baseline);
+            }
+            if (overlay) {
+                resize.observe(overlay);
+            }
         }
         schedule(surface);
     }
@@ -725,6 +736,7 @@
             reconcileSurfaces();
         }
         window.addEventListener('resize', () => document.querySelectorAll(SURFACE).forEach(schedule));
+        window.addEventListener('scroll', () => document.querySelectorAll(SURFACE).forEach(schedule), true);
         new MutationObserver((records) => {
             if (records.every((record) => record.target.closest && record.target.closest(ROUTES))) {
                 return;
