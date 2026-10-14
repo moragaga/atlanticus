@@ -125,7 +125,7 @@ class FabricaPlanes:
             source=DataSource.FABRICA_PLANES,
             view=DataView.DAILY,
             columns=columns,
-            selection=_time_series_selection(period),
+            selection=_fabrica_selection(period),
         )
 
     @staticmethod
@@ -140,7 +140,7 @@ class FabricaPlanes:
             source=DataSource.FABRICA_PLANES,
             view=DataView.WEEKLY,
             columns=columns,
-            selection=_time_series_selection(period),
+            selection=_fabrica_selection(period),
         )
 
 
@@ -157,7 +157,7 @@ class FabricaKpis:
             source=DataSource.FABRICA_KPIS,
             view=DataView.DAILY,
             columns=columns,
-            selection=_time_series_selection(period),
+            selection=_fabrica_selection(period),
         )
 
     @staticmethod
@@ -172,7 +172,7 @@ class FabricaKpis:
             source=DataSource.FABRICA_KPIS,
             view=DataView.WEEKLY,
             columns=columns,
-            selection=_time_series_selection(period),
+            selection=_fabrica_selection(period),
         )
 
 
@@ -267,6 +267,13 @@ def _time_series_selection(value: TimeWindow | OperationalScope):
             raise ValueError(f'{value.value}: operational scope does not use a time-series view')
         return OperationalScopeSelection(value)
     raise TypeError('period must be TimeWindow or OperationalScope')
+
+
+# Fábrica admite meses calendario además de los períodos históricos existentes.
+def _fabrica_selection(value: TimeWindow | OperationalScope):
+    if isinstance(value, TimeWindow) and value.unit is TimeWindowUnit.MONTHS:
+        return TimeWindowSelection(value)
+    return _time_series_selection(value)
 
 
 # MONTHLY acepta únicamente ventanas expresadas en meses o scopes operacionales mensuales.

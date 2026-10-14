@@ -24,6 +24,7 @@ from atlanticus.operational_data.sources.errors import (
     DataSourceUnavailableError,
 )
 from atlanticus.operational_data.sources.frame import PandasRuntimeFrameContext
+from atlanticus.operational_data.sources.month_window import time_window_start
 from atlanticus.operational_data.sources.operational import OperationalWindowResolver
 from atlanticus.operational_data.sources.shifts import MineShiftResolver
 
@@ -134,7 +135,9 @@ class LoadedDataInputs:
                 frame=exact,
                 source=input_spec.source.value,
                 timestamp_column=partition_binding.timestamp_column,
-                start_utc=selection.window.start_from(self.as_of),
+                start_utc=time_window_start(
+                    source=input_spec.source, window=selection.window, as_of=self.as_of
+                ),
                 end_utc=self.as_of,
             )
         elif isinstance(selection, OperationalScopeSelection):

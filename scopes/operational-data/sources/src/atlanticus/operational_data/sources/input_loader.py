@@ -23,6 +23,7 @@ from atlanticus.operational_data.sources.input_loaded import (
     LoadedDataInputs,
     LoadedDataInputView,
 )
+from atlanticus.operational_data.sources.month_window import time_window_start
 from atlanticus.operational_data.sources.operational import OperationalWindowResolver
 from atlanticus.operational_data.sources.reader import SourceDatasetReader
 from atlanticus.operational_data.sources.shifts import MineShiftResolver
@@ -210,7 +211,10 @@ class DataInputLoader:
         plan: DataInputViewLoadPlan,
         as_of: datetime,
     ) -> tuple[datetime, datetime]:
-        starts = [window.start_from(as_of) for window in plan.time_windows]
+        starts = [
+            time_window_start(source=plan.source, window=window, as_of=as_of)
+            for window in plan.time_windows
+        ]
         ends = [as_of for _ in plan.time_windows]
         for scope in plan.operational_scopes:
             window = self._operational_resolver.resolve(scope=scope, as_of=as_of)
