@@ -7,6 +7,8 @@ const {
     routeGeometry,
     previewPlan,
     toggleSelection,
+    alarmGridColumn,
+    integratedPosition,
 } = require(path.join(__dirname,
     '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
 
@@ -102,51 +104,36 @@ test('distributed carousel navigates in the projected order and wraps without re
 });
 
 
-test('integrated placement aligns to components without overlapping card bounds', () => {
-    const {planIntegratedPositions} = require(path.join(__dirname,
-        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
-    const positions = planIntegratedPositions([
-        {key: 'plant-a', x: 810}, {key: 'mine-a', x: 75},
-        {key: 'mine-b', x: 150}, {key: 'plant-b', x: 840},
-    ], 1200);
-    assert.deepEqual(positions.map((item) => item.key), [
-        'mine-a', 'mine-b', 'plant-a', 'plant-b',
-    ]);
-    for (let i = 0; i < positions.length; i += 1) {
-        const item = positions[i];
-        assert.ok(item.width > 0 && item.width <= 196);
-        assert.ok(item.x - item.width / 2 >= 0);
-        assert.ok(item.x + item.width / 2 <= 1200);
-        if (i > 0) {
-            const previous = positions[i - 1];
-            assert.ok(previous.x + previous.width / 2 + 4 <= item.x - item.width / 2);
-        }
-    }
-});
-
-test('overview uses nine component widths while zoom retains pill width per area', () => {
-    const {planIntegratedPositions, integratedCardVisible} = require(path.join(__dirname,
-        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
-    const entries = [{key: 'mine-a', x: 70}, {key: 'plant-a', x: 900}];
-    const overview = planIntegratedPositions(entries, 1260, 9, true);
-    const zoom = planIntegratedPositions([{key: 'mine-a', x: 150}], 1260, 4, false);
-    assert.equal(overview[0].width, 136);
-    assert.equal(zoom[0].width, 206);
-    assert.equal(integratedCardVisible('mine', 'overview'), true);
-    assert.equal(integratedCardVisible('plant', 'mine'), false);
-    assert.equal(integratedCardVisible('plant', 'plant'), true);
-});
-
-test('nine visible points keep both area alarms in the overview', () => {
-    const {resolveIntegratedPresentation, integratedCardVisible} = require(path.join(__dirname,
-        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+test('integrated overview uses the component column while zoom keeps every logical slot', () => {
     const points = [
-        {dataset: {adaScope: 'mine'}},
-        {dataset: {adaScope: 'plant'}},
+        {dataset: {adaComponentKey: 'mine-a', adaScope: 'mine', adaAlarmBaselineRegion: 'main'}},
+        {dataset: {adaComponentKey: 'plant-a', adaScope: 'plant', adaAlarmBaselineRegion: 'main'}},
     ];
-    const presentation = resolveIntegratedPresentation(points, 'mine');
-    assert.equal(presentation, 'overview');
-    assert.equal(integratedCardVisible('plant', presentation), true);
+    const plant = {dataset: {
+        adaAlarmDisplayComponentKey: 'plant-a', adaAlarmDisplayScope: 'plant', adaAlarmSlot: '5',
+    }};
+    assert.equal(alarmGridColumn(plant, points, true, 'overview'), '2');
+    assert.equal(alarmGridColumn(plant, points.slice(0, 1), true, 'mine'), '5');
+    assert.equal(alarmGridColumn(plant, points.slice(1), true, 'plant'), '5');
+    assert.equal(alarmGridColumn(plant, points, false, 'overview'), '5');
+    const board = {dataset: {}};
+    const cards = ['mine', 'plant'].map((scope, index) => ({
+        parentElement: board, hidden: false,
+        dataset: {adaAlarmSlot: String(index + 4), adaAlarmDisplayScope: scope},
+        style: {gridColumn: '', removeProperty: () => {}},
+    }));
+    integratedPosition(board, cards, points.slice(0, 1), true, 'mine');
+    assert.equal(cards[0].hidden, false);
+    assert.equal(cards[1].hidden, false);
+    assert.deepEqual(cards.map((card) => card.style.gridColumn), ['4', '5']);
+});
+
+
+test('integrated zoom is determined by visible points without removing any card', () => {
+    const {resolveIntegratedPresentation} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const points = [{dataset: {adaScope: 'mine'}}, {dataset: {adaScope: 'plant'}}];
+    assert.equal(resolveIntegratedPresentation(points, 'mine'), 'overview');
     assert.equal(resolveIntegratedPresentation(points.slice(0, 1), 'mine'), 'mine');
     assert.equal(resolveIntegratedPresentation(points.slice(1), 'plant'), 'plant');
 });
@@ -170,14 +157,3 @@ test('two visible routed cards enter the visual rotation in component order', ()
     });
 });
 
-test('integrated placement refuses unresolved or colliding geometries', () => {
-    const {planIntegratedPositions} = require(path.join(__dirname,
-        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
-    assert.equal(planIntegratedPositions([{key: 'a', x: 30}], 0), null);
-    assert.equal(planIntegratedPositions([
-        {key: 'a', x: 20}, {key: 'b', x: 20},
-    ], 600), null);
-    assert.equal(planIntegratedPositions([
-        {key: 'a', x: 0},
-    ], 600), null);
-});

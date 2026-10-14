@@ -8,7 +8,7 @@
     const ROUTES = '.ada-alarm-live-routes';
     const ROUTE = '.ada-alarm-live-route';
     const MARKER = '.ada-alarm-live-marker';
-    const COMPONENT = '.ada-card-display[data-ada-subcomponent-key]';
+    const COMPONENT = '.ada-card-display[data-ada-subcomponent-key], .ada-card-display__region[data-ada-subcomponent-key]';
     const GROUP = '.ada-alarm-live-group';
     const GROUP_ITEM = '[data-ada-alarm-group-item="true"]';
     const GROUP_NAV = '[data-ada-alarm-group-navigation]';
@@ -144,9 +144,6 @@
         return (position + (direction === 'previous' ? count - 1 : 1)) % count;
     }
 
-    function integratedCardVisible(scope, presentation) {
-        return presentation === 'overview' || scope === presentation;
-    }
 
     function integratedGridColumn(card, points) {
         const key = card.dataset.adaAlarmDisplayComponentKey;
@@ -165,34 +162,6 @@
             && scopes.has(baselineScope) ? baselineScope : 'overview';
     }
 
-    function planIntegratedPositions(entries, boardWidth, pointCount = 6, overview = false) {
-        if (!entries.length || !Number.isFinite(boardWidth) || boardWidth <= 0
-            || (overview && (!Number.isInteger(pointCount) || pointCount < 1))) {
-            return null;
-        }
-        const ordered = [...entries].sort((a, b) => a.x - b.x);
-        const gap = 4;
-        const maxWidth = boardWidth / (overview ? pointCount : 6) - gap;
-        if (maxWidth <= 0) {
-            return null;
-        }
-        const result = [];
-        for (let index = 0; index < ordered.length; index += 1) {
-            const entry = ordered[index];
-            const left = index ? entry.x - ordered[index - 1].x : Number.POSITIVE_INFINITY;
-            const right = index + 1 < ordered.length
-                ? ordered[index + 1].x - entry.x : Number.POSITIVE_INFINITY;
-            const width = Math.min(
-                maxWidth, left - gap, right - gap,
-                2 * entry.x - gap, 2 * (boardWidth - entry.x) - gap,
-            );
-            if (!Number.isFinite(entry.x) || width <= 0) {
-                return null;
-            }
-            result.push({key: entry.key, x: entry.x, width});
-        }
-        return result;
-    }
 
     function markerKind(isOrigin, targetCount) {
         if (!isOrigin) {
@@ -263,17 +232,13 @@
         return true;
     }
 
+    function alarmGridColumn(card, points, integrated, presentation) {
+        const column = integrated && presentation === 'overview'
+            ? integratedGridColumn(card, points) : null;
+        return String(column || Number(card.dataset.adaAlarmSlot) || 1);
+    }
+
     function integratedPosition(board, cards, points, integrated, presentation) {
-        cards.forEach((card) => {
-            if (card.parentElement === board && integrated) {
-                const hidden = !integratedCardVisible(
-                    card.dataset.adaAlarmDisplayScope, presentation);
-                if (card.hidden !== hidden) {
-                    card.hidden = hidden;
-                }
-            }
-        });
-        const direct = cards.filter((card) => card.parentElement === board && visible(card));
         if (integrated) {
             board.dataset.adaAlarmLayout = 'integrated';
             board.dataset.adaAlarmPresentation = presentation;
@@ -281,67 +246,21 @@
             delete board.dataset.adaAlarmLayout;
             delete board.dataset.adaAlarmPresentation;
         }
-        if (integrated && presentation === 'overview') {
-            cards.forEach((card) => {
-                if (card.dataset.adaAlarmPositioned === 'true') {
-                    delete card.dataset.adaAlarmPositioned;
-                    card.style.removeProperty('--ada-alarm-live-display-x');
-                    card.style.removeProperty('--ada-alarm-live-display-width');
-                }
-                const column = integratedGridColumn(card, points);
-                const target = String(column || Number(card.dataset.adaAlarmSlot) || 1);
-                if (card.style.gridColumn !== target) {
-                    card.style.gridColumn = target;
-                }
-            });
-            return;
-        }
-        const origin = board.getBoundingClientRect();
-        const entries = direct.map((card) => {
-            const key = card.dataset.adaAlarmDisplayComponentKey;
-            const scope = card.dataset.adaAlarmDisplayScope;
-            const point = points.find((candidate) =>
-                candidate.dataset.adaComponentKey === key && candidate.dataset.adaScope === scope
-            );
-            return key && point ? {
-                key: card.dataset.adaAlarmOccurrenceId,
-                x: center(point.getBoundingClientRect(), origin),
-            } : null;
-        });
-        const plan = integrated && entries.length && entries.every(Boolean)
-            ? planIntegratedPositions(entries, origin.width, points.length,
-                presentation === 'overview') : null;
-        if (!plan || plan.length !== direct.length) {
-            cards.forEach((card) => {
-                if (card.dataset.adaAlarmPositioned === 'true') {
-                    delete card.dataset.adaAlarmPositioned;
-                    card.style.removeProperty('--ada-alarm-live-display-x');
-                    card.style.removeProperty('--ada-alarm-live-display-width');
-                }
-                const slot = String(Number(card.dataset.adaAlarmSlot) || 1);
-                if (card.style.gridColumn !== slot) {
-                    card.style.gridColumn = slot;
-                }
-            });
-            return;
-        }
-        plan.forEach((placement) => {
-            const card = direct.find((item) => item.dataset.adaAlarmOccurrenceId === placement.key);
-            const x = `${placement.x}px`;
-            const width = `${placement.width}px`;
-            if (card.style.getPropertyValue('--ada-alarm-live-display-x') !== x) {
-                card.style.setProperty('--ada-alarm-live-display-x', x);
+        cards.filter((card) => card.parentElement === board).forEach((card) => {
+            if (card.dataset.adaAlarmPositioned === 'true') {
+                delete card.dataset.adaAlarmPositioned;
+                card.style.removeProperty('--ada-alarm-live-display-x');
+                card.style.removeProperty('--ada-alarm-live-display-width');
             }
-            if (card.style.getPropertyValue('--ada-alarm-live-display-width') !== width) {
-                card.style.setProperty('--ada-alarm-live-display-width', width);
+            const column = alarmGridColumn(card, points, integrated, presentation);
+            if (card.style.gridColumn !== column) {
+                card.style.gridColumn = column;
             }
-            card.dataset.adaAlarmPositioned = 'true';
         });
     }
 
     function ensureAffectionTrace(component) {
-        const overlay = component.querySelector('.ada-card-display__overlay');
-        if (!overlay || overlay.querySelector('.ada-alarm-live-affection-trace')) {
+        if (component.querySelector(':scope > .ada-alarm-live-affection-trace')) {
             return;
         }
         const svg = document.createElementNS(NS, 'svg');
@@ -349,14 +268,13 @@
         svg.setAttribute('viewBox', '0 0 100 100');
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('aria-hidden', 'true');
-        ['M 50 1 H 4 Q 1 1 1 4 V 96 Q 1 99 4 99 H 50',
-            'M 50 1 H 96 Q 99 1 99 4 V 96 Q 99 99 96 99 H 50'].forEach((d) => {
+        ['M 50 0 H 0 V 100 H 50', 'M 50 0 H 100 V 100 H 50'].forEach((d) => {
             const path = document.createElementNS(NS, 'path');
             path.setAttribute('d', d);
             path.setAttribute('pathLength', '100');
             svg.appendChild(path);
         });
-        overlay.appendChild(svg);
+        component.appendChild(svg);
     }
 
     function addMarker(point, key, tone, kind) {
@@ -380,7 +298,6 @@
         const surface = controller.surface;
         const overlay = surface.querySelector(ROUTES);
         const origin = surface.getBoundingClientRect();
-        const boardRect = board.getBoundingClientRect();
         const width = Math.max(1, origin.width);
         const height = Math.max(1, origin.height);
         const definitions = [];
@@ -397,8 +314,9 @@
             if (!targetKeys.size || (tone !== 'RED' && tone !== 'YELLOW')) {
                 return;
             }
-            const fromX = center(card.getBoundingClientRect(), origin);
-            const fromY = boardRect.bottom - origin.top;
+            const cardRect = card.getBoundingClientRect();
+            const fromX = center(cardRect, origin);
+            const fromY = cardRect.bottom - origin.top;
             const originComponent = card.dataset.adaAlarmDisplayComponentKey;
             const originScope = card.dataset.adaAlarmDisplayScope;
             const targets = points.filter((point) => targetKeys.has(point.dataset.adaComponentKey));
@@ -423,33 +341,56 @@
             ...definitions.map((item) => `${item.occurrence}|${item.tone}|${item.d}`),
             ...markerDefinitions.map((item) => `${item.occurrence}|${item.kind}|${item.arrival}`),
         ].join('||');
+        const topology = [
+            ...definitions.map((item) => `${item.occurrence}|${item.tone}`),
+            ...markerDefinitions.map((item) =>
+                `${item.occurrence}|${item.tone}|${item.kind}|${item.point.dataset.adaComponentKey}`),
+        ].join('||');
         const sameAnchors = controller.anchorNodes.length === points.length
             && points.every((point, index) => controller.anchorNodes[index] === point);
-        if (signature !== controller.geometrySignature || !sameAnchors
-            || !overlay.querySelector('svg')
-            || surface.querySelectorAll(MARKER).length !== markerDefinitions.length) {
-            const svg = document.createElementNS(NS, 'svg');
-            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-            svg.setAttribute('preserveAspectRatio', 'none');
-            svg.setAttribute('aria-hidden', 'true');
-            definitions.forEach(({occurrence, tone, d, length, delay, duration}) => {
-                const path = document.createElementNS(NS, 'path');
-                path.setAttribute('d', d);
-                path.setAttribute('class', `ada-alarm-live-route ada-alarm-live-route--${tone.toLowerCase()}`);
-                path.dataset.adaAlarmOccurrenceId = occurrence;
-                path.dataset.adaAlarmFocus = 'idle';
-                svg.appendChild(path);
-                path.style.setProperty('--ada-alarm-live-route-length', `${length}px`);
-                path.style.setProperty('--ada-alarm-live-route-delay', `${delay}ms`);
-                path.style.setProperty('--ada-alarm-live-route-duration', `${duration}ms`);
-            });
-            points.forEach((point) => point.querySelectorAll(MARKER).forEach((marker) => marker.remove()));
-            markerDefinitions.forEach(({occurrence, tone, point, kind, arrival}) => {
-                const marker = addMarker(point, occurrence, tone, kind);
-                marker.style.setProperty('--ada-alarm-live-marker-delay', `${arrival}ms`);
-            });
-            overlay.replaceChildren(svg);
+        const previousPaths = [...overlay.querySelectorAll(ROUTE)];
+        const sameTopology = sameAnchors && controller.routeTopology === topology
+            && previousPaths.length === definitions.length
+            && surface.querySelectorAll(MARKER).length === markerDefinitions.length;
+        if (signature !== controller.geometrySignature || !sameTopology) {
+            if (sameTopology) {
+                definitions.forEach(({d, length, delay, duration}, index) => {
+                    const path = previousPaths[index];
+                    path.setAttribute('d', d);
+                    path.style.setProperty('--ada-alarm-live-route-length', `${length}px`);
+                    path.style.setProperty('--ada-alarm-live-route-delay', `${delay}ms`);
+                    path.style.setProperty('--ada-alarm-live-route-duration', `${duration}ms`);
+                });
+                markerDefinitions.forEach(({occurrence, point, arrival}) => {
+                    const marker = [...point.querySelectorAll(MARKER)].find((item) =>
+                        item.dataset.adaAlarmOccurrenceId === occurrence);
+                    marker.style.setProperty('--ada-alarm-live-marker-delay', `${arrival}ms`);
+                });
+            } else {
+                const svg = document.createElementNS(NS, 'svg');
+                svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                svg.setAttribute('preserveAspectRatio', 'none');
+                svg.setAttribute('aria-hidden', 'true');
+                definitions.forEach(({occurrence, tone, d, length, delay, duration}) => {
+                    const path = document.createElementNS(NS, 'path');
+                    path.setAttribute('d', d);
+                    path.setAttribute('class', `ada-alarm-live-route ada-alarm-live-route--${tone.toLowerCase()}`);
+                    path.dataset.adaAlarmOccurrenceId = occurrence;
+                    path.dataset.adaAlarmFocus = 'idle';
+                    svg.appendChild(path);
+                    path.style.setProperty('--ada-alarm-live-route-length', `${length}px`);
+                    path.style.setProperty('--ada-alarm-live-route-delay', `${delay}ms`);
+                    path.style.setProperty('--ada-alarm-live-route-duration', `${duration}ms`);
+                });
+                points.forEach((point) => point.querySelectorAll(MARKER).forEach((marker) => marker.remove()));
+                markerDefinitions.forEach(({occurrence, tone, point, kind, arrival}) => {
+                    const marker = addMarker(point, occurrence, tone, kind);
+                    marker.style.setProperty('--ada-alarm-live-marker-delay', `${arrival}ms`);
+                });
+                overlay.replaceChildren(svg);
+            }
             controller.geometrySignature = signature;
+            controller.routeTopology = topology;
             controller.anchorNodes = [...points];
         }
         controller.cards = cards;
@@ -472,22 +413,24 @@
         const addresses = card ? targetAddresses(card.dataset.adaAlarmTargetAddresses) : [];
         const phase = controller.selected ? 'selected' : controller.phase;
         application.querySelectorAll(COMPONENT).forEach((component) => {
-            const owner = component.dataset.adaComponentKey;
+            const owner = component.dataset.adaComponentKey
+                || component.closest('[data-ada-component-key]')?.dataset.adaComponentKey;
             const subcomponent = component.dataset.adaSubcomponentKey;
             const arrival = controller.arrivals.get(JSON.stringify([focused, owner]));
             const affected = addresses.some(([key, subkey]) =>
                 key === owner && subkey === subcomponent);
-            if (affected && arrival !== undefined && (color === 'RED' || color === 'YELLOW')) {
+            if (affected && (color === 'RED' || color === 'YELLOW')) {
                 ensureAffectionTrace(component);
                 component.dataset.adaAlarmAffection = color.toLowerCase();
                 component.dataset.adaAlarmPhase = phase;
-                component.style.setProperty('--ada-alarm-live-affection-delay', `${arrival}ms`);
+                const delay = arrival === undefined ? revealArrivalMs(0, 1) : arrival;
+                component.style.setProperty('--ada-alarm-live-affection-delay', `${delay}ms`);
             } else {
                 delete component.dataset.adaAlarmAffection;
                 delete component.dataset.adaAlarmPhase;
                 component.style.removeProperty('--ada-alarm-live-affection-delay');
             }
-            if (affected && arrival !== undefined && phase !== 'reveal' && phase !== 'fade') {
+            if (affected && phase !== 'reveal' && phase !== 'fade') {
                 component.dataset.adaAlarmFocused = 'true';
             } else {
                 delete component.dataset.adaAlarmFocused;
@@ -704,7 +647,7 @@
         const controller = {
             surface, cards: [], points: [], paths: [], markers: [], candidates: [],
             selected: null, active: null, phase: 'idle', completed: new Set(),
-            timer: null, generation: 0, geometrySignature: null, anchorNodes: [],
+            timer: null, generation: 0, geometrySignature: null, routeTopology: null, anchorNodes: [],
             arrivals: new Map(),
             groupCurrent: new Map(),
         };
@@ -794,7 +737,7 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
             routeGeometry, previewPlan, toggleSelection, groupChoice, nextGroupIndex,
-            planIntegratedPositions, integratedCardVisible, markerKind, sortedPreviewCandidates,
+            alarmGridColumn, integratedPosition, markerKind, sortedPreviewCandidates,
             targetAddresses, routeTargetKeys, revealArrivalMs, nextCycleAfterSelection,
             resolveIntegratedPresentation, integratedGridColumn,
         };

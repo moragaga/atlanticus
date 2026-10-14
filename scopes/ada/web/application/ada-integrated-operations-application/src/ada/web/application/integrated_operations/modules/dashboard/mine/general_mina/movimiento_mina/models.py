@@ -10,7 +10,7 @@ from ada.web.ui.display_status import (
     ValueSeverity,
 )
 
-MOVIMIENTO_MINA_KPI_KEY = 'movimiento_mina'
+MOVIMIENTO_MINA_KPI_KEY = 'movimiento_mina_summary'
 
 
 class MovimientoMinaRowKey(StrEnum):

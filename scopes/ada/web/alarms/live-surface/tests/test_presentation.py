@@ -28,6 +28,21 @@ def test_live_surface_keeps_static_baseline_and_accessible_board():
     surface = build_alarm_live_surface(projection)
     props = [node.to_plotly_json()['props'] for node in _walk(surface)]
     assert props[0]['data-ada-alarm-live-tool-key'] == 'io'
+    assert props[0]['style']['--ada-alarm-live-component-count'] == '6'
     assert any(item.get('id') == 'ada-alarm-live-board' for item in props)
     assert any(item.get('aria-hidden') == 'true' and item.get('data-ada-alarm-baseline') for item in props)
     assert any(item.get('data-ada-component-key') == 'crusher' for item in props)
+
+
+def test_integrated_surface_divides_into_actual_component_count():
+    points = tuple(AlarmBaselinePoint(
+        anchor_kind=AlarmBaselineAnchorKind.COMPONENT, anchor_key=f'component_{index}',
+        component_key=f'component_{index}', display_name=f'Component {index}',
+        scope=ToolScope.PLANT,
+    ) for index in range(3))
+    projection = AlarmBaselineProjection(
+        tool_key='io', kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        main_points=points,
+    )
+    surface = build_alarm_live_surface(projection)
+    assert surface.style['--ada-alarm-live-component-count'] == '3'

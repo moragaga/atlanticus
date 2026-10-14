@@ -5,7 +5,7 @@ const path = require('node:path');
 const {test} = require('node:test');
 const {
     routeGeometry, previewPlan, toggleSelection, groupChoice, nextGroupIndex,
-    planIntegratedPositions, markerKind, sortedPreviewCandidates, integratedGridColumn,
+    alarmGridColumn, markerKind, sortedPreviewCandidates, integratedGridColumn,
 } = require(path.join(__dirname,
     '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
 
@@ -52,15 +52,14 @@ test('distributed group retains the projected order and wraps navigation', () =>
     assert.equal(nextGroupIndex(3, 2, 'next'), 0);
 });
 
-test('integrated cards align to their process point without overlap', () => {
-    const layout = planIntegratedPositions([
-        {key: 'plant', x: 900}, {key: 'mine', x: 150},
-    ], 1200);
-    assert.deepEqual(layout.map((item) => item.key), ['mine', 'plant']);
-    assert.ok(layout.every((item) => item.width > 0 && item.width <= 196));
-    assert.equal(planIntegratedPositions([
-        {key: 'a', x: 50}, {key: 'b', x: 50},
-    ], 1200), null);
+test('zoom keeps the original slot independently of whether its component is displayed', () => {
+    const card = {dataset: {
+        adaAlarmDisplayComponentKey: 'plant', adaAlarmDisplayScope: 'plant', adaAlarmSlot: '4',
+    }};
+    const minePoints = [{dataset: {
+        adaComponentKey: 'mine', adaScope: 'mine', adaAlarmBaselineRegion: 'main',
+    }}];
+    assert.equal(alarmGridColumn(card, minePoints, true, 'mine'), '4');
 });
 
 test('component IDs position the two live alarms in columns one and seven', () => {

@@ -9,42 +9,45 @@ from ada.web.ui.global_indicator import (
 
 from .bindings import DashboardGlobalIndicatorBinding
 
+_DEFINITION = (
+    {'label': 'Movimiento Mina', 'unit': 'ktms', 'key': 'movimiento_mina', 'scopes': (ToolScope.MINE,)},
+    {'label': 'Transportado', 'unit': 'ktms', 'key': 'transportado', 'scopes': (ToolScope.MINE, ToolScope.PLANT,)},
+    {'label': 'Ley Cu', 'unit': '%', 'key': 'ley_cu', 'scopes': (ToolScope.MINE,)},
+    {'label': 'Tratamiento', 'unit': 'ktms', 'key': 'tratamiento', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Recuperación Cu', 'unit': '%', 'key': 'cu_recuperacion', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Cu Fino Producido', 'unit': 'tmf', 'key': 'cu_fino_producido', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Mo Fino Producido', 'unit': 'tmf', 'key': 'mo_fino_producido', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Mo Fino Envasado', 'unit': 'tmf', 'key': 'mo_fino_envasado', 'scopes': (ToolScope.PLANT,)},
+)
 
-def _build_test() -> tuple[DashboardGlobalIndicatorBinding, ...]:
-    data = []
-    for index in range(1, 9):
-        if index == 1:
-            scopes = (ToolScope.MINE,)
-        elif index == 2:
-            scopes = (ToolScope.MINE, ToolScope.PLANT)
-        else:
-            scopes = (ToolScope.PLANT,)
-        data.append(DashboardGlobalIndicatorBinding(
+
+def _build_global_indicators() -> tuple[DashboardGlobalIndicatorBinding, ...]:
+    return (
+        DashboardGlobalIndicatorBinding(
             definition=GlobalIndicatorDefinition(
-                key=f'test_indicator_{index}',
-                label=f'Indicador Prueba {index}',
-                unit='kt',
+                key=indicator.get('key'),
+                label=indicator.get('label'),
+                unit=indicator.get('unit'),
                 measurements=(
                     GlobalIndicatorMeasurementDefinition(
                         key='day',
                         label='Día',
-                        actual_kpi_key=f'test_indicator_day_actual_{index}',
-                        plan_kpi_key=f'test_indicator_day_plan_{index}',
+                        actual_kpi_key=f'{indicator.get('key')}_real_dia_acc',
+                        plan_kpi_key=f'{indicator.get('key')}_real_dia_plan',
                     ),
                     GlobalIndicatorMeasurementDefinition(
                         key='week',
                         label='Semana',
-                        actual_kpi_key=f'test_indicator_week_actual_{index}',
-                        plan_kpi_key=f'test_indicator_week_plan_{index}',
+                        actual_kpi_key=f'{indicator.get('key')}_real_semana_acc',
+                        plan_kpi_key=f'{indicator.get('key')}_real_semana_plan',
                     ),
                 ),
             ),
-            scopes=scopes,
-        ))
-    return tuple(data)
+            scopes=indicator.get('scopes'),
+        )
+        for indicator in _DEFINITION
+    )
 
 
 INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.READY
-INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS: tuple[DashboardGlobalIndicatorBinding, ...] = (
-    tuple(_build_test())
-)
+INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS: tuple[DashboardGlobalIndicatorBinding, ...] = tuple(_build_global_indicators())

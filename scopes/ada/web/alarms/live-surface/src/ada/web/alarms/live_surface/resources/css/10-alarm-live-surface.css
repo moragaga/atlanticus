@@ -17,7 +17,7 @@
 
 .ada-alarm-live-board {
     display: grid;
-    grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 1), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--ada-alarm-live-component-count, 6), minmax(0, 1fr));
     width: 100%;
     min-width: 0;
     min-height: 5.2rem;
@@ -55,19 +55,11 @@
 .ada-alarm-live-card--red { --ada-alarm-live-tone: var(--ada-alarm-live-red); }
 .ada-alarm-live-card--yellow { --ada-alarm-live-tone: var(--ada-alarm-live-yellow); }
 .ada-alarm-live-card--neutral { --ada-alarm-live-tone: var(--ada-alarm-live-neutral); }
-.ada-alarm-live-card[data-ada-alarm-selected='true'] {
-    box-shadow: 0 1px 5px #00000020;
-}
-.ada-alarm-live-card[data-ada-alarm-previewing='true'] {
-    box-shadow: 0 1px 4px #00000014;
-}
 .ada-alarm-live-card[role='button']:hover { border-color: var(--ada-alarm-live-tone); }
 .ada-alarm-live-card[role='button']:focus-visible {
     outline: 2px solid var(--ada-alarm-live-tone);
     outline-offset: 2px;
 }
-.ada-alarm-live-surface[data-ada-alarm-has-selection='true']
-.ada-alarm-live-card[data-ada-alarm-selected='false'] { opacity: .65; }
 
 .ada-alarm-live-card__header {
     flex: 0 0 1.15rem;
@@ -160,7 +152,7 @@
     z-index: 2;
 }
 .ada-alarm-live-surface .ada-alarm-baseline-surface__trace {
-    height: 2.45rem;
+    height: 6rem;
     overflow: visible;
     pointer-events: none;
 }
@@ -246,12 +238,19 @@
 .ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--up { transform: translateY(-2px) rotate(225deg); }
 .ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--down { transform: translateY(2px) rotate(45deg); }
 
-.ada-card-display[data-ada-alarm-affection='red'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-red); }
-.ada-card-display[data-ada-alarm-affection='yellow'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-yellow); }
+.ada-card-display[data-ada-alarm-affection='red'],
+.ada-card-display__region[data-ada-alarm-affection='red'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-red); }
+.ada-card-display[data-ada-alarm-affection='yellow'],
+.ada-card-display__region[data-ada-alarm-affection='yellow'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-yellow); }
+.ada-card-display__region[data-ada-alarm-affection] { position: relative; }
 .ada-alarm-live-affection-trace {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
     overflow: visible;
+    pointer-events: none;
+    z-index: 11;
 }
 .ada-alarm-live-affection-trace path {
     fill: none;
@@ -263,14 +262,18 @@
     opacity: 0;
     transition: opacity var(--ada-alarm-live-fade-duration) ease;
 }
-.ada-card-display[data-ada-alarm-phase='reveal'] .ada-alarm-live-affection-trace path {
+.ada-card-display[data-ada-alarm-phase='reveal'] > .ada-alarm-live-affection-trace path,
+.ada-card-display__region[data-ada-alarm-phase='reveal'] > .ada-alarm-live-affection-trace path {
     opacity: 1;
     animation: ada-alarm-live-affection-reveal 950ms linear both;
     animation-delay: var(--ada-alarm-live-affection-delay);
 }
-.ada-card-display[data-ada-alarm-phase='steady'] .ada-alarm-live-affection-trace path,
-.ada-card-display[data-ada-alarm-phase='selected'] .ada-alarm-live-affection-trace path,
-.ada-card-display[data-ada-alarm-phase='hold'] .ada-alarm-live-affection-trace path {
+.ada-card-display[data-ada-alarm-phase='steady'] > .ada-alarm-live-affection-trace path,
+.ada-card-display[data-ada-alarm-phase='selected'] > .ada-alarm-live-affection-trace path,
+.ada-card-display[data-ada-alarm-phase='hold'] > .ada-alarm-live-affection-trace path,
+.ada-card-display__region[data-ada-alarm-phase='steady'] > .ada-alarm-live-affection-trace path,
+.ada-card-display__region[data-ada-alarm-phase='selected'] > .ada-alarm-live-affection-trace path,
+.ada-card-display__region[data-ada-alarm-phase='hold'] > .ada-alarm-live-affection-trace path {
     stroke-dashoffset: 0;
     opacity: 1;
 }
@@ -325,27 +328,21 @@
 
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'] { position: relative; }
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='overview'] {
-    grid-template-columns: repeat(9, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--ada-alarm-live-component-count, 6), minmax(0, 1fr));
 }
-.ada-alarm-live-board[data-ada-alarm-layout='integrated'] >
-.ada-alarm-live-card[data-ada-alarm-positioned='true'] {
-    position: absolute;
-    inset-block-start: 0;
-    inset-block-end: 0;
-    left: var(--ada-alarm-live-display-x);
-    width: var(--ada-alarm-live-display-width);
-    transform: translateX(-50%);
-    margin-inline: 0;
-    transition: left .35s ease, width .35s ease, opacity .2s ease, box-shadow .2s ease;
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'],
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] {
+    grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 6), minmax(0, 1fr));
 }
+@media only screen and (min-width: 1366px) {
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'],
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] {
     min-height: 2.75rem;
 }
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
-.ada-alarm-live-card[data-ada-alarm-positioned='true'],
+.ada-alarm-live-card,
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
-.ada-alarm-live-card[data-ada-alarm-positioned='true'] {
+.ada-alarm-live-card {
     flex-direction: row;
     align-items: center;
     gap: .25rem;
@@ -443,12 +440,13 @@
     .ada-alarm-live-card { min-height: 7rem; font-size: 1rem; }
     .ada-alarm-live-route { stroke-width: 4; }
     .ada-alarm-live-marker__chevron { width: 12px; height: 12px; }
-    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 2.9rem; }
+    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
     .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card,
     .ada-alarm-live-affection-trace path { animation: none !important; transition: none !important; }
-    .ada-card-display[data-ada-alarm-phase='reveal'] .ada-alarm-live-affection-trace path {
+    .ada-card-display[data-ada-alarm-phase='reveal'] > .ada-alarm-live-affection-trace path,
+    .ada-card-display__region[data-ada-alarm-phase='reveal'] > .ada-alarm-live-affection-trace path {
         stroke-dashoffset: 0;
     }
 }

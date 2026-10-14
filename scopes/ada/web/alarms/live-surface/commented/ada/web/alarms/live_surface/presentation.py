@@ -32,5 +32,9 @@ def build_alarm_live_surface(projection: AlarmBaselineProjection) -> html.Div:
             html.Div(className='ada-alarm-live-routes', **{'aria-hidden': 'true'}),
         ],
         className='ada-alarm-live-surface',
+        style={'--ada-alarm-live-component-count': (
+            str(len(projection.main_points))
+            if projection.kind.value == 'integrated_operations' else '6'
+        )},
         **{'data-ada-alarm-live-tool-key': projection.tool_key},
     )
