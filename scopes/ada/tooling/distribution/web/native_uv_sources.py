@@ -58,7 +58,14 @@ def prepare_native_uv_sources(project: Path, wheelhouse: Path, packages: list[di
         lines.append(
             f'{json.dumps(name)} = {{ path = {json.dumps("wheelhouse/" + filename)} }}'
         )
-    lines.append('')
+    lines.extend((
+        '',
+        '[[tool.uv.index]]',
+        'name = "atlanticus-wheelhouse"',
+        'url = "wheelhouse"',
+        'format = "flat"',
+        '',
+    ))
     generated = '\n'.join(lines)
     tomllib.loads(generated)
     project.write_text(generated, encoding='utf-8')
