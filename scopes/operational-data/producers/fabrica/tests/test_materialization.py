@@ -88,6 +88,11 @@ def test_materializer_publishes_monthly_daily_and_weekly(tmp_path) -> None:
     assert pq.read_table(
         tmp_path / 'datasets/fabrica/kpis/weekly/year=2026/month=08/data.parquet'
     ).column_names == ['timestamp', 'a']
+    for view in ('daily', 'weekly'):
+        physical = pq.read_schema(
+            tmp_path / f'datasets/fabrica/kpis/{view}/year=2026/month=08/data.parquet'
+        )
+        assert physical.field('timestamp').type == pa.timestamp('us', tz='UTC')
 
 
 def test_monthly_daily_snapshot_is_partial_upsert(tmp_path) -> None:

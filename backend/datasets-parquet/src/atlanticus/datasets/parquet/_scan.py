@@ -47,6 +47,8 @@ def _scan_publications(
     filter_fields = _resolve_filter_fields(
         publications=publications,
         filters=filters,
+        output_schema=output_schema,
+        typed_projection=projection_schema is not None,
     )
     tables: list[pa.Table] = []
     artifact_count = 0
@@ -127,15 +129,16 @@ def _scan_artifact(
                     f'parquet artifact schema changed while scanning column {field.name}'
                 )
             if column.type != field.type:
-                if not _compatible_text_width(column.type, field.type):
+                if not _compatible_projected_type(column.type, field.type):
                     raise ParquetCorruptionError(
                         f'parquet artifact schema changed while scanning column {field.name}'
                     )
                 try:
                     column = column.cast(field.type, safe=True)
                 except (pa.ArrowException, ValueError) as error:
-                    raise ParquetReadError(
-                        f'could not cast projected text column {field.name}'
+                    raise ParquetSchemaError(
+                        f'projected column {field.name} cannot be converted without data loss: '
+                        f'{column.type} != {field.type}'
                     ) from error
             arrays.append(column)
         else:
@@ -184,7 +187,7 @@ def _resolve_projected_field(
         field.type
         for field in found
         if field.type != expected.type
-        and not _compatible_text_width(field.type, expected.type)
+        and not _compatible_projected_type(field.type, expected.type)
     ]
     if incompatible:
         types = sorted({str(expected.type), *(str(data_type) for data_type in incompatible)})
@@ -202,6 +205,22 @@ def _resolve_projected_field(
     )
 
 
+def _compatible_projected_type(physical: pa.DataType, requested: pa.DataType) -> bool:
+    return _compatible_text_width(physical, requested) or _compatible_utc_timestamp_precision(
+        physical, requested
+    )
+
+
+def _compatible_utc_timestamp_precision(physical: pa.DataType, requested: pa.DataType) -> bool:
+    return (
+        pa.types.is_timestamp(physical)
+        and pa.types.is_timestamp(requested)
+        and physical.tz == requested.tz == 'UTC'
+        and physical.unit in {'us', 'ns'}
+        and requested.unit in {'us', 'ns'}
+    )
+
+
 def _compatible_text_width(physical: pa.DataType, requested: pa.DataType) -> bool:
     return (
         pa.types.is_string(physical) and pa.types.is_large_string(requested)
@@ -214,11 +233,28 @@ def _resolve_filter_fields(
     *,
     publications: tuple[_ResolvedPublication, ...],
     filters: tuple[ColumnFilter, ...],
+    output_schema: pa.Schema,
+    typed_projection: bool,
 ) -> dict[str, pa.Field]:
     fields: dict[str, pa.Field] = {}
     for item in filters:
         if item.column in fields:
             continue
+        if typed_projection and item.column in output_schema.names:
+            expected = output_schema.field(item.column)
+            if pa.types.is_timestamp(expected.type):
+                found = tuple(
+                    publication.schema.field(item.column)
+                    for publication in publications
+                    if item.column in publication.schema.names
+                )
+                if found and all(
+                    field.type == expected.type
+                    or _compatible_utc_timestamp_precision(field.type, expected.type)
+                    for field in found
+                ):
+                    fields[item.column] = expected
+                    continue
         field = _resolve_field(
             publications=publications,
             column=item.column,

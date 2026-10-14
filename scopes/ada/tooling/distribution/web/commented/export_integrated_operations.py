@@ -20,8 +20,10 @@ PROJECT_ROOT = REPOSITORY_ROOT / 'scopes/ada/web/application/ada-integrated-oper
 GENERIC_ROOT = REPOSITORY_ROOT / 'scopes/ada/web/application/ada-generic-application'
 BASE_STARTER = REPOSITORY_ROOT / 'tooling/distribution/web/starter/base'
 ADA_STARTER = TOOLING_ROOT / 'starter'
+sys.path.insert(0, str(TOOLING_ROOT))
 sys.path.insert(0, str(REPOSITORY_ROOT / 'tooling/distribution/web'))
 
+from native_uv_sources import prepare_native_uv_sources
 from generate_starter import _copy_product_files, _environment_entries, _mapping, _secrets
 from build_distribution import (
     AdaDistributionError,
@@ -348,6 +350,9 @@ def _build(destination: Path, uv: str) -> int:
         if any(record['name'] == tooling['name'] for record in records):
             raise AdaDistributionError('Duplicate ADA project tooling package')
         records = sorted((*records, tooling), key=lambda row: row['name'])
+        # Se declara la fuente de los wheels privados sin bloquear la exportación por la plataforma local.
+        prepare_native_uv_sources(destination / 'pyproject.toml', wheelhouse, records)
+        manifest['files']['pyproject.toml'] = _sha256(destination / 'pyproject.toml')
         requirements = staging / 'requirements'
         requirements.mkdir()
         for path in (external, host, starter_build):

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 
+from atlanticus.data_producers.fabrica.errors import FabricaSchemaError
 from atlanticus.data_producers.fabrica.models import FabricaSourceBlob, FabricaStreamDefinition
 from atlanticus.data_producers.fabrica.source import FabricaStorageSource
 from atlanticus.data_producers.fabrica.transform import (
@@ -137,7 +139,7 @@ class FabricaMaterializer:
                     publication = self._runtime.replace(
                         definition=self._dataset,
                         target=target,
-                        data=merged,
+                        data=_publication_table(merged),
                     )
                     publications.append(
                         FabricaPartitionPublication(
@@ -189,6 +191,28 @@ def _build_dataset_definition(
             for dataset in definition.datasets
         ),
     )
+
+
+def _publication_table(frame: pd.DataFrame) -> pa.Table:
+    table = pa.Table.from_pandas(frame, preserve_index=False)
+    utc_microseconds = pa.timestamp('us', tz='UTC')
+    for index, field in enumerate(table.schema):
+        if not pa.types.is_timestamp(field.type):
+            continue
+        if field.type.tz != 'UTC':
+            raise FabricaSchemaError(f'timestamp column {field.name} must be UTC')
+        try:
+            values = table.column(index).cast(utc_microseconds, safe=True)
+        except (pa.ArrowException, ValueError) as error:
+            raise FabricaSchemaError(
+                f'timestamp column {field.name} cannot be converted to microseconds without data loss'
+            ) from error
+        table = table.set_column(
+            index,
+            pa.field(field.name, utc_microseconds, nullable=field.nullable),
+            values,
+        )
+    return table.replace_schema_metadata(None)
 
 
 def _materialization_frames(
