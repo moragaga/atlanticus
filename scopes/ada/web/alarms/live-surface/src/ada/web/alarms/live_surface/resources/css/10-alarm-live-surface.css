@@ -158,6 +158,14 @@
     overflow: visible;
     pointer-events: none;
 }
+@media only screen and (min-width: 1280px) and (max-width: 2559px) {
+    .ada-alarm-live-surface .ada-alarm-baseline-surface {
+        --ada-alarm-baseline-y: 64%;
+    }
+    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace {
+        height: 2.3rem;
+    }
+}
 .ada-alarm-live-surface .ada-alarm-baseline-surface__baseline {
     background: var(--ada-alarm-live-baseline);
 }
