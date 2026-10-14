@@ -1,29 +1,30 @@
-/* Espejo pedagógico: adaptación del diseño operacional_trace de isolated-web-functions. */
-/* La posición de los chevrons y el trazado los determina el JavaScript usando puntos reales del Tool. */
-.ada-alarm-live-surface {
+#ada-generic-application {
     --ada-alarm-live-red: #dc3545;
     --ada-alarm-live-yellow: #e0a800;
     --ada-alarm-live-neutral: #6b6b6b;
     --ada-alarm-live-muted: #b8b8b8;
     --ada-alarm-live-baseline: #e1e1e1;
-    --ada-alarm-live-preview-duration: 4000ms;
     --ada-alarm-live-fade-duration: 3000ms;
     --ada-alarm-live-route-y: 28%;
+}
+
+.ada-alarm-live-surface {
     position: relative;
     width: 100%;
     min-width: 0;
     isolation: isolate;
 }
 
-/* Las tarjetas mantienen el orden y los slots de operator_view. */
 .ada-alarm-live-board {
     display: grid;
     grid-template-columns: repeat(var(--ada-alarm-live-slot-count, 1), minmax(0, 1fr));
     width: 100%;
     min-width: 0;
-    min-height: 2.75rem;
+    min-height: 5.2rem;
     align-items: stretch;
     gap: .15rem;
+    padding-inline: .15rem;
+    box-sizing: border-box;
     position: relative;
     z-index: 3;
 }
@@ -32,34 +33,33 @@
     --ada-alarm-live-tone: var(--ada-alarm-live-neutral);
     box-sizing: border-box;
     display: flex;
-    align-items: center;
-    gap: .3rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     min-width: 0;
-    min-height: 2.75rem;
-    margin-inline: .15rem;
-    padding: .28rem .4rem;
-    border: 1px solid #bdbdbd;
-    border-inline-start: 3px solid var(--ada-alarm-live-tone);
-    border-radius: .4rem;
-    background: #f2f2f2;
+    min-height: 5.2rem;
+    margin-inline: .12rem;
+    padding: 0;
+    border: 1px solid var(--ada-alarm-live-tone);
+    border-radius: .3rem;
+    background: #ebebeb;
     color: #4d4d4d;
-    font-size: .7rem;
+    font-size: .55rem;
     cursor: pointer;
     user-select: none;
-    transition: border-color .16s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+    overflow: hidden;
+    transition: border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
+.ada-alarm-live-card[hidden] { display: none; }
 
 .ada-alarm-live-card--red { --ada-alarm-live-tone: var(--ada-alarm-live-red); }
 .ada-alarm-live-card--yellow { --ada-alarm-live-tone: var(--ada-alarm-live-yellow); }
 .ada-alarm-live-card--neutral { --ada-alarm-live-tone: var(--ada-alarm-live-neutral); }
 .ada-alarm-live-card[data-ada-alarm-selected='true'] {
-    border-color: var(--ada-alarm-live-tone);
-    border-inline-start-width: 4px;
-    box-shadow: inset 0 0 0 1px var(--ada-alarm-live-tone), 0 1px 6px #00000015;
+    box-shadow: 0 1px 5px #00000020;
 }
 .ada-alarm-live-card[data-ada-alarm-previewing='true'] {
-    border-color: var(--ada-alarm-live-tone);
-    box-shadow: inset 0 0 0 1px var(--ada-alarm-live-tone);
+    box-shadow: 0 1px 4px #00000014;
 }
 .ada-alarm-live-card[role='button']:hover { border-color: var(--ada-alarm-live-tone); }
 .ada-alarm-live-card[role='button']:focus-visible {
@@ -70,66 +70,89 @@
 .ada-alarm-live-card[data-ada-alarm-selected='false'] { opacity: .65; }
 
 .ada-alarm-live-card__header {
-    flex: 0 0 auto;
+    flex: 0 0 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .15rem;
+    padding: .1rem .35rem;
+    min-width: 0;
+    background: var(--ada-alarm-live-tone);
+    color: #fff;
+}
+.ada-alarm-live-card__header-content {
     display: flex;
     align-items: center;
     gap: .2rem;
-    padding: 0;
     min-width: 0;
-    background: none;
-    color: inherit;
+    font-size: .5rem;
+    font-weight: 700;
 }
-.ada-alarm-live-card__header-content { display: none; }
+.ada-alarm-live-card__icon { flex: 0 0 auto; width: .8rem; height: .8rem; object-fit: contain; }
+.ada-alarm-live-card__category { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ada-alarm-live-card__criticality {
     display: grid;
     place-items: center;
-    min-width: 1.3rem;
-    min-height: 1.3rem;
-    padding: .1rem .24rem;
-    border-radius: .25rem;
+    flex: 0 0 auto;
+    width: .85rem;
+    height: .85rem;
+    border-radius: 50%;
     background: #fff;
     color: var(--ada-alarm-live-tone);
-    font-size: .68rem;
-    font-weight: 800;
+    font-size: .43rem;
+    font-weight: 700;
 }
 .ada-alarm-live-card__body {
     display: flex;
     flex: 1 1 auto;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
     min-width: 0;
-    padding: 0;
-    gap: .2rem;
+    padding: .15rem .35rem;
+    gap: .05rem;
 }
 .ada-alarm-live-card__title {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     min-width: 0;
-    font-size: .75rem;
+    max-width: 100%;
+    font-size: .55rem;
     font-weight: 700;
 }
-.ada-alarm-live-card__cause { display: none; }
+.ada-alarm-live-card__cause {
+    display: -webkit-box;
+    overflow: hidden;
+    max-width: 100%;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: #5e5e5e;
+    font-size: .45rem;
+}
 .ada-alarm-live-card__footer {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: .35rem;
+    justify-content: space-between;
+    gap: .2rem;
     min-width: 0;
-    padding: 0;
+    padding: .1rem .35rem;
 }
-.ada-alarm-live-card__elapsed { white-space: nowrap; font-size: .65rem; }
-.ada-alarm-live-card__actions { display: flex; align-items: center; gap: .2rem; }
+.ada-alarm-live-card__elapsed { white-space: nowrap; font-size: .45rem; color: #5e5e5e; }
+.ada-alarm-live-card__actions { display: flex; align-items: center; gap: .3rem; min-width: 0; }
 .ada-alarm-live-card__action {
-    padding: .2rem .5rem;
-    border: 1px solid #4d4d4d;
-    border-radius: .35rem;
-    background: transparent;
-    color: #2b2b2b;
-    font-size: .68rem;
-    font-weight: 700;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 1rem;
+    padding: 0;
+    border-radius: .3rem;
+    font-size: .45rem;
 }
-.ada-alarm-live-card__action--information { display: none; }
-.ada-alarm-live-card__action:disabled { cursor: default; opacity: .62; }
+.ada-alarm-live-card__action--information { border: 1px solid #5e5e5e; background: #fff; color: #5e5e5e; }
+.ada-alarm-live-card__action--manage { border: 1px solid #fff; background: #313131; color: #fff; }
+.ada-alarm-live-card__action:disabled { cursor: default; opacity: 1; }
 .ada-alarm-live-card__area { white-space: nowrap; font-weight: 700; font-size: .64rem; }
 
 .ada-alarm-live-surface .ada-alarm-baseline-surface {
@@ -152,7 +175,6 @@
     z-index: 1;
 }
 .ada-alarm-live-routes svg { width: 100%; height: 100%; overflow: visible; }
-/* Las rutas neutrales reciben foco solo en la alarma seleccionada o previsualizada. */
 .ada-alarm-live-route {
     --ada-alarm-live-route-tone: var(--ada-alarm-live-neutral);
     fill: none;
@@ -175,7 +197,8 @@
 }
 .ada-alarm-live-route[data-ada-alarm-focus='reveal'] {
     stroke-dasharray: var(--ada-alarm-live-route-length) var(--ada-alarm-live-route-length);
-    animation: ada-alarm-live-trace-reveal var(--ada-alarm-live-preview-duration) ease both;
+    animation: ada-alarm-live-trace-reveal var(--ada-alarm-live-route-duration) linear both;
+    animation-delay: var(--ada-alarm-live-route-delay);
 }
 .ada-alarm-live-route[data-ada-alarm-focus='fade'] {
     stroke: var(--ada-alarm-live-route-tone);
@@ -184,7 +207,6 @@
 .ada-alarm-live-surface[data-ada-alarm-has-selection='true']
 .ada-alarm-live-route[data-ada-alarm-focus='idle'] { opacity: .3; }
 
-/* Los chevrons se generan sobre los puntos operacionales ya publicados. */
 .ada-alarm-live-marker {
     --ada-alarm-live-marker-tone: var(--ada-alarm-live-neutral);
     position: absolute;
@@ -208,7 +230,7 @@
 .ada-alarm-live-marker[data-ada-alarm-focus='selected'] { display: grid; }
 .ada-alarm-live-marker[data-ada-alarm-focus='reveal'] {
     animation: ada-alarm-live-marker-reveal 220ms ease both;
-    animation-delay: calc(var(--ada-alarm-live-preview-duration) * .74);
+    animation-delay: var(--ada-alarm-live-marker-delay);
 }
 .ada-alarm-live-marker[data-ada-alarm-focus='fade'] { display: grid; opacity: 0; }
 .ada-alarm-live-marker__chevron {
@@ -224,18 +246,40 @@
 .ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--up { transform: translateY(-2px) rotate(225deg); }
 .ada-alarm-live-marker--contract .ada-alarm-live-marker__chevron--down { transform: translateY(2px) rotate(45deg); }
 
-.ada-card-display[data-ada-alarm-affection='red'] { box-shadow: inset 3px 0 0 var(--ada-alarm-live-red); }
-.ada-card-display[data-ada-alarm-affection='yellow'] { box-shadow: inset 3px 0 0 var(--ada-alarm-live-yellow); }
-.ada-card-display[data-ada-alarm-affection='mixed'] {
-    box-shadow: inset 3px 0 0 var(--ada-alarm-live-red), inset -3px 0 0 var(--ada-alarm-live-yellow);
+.ada-card-display[data-ada-alarm-affection='red'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-red); }
+.ada-card-display[data-ada-alarm-affection='yellow'] { --ada-alarm-live-affection-tone: var(--ada-alarm-live-yellow); }
+/* El contorno SVG del subcomponente se revela por los dos lados en sincronía con la ruta. */
+.ada-alarm-live-affection-trace {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
 }
-.ada-card-display[data-ada-alarm-focused='true'] { outline: 1px solid var(--ada-alarm-live-muted); outline-offset: -1px; }
+.ada-alarm-live-affection-trace path {
+    fill: none;
+    stroke: var(--ada-alarm-live-affection-tone);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 100 100;
+    stroke-dashoffset: 100;
+    opacity: 0;
+    transition: opacity var(--ada-alarm-live-fade-duration) ease;
+}
+.ada-card-display[data-ada-alarm-phase='reveal'] .ada-alarm-live-affection-trace path {
+    opacity: 1;
+    animation: ada-alarm-live-affection-reveal 950ms linear both;
+    animation-delay: var(--ada-alarm-live-affection-delay);
+}
+.ada-card-display[data-ada-alarm-phase='steady'] .ada-alarm-live-affection-trace path,
+.ada-card-display[data-ada-alarm-phase='selected'] .ada-alarm-live-affection-trace path,
+.ada-card-display[data-ada-alarm-phase='hold'] .ada-alarm-live-affection-trace path {
+    stroke-dashoffset: 0;
+    opacity: 1;
+}
 
-/* El carrusel no inventa miembros fuera de operator_view. */
 .ada-alarm-live-group {
     position: relative;
     min-width: 0;
-    min-height: 2.75rem;
+    min-height: 5.2rem;
     margin-inline: .15rem;
     border-radius: .4rem;
     background: #ededed;
@@ -281,6 +325,10 @@
 }
 
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'] { position: relative; }
+/* Cada posición corresponde al mismo componente que el dashboard de nueve columnas. */
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='overview'] {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+}
 .ada-alarm-live-board[data-ada-alarm-layout='integrated'] >
 .ada-alarm-live-card[data-ada-alarm-positioned='true'] {
     position: absolute;
@@ -290,6 +338,90 @@
     width: var(--ada-alarm-live-display-width);
     transform: translateX(-50%);
     margin-inline: 0;
+    transition: left .35s ease, width .35s ease, opacity .2s ease, box-shadow .2s ease;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'],
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] {
+    min-height: 2.75rem;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card[data-ada-alarm-positioned='true'],
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card[data-ada-alarm-positioned='true'] {
+    flex-direction: row;
+    align-items: center;
+    gap: .25rem;
+    min-height: 2.75rem;
+    padding: .28rem .4rem;
+    border-color: #bdbdbd;
+    border-inline-start: 3px solid var(--ada-alarm-live-tone);
+    border-radius: .4rem;
+    background: #f2f2f2;
+    font-size: .7rem;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__header,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__header {
+    flex: 0 0 auto;
+    padding: 0;
+    background: none;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__header-content,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__header-content { display: none; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__criticality,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__criticality {
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: .25rem;
+    font-size: .68rem;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__body,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__body {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    gap: .2rem;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__title,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__title { font-size: .75rem; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__cause,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__cause { display: none; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__footer,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__footer { padding: 0; gap: .35rem; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__action--information,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__action--information { display: none; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__action--manage,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__action--manage {
+    width: auto;
+    height: auto;
+    padding: .2rem .5rem;
+    border: 1px solid #4d4d4d;
+    background: transparent;
+    color: #2b2b2b;
+    font-size: .68rem;
+    font-weight: 700;
+}
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] >
+.ada-alarm-live-card .ada-alarm-live-card__elapsed,
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] >
+.ada-alarm-live-card .ada-alarm-live-card__elapsed { font-size: .65rem; }
 }
 
 @keyframes ada-alarm-live-trace-reveal {
@@ -300,17 +432,25 @@
     from { opacity: 0; transform: scale(.55); }
     to { opacity: 1; transform: scale(1); }
 }
+@keyframes ada-alarm-live-affection-reveal {
+    from { stroke-dashoffset: 100; }
+    to { stroke-dashoffset: 0; }
+}
 
 @media only screen and (max-width: 1279px) {
     .ada-alarm-live-board, .ada-alarm-live-routes { display: none; }
 }
 @media only screen and (min-width: 2560px) {
-    .ada-alarm-live-board, .ada-alarm-live-group { min-height: 3.5rem; }
-    .ada-alarm-live-card { min-height: 3.5rem; font-size: 1rem; }
+    .ada-alarm-live-board, .ada-alarm-live-group { min-height: 7rem; }
+    .ada-alarm-live-card { min-height: 7rem; font-size: 1rem; }
     .ada-alarm-live-route { stroke-width: 4; }
     .ada-alarm-live-marker__chevron { width: 12px; height: 12px; }
     .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 2.9rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card { animation: none !important; transition: none !important; }
+    .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card,
+    .ada-alarm-live-affection-trace path { animation: none !important; transition: none !important; }
+    .ada-card-display[data-ada-alarm-phase='reveal'] .ada-alarm-live-affection-trace path {
+        stroke-dashoffset: 0;
+    }
 }

@@ -4,14 +4,18 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const {test} = require('node:test');
 const {
-    routePath, previewPlan, toggleSelection, groupChoice, nextGroupIndex,
-    planIntegratedPositions, markerKind, sortedPreviewCandidates,
+    routeGeometry, previewPlan, toggleSelection, groupChoice, nextGroupIndex,
+    planIntegratedPositions, markerKind, sortedPreviewCandidates, integratedGridColumn,
 } = require(path.join(__dirname,
     '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
 
 test('trace makes an elevated horizontal junction between the card and the baseline', () => {
-    assert.equal(routePath(120, 50, 700, 130, 72.4), 'M 120 50 V 72.4 H 700 V 130');
-    assert.equal(routePath(700, 50, 120, 130, 72.4), 'M 700 50 V 72.4 H 120 V 130');
+    assert.deepEqual(routeGeometry(120, 50, [{x: 700, y: 130}]).segments.map((part) => part.d), [
+        'M 120 50 V 72', 'M 120 72 H 700', 'M 700 72 V 130',
+    ]);
+    assert.deepEqual(routeGeometry(700, 50, [{x: 120, y: 130}]).segments.map((part) => part.d), [
+        'M 700 50 V 72', 'M 700 72 H 120', 'M 120 72 V 130',
+    ]);
 });
 
 test('a single live alarm keeps its highlighted route without cycling', () => {
@@ -57,6 +61,31 @@ test('integrated cards align to their process point without overlap', () => {
     assert.equal(planIntegratedPositions([
         {key: 'a', x: 50}, {key: 'b', x: 50},
     ], 1200), null);
+});
+
+test('component IDs position the two live alarms in columns one and seven', () => {
+    const components = [
+        ['cmp_general_mina_6df268db211b', 'mine'],
+        ['cmp_carguio_4cbd52aaa4b0', 'mine'],
+        ['cmp_transporte_67b979e9ab49', 'mine'],
+        ['cmp_chancado_stmg_abd7384135fd', 'mine'],
+        ['cmp_stockpile_chacay_4265300400b1', 'plant'],
+        ['cmp_molienda_e3aaacbeb627', 'plant'],
+        ['cmp_flotacion_9bbf64c07ea7', 'plant'],
+        ['cmp_transporte_de_fluidos_823d86d77b46', 'plant'],
+        ['cmp_puerto_9f4e782f8c6a', 'plant'],
+    ];
+    const points = components.map(([adaComponentKey, adaScope]) => ({dataset: {
+        adaComponentKey, adaScope, adaAlarmBaselineRegion: 'main',
+    }}));
+    const mp10 = {dataset: {adaAlarmSlot: '1', adaAlarmDisplayComponentKey: components[0][0],
+        adaAlarmDisplayScope: 'mine'}};
+    const tk = {dataset: {adaAlarmSlot: '4', adaAlarmDisplayComponentKey: components[6][0],
+        adaAlarmDisplayScope: 'plant'}};
+    assert.equal(integratedGridColumn(mp10, points), 1);
+    assert.equal(integratedGridColumn(tk, points), 7);
+    assert.equal(integratedGridColumn({dataset: {adaAlarmDisplayComponentKey: 'unknown',
+        adaAlarmDisplayScope: 'plant'}}, points), null);
 });
 
 test('preview candidates follow tone priority unless integrated layout uses geometry', () => {

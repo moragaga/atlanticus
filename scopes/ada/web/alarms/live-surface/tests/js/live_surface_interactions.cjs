@@ -4,15 +4,30 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const {test} = require('node:test');
 const {
-    routePath,
+    routeGeometry,
     previewPlan,
     toggleSelection,
 } = require(path.join(__dirname,
     '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
 
-test('route remains anchored from the card to the affected process', () => {
-    assert.equal(routePath(10, 20, 70, 80), 'M 10 20 V 47 H 70 V 80');
-    assert.equal(routePath(70, 20, 10, 80), 'M 70 20 V 47 H 10 V 80');
+test('route shares its trunk and reveals branches after reaching it', () => {
+    const geometry = routeGeometry(50, 20, [{x: 10, y: 80}, {x: 90, y: 80}]);
+    assert.deepEqual(geometry.segments.map((part) => part.d), [
+        'M 50 20 V 37', 'M 50 37 H 10', 'M 50 37 H 90',
+        'M 10 37 V 80', 'M 90 37 V 80',
+    ]);
+    assert.deepEqual(geometry.segments.map((part) => part.delay), [0, 600, 600, 2000, 2000]);
+    assert.ok(geometry.arrivals[0] < geometry.arrivals[1]);
+    assert.deepEqual(routeGeometry(50, 20, [{x: 50, y: 80}]).segments.map((part) => part.d), [
+        'M 50 20 V 80',
+    ]);
+});
+
+test('route endpoints align to whole pixels across cards and baseline points', () => {
+    const route = routeGeometry(125.45, 150.42, [{x: 543.27, y: 170.66}]);
+    assert.deepEqual(route.segments.map((part) => part.d), [
+        'M 125 150 V 156', 'M 125 156 H 543', 'M 543 156 V 171',
+    ]);
 });
 
 test('manual selection toggles the same occurrence and rejects stale occurrences', () => {
@@ -42,6 +57,31 @@ test('the preview visits each available occurrence and pauses before the next cy
     assert.deepEqual(previewPlan(available, new Set(available)), {
         mode: 'pause', key: null,
     });
+});
+
+test('deselecting resumes at the next visible alarm and wraps after the last', () => {
+    const {nextCycleAfterSelection, previewPlan} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const candidates = ['occ-a', 'occ-b', 'occ-c'];
+    assert.deepEqual(previewPlan(candidates,
+        nextCycleAfterSelection(candidates, 'occ-b')), {mode: 'cycle', key: 'occ-c'});
+    assert.deepEqual(previewPlan(candidates,
+        nextCycleAfterSelection(candidates, 'occ-c')), {mode: 'cycle', key: 'occ-a'});
+});
+
+test('affected subcomponents retain their owner and reveal after their route', () => {
+    const {targetAddresses, routeTargetKeys, revealArrivalMs} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    assert.deepEqual(targetAddresses('[["cmp-a","shared"],["cmp-b","shared"]]'), [
+        ['cmp-a', 'shared'], ['cmp-b', 'shared'],
+    ]);
+    assert.deepEqual(targetAddresses('{invalid'), []);
+    assert.deepEqual([...routeTargetKeys({dataset: {
+        adaAlarmTargetComponents: 'cmp-a',
+        adaAlarmTargetAddresses: '[["cmp-b","shared"]]',
+    }})], ['cmp-a', 'cmp-b']);
+    assert.ok(revealArrivalMs(0, 2) < revealArrivalMs(1, 2));
+    assert.ok(revealArrivalMs(1, 2) + 950 < 4000);
 });
 
 test('distributed carousel preserves an active occurrence when the store reorders members', () => {
@@ -82,6 +122,52 @@ test('integrated placement aligns to components without overlapping card bounds'
             assert.ok(previous.x + previous.width / 2 + 4 <= item.x - item.width / 2);
         }
     }
+});
+
+test('overview uses nine component widths while zoom retains pill width per area', () => {
+    const {planIntegratedPositions, integratedCardVisible} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const entries = [{key: 'mine-a', x: 70}, {key: 'plant-a', x: 900}];
+    const overview = planIntegratedPositions(entries, 1260, 9, true);
+    const zoom = planIntegratedPositions([{key: 'mine-a', x: 150}], 1260, 4, false);
+    assert.equal(overview[0].width, 136);
+    assert.equal(zoom[0].width, 206);
+    assert.equal(integratedCardVisible('mine', 'overview'), true);
+    assert.equal(integratedCardVisible('plant', 'mine'), false);
+    assert.equal(integratedCardVisible('plant', 'plant'), true);
+});
+
+test('nine visible points keep both area alarms in the overview', () => {
+    const {resolveIntegratedPresentation, integratedCardVisible} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const points = [
+        {dataset: {adaScope: 'mine'}},
+        {dataset: {adaScope: 'plant'}},
+    ];
+    const presentation = resolveIntegratedPresentation(points, 'mine');
+    assert.equal(presentation, 'overview');
+    assert.equal(integratedCardVisible('plant', presentation), true);
+    assert.equal(resolveIntegratedPresentation(points.slice(0, 1), 'mine'), 'mine');
+    assert.equal(resolveIntegratedPresentation(points.slice(1), 'plant'), 'plant');
+});
+
+test('two visible routed cards enter the visual rotation in component order', () => {
+    const {sortedPreviewCandidates} = require(path.join(__dirname,
+        '../../src/ada/web/alarms/live_surface/resources/js/10-alarm-live-routes.js'));
+    const cards = [
+        {hidden: false, dataset: {adaAlarmOccurrenceId: 'occ-mp10', adaAlarmColor: 'YELLOW'},
+            getClientRects: () => [{}], getBoundingClientRect: () => ({left: 120})},
+        {hidden: false, dataset: {adaAlarmOccurrenceId: 'occ-tk050', adaAlarmColor: 'RED'},
+            getClientRects: () => [{}], getBoundingClientRect: () => ({left: 1390})},
+    ];
+    const paths = cards.map((card) => ({dataset: {
+        adaAlarmOccurrenceId: card.dataset.adaAlarmOccurrenceId,
+    }}));
+    const candidates = sortedPreviewCandidates(cards, paths, true);
+    assert.deepEqual(candidates, ['occ-mp10', 'occ-tk050']);
+    assert.deepEqual(previewPlan(candidates, new Set(['occ-mp10'])), {
+        mode: 'cycle', key: 'occ-tk050',
+    });
 });
 
 test('integrated placement refuses unresolved or colliding geometries', () => {

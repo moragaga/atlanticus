@@ -1,12 +1,9 @@
-# Espejo pedagógico: un callback Dash consume el Store que ya entrega Alarm Collector.
-# No abre conexiones Cosmos ni crea una segunda fuente de información.
-
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
 
-from dash import Input, Output, State
+from dash import Input, Output
 
 from ada.web.alarms.collector import alarm_live_store_id
 from ada.web.alarms.live_surface import (
@@ -19,9 +16,11 @@ from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import WebModule
 
 
+# El callback usa el Tool confirmado para colocar cada tarjeta desde el primer render.
 def attach_operational_alarm_surface(
     definition: WebApplicationDefinition, *, tool_key: str,
     can_view: Callable[[], bool] | None = None,
+    component_keys: tuple[str, ...] = (),
 ) -> WebApplicationDefinition:
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('Alarm surface requires WebApplicationDefinition')
@@ -32,20 +31,18 @@ def attach_operational_alarm_surface(
     store_id = alarm_live_store_id(tool_key)
 
     def register_callbacks(dash_app, _services) -> None:
-        # El timestamp activa tanto la primera lectura como los cambios posteriores.
-        # Los datos se leen como State porque otro callback escribe en el mismo Store.
         @dash_app.callback(
             Output(ALARM_LIVE_BOARD_ID, 'children'),
             Output(ALARM_LIVE_BOARD_ID, 'style'),
-            Input(store_id, 'modified_timestamp'),
-            State(store_id, 'data'),
+            Input(store_id, 'data'),
         )
-        def render_alarm_live(_modified_timestamp: int | None, data: object):
-            # Sin permiso de cards se vacía el contenido, pero se conserva la altura del tablero.
+        def render_alarm_live(data: object):
             if can_view is not None and not can_view():
                 return [], {'--ada-alarm-live-slot-count': '1'}
             return (
-                list(build_live_alarm_cards(data, tool_key=tool_key)),
+                list(build_live_alarm_cards(
+                    data, tool_key=tool_key, component_keys=component_keys,
+                )),
                 {'--ada-alarm-live-slot-count': str(resolve_live_alarm_capacity(
                     data, tool_key=tool_key,
                 ))},

@@ -294,6 +294,12 @@ def create_operational_application_runtime(
             definition = attach_operational_alarm_surface(
                 definition, tool_key=projection.payload.structure.tool_key,
                 can_view=can_view_cards,
+                # Los IDs y su orden provienen del Tool confirmado; no se deducen del slot.
+                component_keys=(
+                    tuple(component.key for component in projection.payload.structure.components)
+                    if projection.payload.structure.kind.value == 'integrated_operations'
+                    else ()
+                ),
             )
 
         if manager_dependencies is not None:

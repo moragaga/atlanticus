@@ -70,7 +70,7 @@ def test_live_cards_follow_operator_slots_and_resolved_targets():
     assert cards[0].elapsed == '12 min'
     assert cards[0].category == 'Impacto · Productividad'
     assert cards[1].component_keys == ('cmp_2',)
-    assert cards[1].subcomponent_keys == ('sub_2',)
+    assert cards[1].subcomponent_addresses == (('cmp_2', 'sub_2'),)
 
 
 def test_ready_empty_preserves_capacity_and_missing_hides_cards():
@@ -90,6 +90,30 @@ def test_retired_and_unresolved_target_do_not_create_false_routes():
     assert resolve_live_alarm_cards(data, tool_key='io')[1][0].component_keys == ()
 
 
+def test_subcomponent_identity_includes_its_component_owner():
+    data = _data()
+    target = data['live']['alarms']['a']['visual_target']
+    target['component_keys'] = ['cmp_1', 'cmp_2']
+    target['subcomponents'] = [
+        {'owner_component_key': 'cmp_1', 'subcomponent_key': 'shared'},
+        {'owner_component_key': 'cmp_2', 'subcomponent_key': 'shared'},
+    ]
+    card = build_live_alarm_cards(data, tool_key='io')[0]
+    assert card.to_plotly_json()['props']['data-ada-alarm-target-addresses'] == (
+        '[["cmp_1","shared"],["cmp_2","shared"]]'
+    )
+
+
+def test_subcomponent_target_outside_component_route_is_preserved():
+    data = _data()
+    data['live']['alarms']['a']['visual_target']['subcomponents'] = [
+        {'owner_component_key': 'cmp_2', 'subcomponent_key': 'sub_2'},
+    ]
+    card = resolve_live_alarm_cards(data, tool_key='io')[1][0]
+    assert card.component_keys == ('cmp_1',)
+    assert card.subcomponent_addresses == (('cmp_2', 'sub_2'),)
+
+
 def test_rendered_cards_have_stable_occurrence_and_target_metadata():
     rendered = build_live_alarm_cards(_data(), tool_key='io')
     assert len(rendered) == 2
@@ -97,7 +121,7 @@ def test_rendered_cards_have_stable_occurrence_and_target_metadata():
     assert first['data-ada-alarm-occurrence-id'] == 'a'
     assert first['data-ada-alarm-color'] == 'RED'
     assert first['data-ada-alarm-target-components'] == 'cmp_1'
-    assert first['data-ada-alarm-target-subcomponents'] == 'sub_1'
+    assert first['data-ada-alarm-target-addresses'] == '[["cmp_1","sub_1"]]'
     assert first['style']['gridColumn'] == '1'
 
 
@@ -174,10 +198,10 @@ def test_distributed_group_respects_projected_area_order_and_targets():
         ('cmp_1',),
         ('cmp_1',),
     ]
-    assert [item.subcomponent_keys for item in group.group_members] == [
-        ('sub_2',),
-        ('sub_1',),
-        ('sub_1',),
+    assert [item.subcomponent_addresses for item in group.group_members] == [
+        (('cmp_2', 'sub_2'),),
+        (('cmp_1', 'sub_1'),),
+        (('cmp_1', 'sub_1'),),
     ]
 
 
@@ -250,12 +274,61 @@ def test_integrated_cards_keep_display_location_distinct_from_affected_component
     assert cards[0].display_component_key == 'cmp_2'
     assert cards[0].display_scope == 'plant'
     assert cards[0].component_keys == ('cmp_1', 'cmp_2')
-    assert cards[0].subcomponent_keys == ('sub_1',)
+    assert cards[0].subcomponent_addresses == (('cmp_1', 'sub_1'),)
     props = build_live_alarm_cards(data, tool_key='io')[0].to_plotly_json()['props']
     assert props['data-ada-alarm-display-component-key'] == 'cmp_2'
     assert props['data-ada-alarm-display-scope'] == 'plant'
     assert props['data-ada-alarm-target-components'] == 'cmp_1 cmp_2'
     assert props['style']['gridColumn'] == '4'
+
+
+def test_integrated_snapshot_renders_both_mine_and_flotation_with_their_real_ids():
+    data = _data()
+    document = data['live']
+    document['max_visible_slots'] = 6
+    mine = 'cmp_general_mina_6df268db211b'
+    flotation = 'cmp_flotacion_9bbf64c07ea7'
+    document['alarms'] = {
+        'occ-mp10': {
+            'title': 'MP10', 'color': 'YELLOW',
+            'visual_target': {
+                'tool_key': 'io', 'tool_kind': 'integrated_operations',
+                'component_keys': [mine, 'cmp_transporte_67b979e9ab49'],
+                'display_component_key': mine, 'display_scope': 'mine',
+                'subcomponents': [
+                    {'owner_component_key': mine, 'subcomponent_key': 'sub_mp10_7c12dfcc7294'},
+                ],
+            },
+        },
+        'occ-tk050': {
+            'title': 'TK-050', 'color': 'RED',
+            'visual_target': {
+                'tool_key': 'io', 'tool_kind': 'integrated_operations',
+                'component_keys': [flotation],
+                'display_component_key': flotation, 'display_scope': 'plant',
+                'subcomponents': [
+                    {'owner_component_key': flotation,
+                     'subcomponent_key': 'sub_selectiva_13ecce0283b4'},
+                ],
+            },
+        },
+    }
+    document['operator_view'] = [
+        {'occurrence_id': 'occ-mp10', 'slot': 1},
+        {'occurrence_id': 'occ-tk050', 'slot': 4},
+    ]
+    capacity, cards = resolve_live_alarm_cards(data, tool_key='io')
+    assert capacity == 6
+    assert [(card.title, card.slot, card.display_component_key) for card in cards] == [
+        ('MP10', 1, mine), ('TK-050', 4, flotation),
+    ]
+    rendered = build_live_alarm_cards(data, tool_key='io')
+    assert [card.to_plotly_json()['props']['data-ada-alarm-slot'] for card in rendered] == [
+        '1', '4',
+    ]
+    assert rendered[1].to_plotly_json()['props']['data-ada-alarm-target-addresses'] == (
+        f'[["{flotation}","sub_selectiva_13ecce0283b4"]]'
+    )
 
 
 def test_incomplete_integrated_location_does_not_invent_a_component():
@@ -290,6 +363,7 @@ def test_category_translations_and_icons_are_presentation_only():
         ('ECOLOGY', 'Medio Ambiente', 'ecology'),
         ('PRODUCTIVITY', 'Productividad', 'productivity'),
         ('SAFETY', 'Seguridad y Salud', 'safety'),
+        ('SAFETY_HEALTH', 'Seguridad y Salud', 'safety'),
         ('COSTS', 'Costos', 'costs'),
     )
     for category, label, icon in expected:
@@ -309,6 +383,8 @@ def test_alarm_card_has_original_header_body_and_inert_actions():
     header_icon = header.children[0].children[0]
     assert header_icon.className.endswith('--productivity')
     assert header_icon.to_plotly_json()['props']['aria-hidden'] == 'true'
+    assert header_icon.src.endswith('/img/alarms/productividad.svg')
+    assert header_icon.alt == ''
     actions = footer.children[1].children
     assert [action.children for action in actions] == ['Información', 'Gestionar']
     assert all(action.disabled for action in actions)

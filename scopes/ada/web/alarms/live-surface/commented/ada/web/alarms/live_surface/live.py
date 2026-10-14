@@ -1,9 +1,7 @@
-# Espejo pedagógico: Alarm Live v2 contiene la selección del backend.
-# El carousel presenta únicamente las ocurrencias publicadas por área.
-# Los permisos de sesión y las acciones de gestión pertenecen a otro incremento.
-
+# Vista de alarmas derivada del snapshot del modeler sin alterar sus datos.
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,20 +9,29 @@ from datetime import datetime, timezone
 from dash import html
 from dash.development.base_component import Component
 
+from .module import ADA_ALARM_LIVE_SURFACE_ASSET_LAYER
+
 ALARM_LIVE_BOARD_ID = 'ada-alarm-live-board'
-# Traducción exclusivamente visual; no altera valores canónicos ni configuración materializada.
 _KIND_LABELS = {'RISK': 'Riesgo', 'IMPACT': 'Impacto'}
 _BUSINESS_CATEGORY_LABELS = {
     'ECOLOGY': 'Medio Ambiente',
     'PRODUCTIVITY': 'Productividad',
     'SAFETY': 'Seguridad y Salud',
+    'SAFETY_HEALTH': 'Seguridad y Salud',
     'COSTS': 'Costos',
 }
 _BUSINESS_CATEGORY_ICONS = {
     'ECOLOGY': 'ecology',
     'PRODUCTIVITY': 'productivity',
     'SAFETY': 'safety',
+    'SAFETY_HEALTH': 'safety',
     'COSTS': 'costs',
+}
+_ICON_FILENAMES = {
+    'ecology': 'medio-ambiente',
+    'productivity': 'productividad',
+    'safety': 'seguridad-salud',
+    'costs': 'costos',
 }
 
 
@@ -39,7 +46,7 @@ class LiveAlarmCard:
     cause: str
     elapsed: str
     component_keys: tuple[str, ...]
-    subcomponent_keys: tuple[str, ...]
+    subcomponent_addresses: tuple[tuple[str, str], ...]
     grouped: bool = False
     area: str = ''
     group_members: tuple[LiveAlarmCard, ...] = ()
@@ -48,9 +55,11 @@ class LiveAlarmCard:
     category_icon: str = ''
 
 
-# Conserva las posiciones de operator_view y sus agrupaciones, sin recalcular prioridades.
 def resolve_live_alarm_cards(
-    data: object, *, tool_key: str, now: datetime | None = None,
+    data: object,
+    *,
+    tool_key: str,
+    now: datetime | None = None,
 ) -> tuple[int, tuple[LiveAlarmCard, ...]]:
     if not isinstance(tool_key, str) or not tool_key.strip():
         raise ValueError('Alarm surface tool key is required')
@@ -83,7 +92,6 @@ def resolve_live_alarm_cards(
             if isinstance(group, Mapping) and group.get('kind') == 'DISTRIBUTED':
                 visible = group.get('visible_by_area')
                 totals = group.get('total_by_area')
-                # Cada área trae su propia lista priorizada; no se mezclan ni reordenan.
                 members: list[LiveAlarmCard] = []
                 descriptions: list[str] = []
                 if isinstance(visible, Mapping) and isinstance(totals, Mapping):
@@ -92,40 +100,61 @@ def resolve_live_alarm_cards(
                             continue
                         total = totals.get(area)
                         if type(total) is int:
-                            descriptions.append(f'{_area_label(area)} {len(occurrence_ids)}/{total}')
+                            descriptions.append(
+                                f'{_area_label(area)} {len(occurrence_ids)}/{total}'
+                            )
                         for member_id in occurrence_ids:
                             member = _resolve_card(
-                                alarms, member_id, slot=slot, tool_key=tool_key,
-                                instant=instant, area=area,
+                                alarms,
+                                member_id,
+                                slot=slot,
+                                tool_key=tool_key,
+                                instant=instant,
+                                area=area,
                             )
                             if member is not None:
                                 members.append(member)
-                results.append(LiveAlarmCard(
-                    occurrence_id=f'group:{slot}', slot=slot, color='NEUTRAL',
-                    criticality='', category='', title='Distribuidas',
-                    cause=' · '.join(descriptions), elapsed='',
-                    component_keys=(), subcomponent_keys=(), grouped=True,
-                    group_members=tuple(members),
-                ))
+                results.append(
+                    LiveAlarmCard(
+                        occurrence_id=f'group:{slot}',
+                        slot=slot,
+                        color='NEUTRAL',
+                        criticality='',
+                        category='',
+                        title='Distribuidas',
+                        cause=' · '.join(descriptions),
+                        elapsed='',
+                        component_keys=(),
+                        subcomponent_addresses=(),
+                        grouped=True,
+                        group_members=tuple(members),
+                    )
+                )
             continue
         card = _resolve_card(
-            alarms, occurrence_id, slot=slot, tool_key=tool_key, instant=instant,
+            alarms,
+            occurrence_id,
+            slot=slot,
+            tool_key=tool_key,
+            instant=instant,
         )
         if card is not None:
             results.append(card)
     return capacity, tuple(results)
 
 
-def build_live_alarm_cards(data: object, *, tool_key: str) -> tuple[Component, ...]:
+def build_live_alarm_cards(
+    data: object, *, tool_key: str, component_keys: tuple[str, ...] = (),
+) -> tuple[Component, ...]:
     capacity, cards = resolve_live_alarm_cards(data, tool_key=tool_key)
     return tuple(
         _build_group(card, capacity=capacity)
-        if card.grouped else _build_card(card, capacity=capacity)
+        if card.grouped
+        else _build_card(card, capacity=capacity, component_keys=component_keys)
         for card in cards
     )
 
 
-# El agrupador ocupa un único slot; las cards internas conservan identidades reales.
 def _build_group(group: LiveAlarmCard, *, capacity: int) -> Component:
     members = group.group_members
     if not members:
@@ -148,22 +177,32 @@ def _build_group(group: LiveAlarmCard, *, capacity: int) -> Component:
             ),
             html.Div(
                 [
-                    html.Button('‹', type='button',
-                                className='ada-alarm-live-group__previous',
-                                **{
-                                    'aria-label': 'Alarma anterior del grupo',
-                                    'data-ada-alarm-group-navigation': 'previous',
-                                }),
-                    html.Span(f'1/{len(members)}',
-                              className='ada-alarm-live-group__counter',
-                              **{'aria-live': 'polite'}),
-                    html.Button('›', type='button',
-                                className='ada-alarm-live-group__next',
-                                **{
-                                    'aria-label': 'Alarma siguiente del grupo',
-                                    'data-ada-alarm-group-navigation': 'next',
-                                }),
-                ] if len(members) > 1 else [],
+                    html.Button(
+                        '‹',
+                        type='button',
+                        className='ada-alarm-live-group__previous',
+                        **{
+                            'aria-label': 'Alarma anterior del grupo',
+                            'data-ada-alarm-group-navigation': 'previous',
+                        },
+                    ),
+                    html.Span(
+                        f'1/{len(members)}',
+                        className='ada-alarm-live-group__counter',
+                        **{'aria-live': 'polite'},
+                    ),
+                    html.Button(
+                        '›',
+                        type='button',
+                        className='ada-alarm-live-group__next',
+                        **{
+                            'aria-label': 'Alarma siguiente del grupo',
+                            'data-ada-alarm-group-navigation': 'next',
+                        },
+                    ),
+                ]
+                if len(members) > 1
+                else [],
                 className='ada-alarm-live-group__navigation',
             ),
         ],
@@ -178,26 +217,36 @@ def _build_group(group: LiveAlarmCard, *, capacity: int) -> Component:
     )
 
 
-# Una misma presentación alimenta cards normales, pills y slides del carousel.
 def _build_card(
-    card: LiveAlarmCard, *, capacity: int, carousel_index: int | None = None,
+    card: LiveAlarmCard,
+    *,
+    capacity: int,
+    carousel_index: int | None = None,
+    component_keys: tuple[str, ...] = (),
 ) -> Component:
     grouped = carousel_index is not None
     icon = None
     if card.category_icon:
-        icon = html.Span(
+        icon = html.Img(
+            src=(
+                f'/assets/{ADA_ALARM_LIVE_SURFACE_ASSET_LAYER.target_name}/img/alarms/'
+                f'{_ICON_FILENAMES[card.category_icon]}.svg'
+            ),
+            alt='',
             className=(
-                'ada-alarm-live-card__icon '
-                f'ada-alarm-live-card__icon--{card.category_icon}'
+                f'ada-alarm-live-card__icon ada-alarm-live-card__icon--{card.category_icon}'
             ),
             **{'aria-hidden': 'true'},
         )
     criticality = None
     if card.criticality:
-        criticality = html.Span(
-            card.criticality, className='ada-alarm-live-card__criticality'
-        )
-    # Conservar cabecera, cuerpo y pie; los botones siguen inertes hasta habilitar su flujo.
+        criticality = html.Span(card.criticality, className='ada-alarm-live-card__criticality')
+    # En integrada, el orden canónico del Tool ubica la tarjeta; en Process manda el slot.
+    column = (
+        component_keys.index(card.display_component_key) + 1
+        if card.display_component_key and card.display_component_key in component_keys
+        else card.slot
+    )
     return html.Article(
         [
             html.Div(
@@ -216,7 +265,8 @@ def _build_card(
             html.Div(
                 [
                     html.Span(_area_label(card.area), className='ada-alarm-live-card__area')
-                    if grouped else None,
+                    if grouped
+                    else None,
                     html.Div(card.title, className='ada-alarm-live-card__title', title=card.title),
                     html.Div(card.cause, className='ada-alarm-live-card__cause'),
                 ],
@@ -252,39 +302,56 @@ def _build_card(
                 className='ada-alarm-live-card__footer',
             ),
         ],
-        className='ada-alarm-live-card ' f'ada-alarm-live-card--{card.color.lower()}',
-        style={} if grouped else {
-            'gridColumn': str(card.slot),
+        className=f'ada-alarm-live-card ada-alarm-live-card--{card.color.lower()}',
+        style={}
+        if grouped
+        else {
+            'gridColumn': str(column),
             '--ada-alarm-live-slot-count': str(capacity),
         },
         hidden=bool(grouped and carousel_index != 0),
         title=card.title,
         **{
             'data-ada-alarm-occurrence-id': card.occurrence_id,
+            'data-ada-alarm-slot': str(card.slot),
             'data-ada-alarm-color': card.color,
             'data-ada-alarm-target-components': ' '.join(card.component_keys),
-            'data-ada-alarm-target-subcomponents': ' '.join(card.subcomponent_keys),
+            'data-ada-alarm-target-addresses': json.dumps(
+                card.subcomponent_addresses, separators=(',', ':'),
+            ),
             'data-ada-alarm-display-component-key': card.display_component_key,
             'data-ada-alarm-display-scope': card.display_scope,
             'data-ada-alarm-grouped': str(card.grouped).lower(),
-            **({} if not grouped else {
-                'data-ada-alarm-group-item': 'true',
-                'data-ada-alarm-group-area': card.area,
-            }),
-            **({} if card.grouped else {
-                'role': 'button',
-                'tabIndex': 0,
-                'aria-label': f'Seleccionar alarma: {card.title}',
-                'aria-pressed': 'false',
-            }),
+            **(
+                {}
+                if not grouped
+                else {
+                    'data-ada-alarm-group-item': 'true',
+                    'data-ada-alarm-group-area': card.area,
+                }
+            ),
+            **(
+                {}
+                if card.grouped
+                else {
+                    'role': 'button',
+                    'tabIndex': 0,
+                    'aria-label': f'Seleccionar alarma: {card.title}',
+                    'aria-pressed': 'false',
+                }
+            ),
         },
     )
 
 
-# El origen de color, targets y texto es la ocurrencia, no su posición en el grupo.
 def _resolve_card(
-    alarms: Mapping, occurrence_id: object, *, slot: int, tool_key: str,
-    instant: datetime, area: str = '',
+    alarms: Mapping,
+    occurrence_id: object,
+    *,
+    slot: int,
+    tool_key: str,
+    instant: datetime,
+    area: str = '',
 ) -> LiveAlarmCard | None:
     if not isinstance(occurrence_id, str):
         return None
@@ -293,14 +360,17 @@ def _resolve_card(
         return None
     target = source.get('visual_target')
     components, subcomponents = _target_keys(target, tool_key=tool_key)
-    # La ubicación es distinta de la lista completa de componentes afectados.
     display_component = ''
     display_scope = ''
     if isinstance(target, Mapping) and target.get('tool_key') == tool_key:
         if target.get('tool_kind') == 'integrated_operations':
             candidate = target.get('display_component_key')
             scope = target.get('display_scope')
-            if isinstance(candidate, str) and candidate in components and scope in ('mine', 'plant'):
+            if (
+                isinstance(candidate, str)
+                and candidate in components
+                and scope in ('mine', 'plant')
+            ):
                 display_component = candidate
                 display_scope = scope
     color = source.get('color')
@@ -326,7 +396,7 @@ def _resolve_card(
         cause=_label(source.get('cause_text')),
         elapsed=_elapsed(source.get('started_at'), instant),
         component_keys=components,
-        subcomponent_keys=subcomponents,
+        subcomponent_addresses=subcomponents,
         area=area,
         display_component_key=display_component,
         display_scope=display_scope,
@@ -341,26 +411,34 @@ def resolve_live_alarm_capacity(data: object, *, tool_key: str) -> int:
     return resolve_live_alarm_cards(data, tool_key=tool_key)[0]
 
 
-def _target_keys(value: object, *, tool_key: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def _target_keys(
+    value: object, *, tool_key: str,
+) -> tuple[tuple[str, ...], tuple[tuple[str, str], ...]]:
     if not isinstance(value, Mapping) or value.get('tool_key') != tool_key:
         return (), ()
     components = value.get('component_keys')
     subcomponents = value.get('subcomponents')
     component_keys = (
         tuple(dict.fromkeys(x for x in components if isinstance(x, str) and x))
-        if isinstance(components, (list, tuple)) else ()
+        if isinstance(components, (list, tuple))
+        else ()
     )
-    subcomponent_keys = (
-        tuple(dict.fromkeys(
-            x['subcomponent_key']
-            for x in subcomponents
-            if isinstance(x, Mapping)
-            and isinstance(x.get('subcomponent_key'), str)
-            and x.get('owner_component_key') in component_keys
-        ))
-        if isinstance(subcomponents, (list, tuple)) else ()
+    subcomponent_addresses = (
+        tuple(
+            dict.fromkeys(
+                (x['owner_component_key'], x['subcomponent_key'])
+                for x in subcomponents
+                if isinstance(x, Mapping)
+                and isinstance(x.get('subcomponent_key'), str)
+                and x['subcomponent_key']
+                and isinstance(x.get('owner_component_key'), str)
+                and x['owner_component_key']
+            )
+        )
+        if isinstance(subcomponents, (list, tuple))
+        else ()
     )
-    return component_keys, subcomponent_keys
+    return component_keys, subcomponent_addresses
 
 
 def _label(value: object) -> str:
