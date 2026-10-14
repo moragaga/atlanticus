@@ -1,1 +1,1 @@
-EQUIPOS_SERVICIO_KPI_KEY = 'equipos_servicio'
+EQUIPOS_SERVICIO_KPI_KEY = 'equipos_servicio_summary'

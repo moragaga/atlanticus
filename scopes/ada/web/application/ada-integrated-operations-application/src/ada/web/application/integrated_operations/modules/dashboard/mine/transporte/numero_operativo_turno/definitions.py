@@ -1,6 +1,6 @@
 from ada.web.ui.inline_row import InlineValueRowDefinition
 
-NUMERO_OPERATIVO_TURNO_KPI_KEY = 'numero_operativo_turno'
+NUMERO_OPERATIVO_TURNO_KPI_KEY = 'numero_operativo_turno_summary'
 
 NUMERO_OPERATIVO_TURNO_DEFINITIONS = {
     'efectivos': InlineValueRowDefinition(label='Efectivos'),

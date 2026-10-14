@@ -27,23 +27,23 @@ VERTIMILLS = tuple(
     ColectivaEquipmentDefinition(
         label=f'VT-{number}',
         image='vertimil',
-        state_kpi_key=f'estado_vertimil_{number}_inst',
-        amperage_kpi_key=f'amperaje_vertimil_{number}_inst',
+        state_kpi_key=f'vertimil_{number}_estado_inst',
+        amperage_kpi_key=f'vertimil_{number}_amperaje_inst',
     )
     for number in ('009', '010', '701')
 )
 BOMBAS = (
     (
-        ColectivaEquipmentDefinition('PP45', 'bomba', 'estado_bomba045_inst'),
-        ColectivaEquipmentDefinition('PP46', 'bomba', 'estado_bomba046_inst'),
+        ColectivaEquipmentDefinition('PP45', 'bomba', 'bomba_045_estado_inst'),
+        ColectivaEquipmentDefinition('PP46', 'bomba', 'bomba_046_estado_inst'),
     ),
     (
-        ColectivaEquipmentDefinition('PP52', 'bomba', 'estado_bomba052_inst'),
-        ColectivaEquipmentDefinition('PP53', 'bomba', 'estado_bomba053_inst'),
+        ColectivaEquipmentDefinition('PP52', 'bomba', 'bomba_052_estado_inst'),
+        ColectivaEquipmentDefinition('PP53', 'bomba', 'bomba_053_estado_inst'),
     ),
     (
-        ColectivaEquipmentDefinition('PP855', 'bomba', 'estado_bomba855_inst'),
-        ColectivaEquipmentDefinition('PP856', 'bomba', 'estado_bomba856_inst'),
+        ColectivaEquipmentDefinition('PP855', 'bomba', 'bomba_855_estado_inst'),
+        ColectivaEquipmentDefinition('PP856', 'bomba', 'bomba_856_estado_inst'),
     ),
 )
 COLUMNS_OPERATING_KEY = 'numero_columnas_operando'

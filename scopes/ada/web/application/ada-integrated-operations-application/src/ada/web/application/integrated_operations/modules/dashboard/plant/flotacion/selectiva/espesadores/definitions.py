@@ -33,4 +33,4 @@ def _espesador(number: str) -> EspesadorDefinition:
     )
 
 
-ESPESADORES = tuple(_espesador(number) for number in ('10', '12', '13', '55', '56'))
+ESPESADORES = tuple(_espesador(number) for number in ('010', '012', '013', '055', '056'))

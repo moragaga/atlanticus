@@ -1,6 +1,6 @@
 from ada.web.ui.inline_row import InlineComparisonRowDefinition
 
-TRANSPORTE_GLOBAL_TURNO_KPI_KEY = 'transporte_global_turno'
+TRANSPORTE_GLOBAL_TURNO_KPI_KEY = 'transporte_global_turno_summary'
 
 TRANSPORTE_GLOBAL_TURNO_ROW_DEFINITIONS = {
     'rendimiento': InlineComparisonRowDefinition(label='Rendimiento', unit='t/h'),
