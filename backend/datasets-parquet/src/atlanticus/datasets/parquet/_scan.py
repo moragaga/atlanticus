@@ -122,10 +122,21 @@ def _scan_artifact(
     for field in output_schema:
         if field.name in table.column_names:
             column = table[field.name]
-            if column.type != field.type:
+            if column.type != artifact.schema.field(field.name).type:
                 raise ParquetCorruptionError(
                     f'parquet artifact schema changed while scanning column {field.name}'
                 )
+            if column.type != field.type:
+                if not _compatible_text_width(column.type, field.type):
+                    raise ParquetCorruptionError(
+                        f'parquet artifact schema changed while scanning column {field.name}'
+                    )
+                try:
+                    column = column.cast(field.type, safe=True)
+                except (pa.ArrowException, ValueError) as error:
+                    raise ParquetReadError(
+                        f'could not cast projected text column {field.name}'
+                    ) from error
             arrays.append(column)
         else:
             arrays.append(pa.nulls(table.num_rows, type=field.type))
@@ -169,7 +180,12 @@ def _resolve_projected_field(
         for publication in publications
         if expected.name in publication.schema.names
     ]
-    incompatible = [field.type for field in found if field.type != expected.type]
+    incompatible = [
+        field.type
+        for field in found
+        if field.type != expected.type
+        and not _compatible_text_width(field.type, expected.type)
+    ]
     if incompatible:
         types = sorted({str(expected.type), *(str(data_type) for data_type in incompatible)})
         raise ParquetSchemaError(f'incompatible type for projected column {expected.name}: {types}')
@@ -183,6 +199,14 @@ def _resolve_projected_field(
         expected.type,
         nullable=nullable,
         metadata=expected.metadata,
+    )
+
+
+def _compatible_text_width(physical: pa.DataType, requested: pa.DataType) -> bool:
+    return (
+        pa.types.is_string(physical) and pa.types.is_large_string(requested)
+    ) or (
+        pa.types.is_large_string(physical) and pa.types.is_string(requested)
     )
 
 
