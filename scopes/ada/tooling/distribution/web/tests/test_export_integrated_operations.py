@@ -60,6 +60,8 @@ def _fixture_contracts(module):
             specialized.append(f'# {name}=<secret>')
         elif mode == 'environment':
             specialized.append(f'{name}=local')
+        elif name == 'ADA_TOOL_ADOPTION_MODE':
+            specialized.append(f'{name}=startup')
         elif mode == 'manual-default':
             specialized.append(f'{name}=operaciones_integradas' if name == 'ADA_TOOL_NAMESPACE' else f'{name}=false')
         else:
@@ -81,6 +83,7 @@ def test_environment_documentation_includes_hidden_and_generic_options(monkeypat
     assert 'COSMOS_CONSUMPTION_KEY=' in normalized
     assert 'ATLANTICUS_WEB_PORT=' in normalized
     assert 'ADA_TOOL_NAMESPACE=operaciones_integradas' in normalized
+    assert 'ADA_TOOL_ADOPTION_MODE=startup' in normalized
 
 
 def test_environment_contract_rejects_missing_configuration(monkeypatch):
@@ -92,6 +95,28 @@ def test_environment_contract_rejects_missing_configuration(monkeypatch):
         module._environment_contract(specialized + '\nADA_PERSISTENCE_MODE=local', generic)
     with pytest.raises(ValueError, match='Undeclared environment variables'):
         module._environment_contract(specialized + '\nNEW_UNKNOWN_OPTION=true', generic)
+
+
+def test_environment_contract_exports_both_adoption_modes(monkeypatch):
+    module = _load_exporter(monkeypatch)
+    specialized, generic = _fixture_contracts(module)
+    assert module.MODES['ADA_TOOL_ADOPTION_MODE'] == 'manual-default'
+    _, default = module._environment_contract(specialized, generic)
+    assert 'ADA_TOOL_ADOPTION_MODE=startup' in default
+
+    on_page_load = specialized.replace(
+        'ADA_TOOL_ADOPTION_MODE=startup', 'ADA_TOOL_ADOPTION_MODE=on_page_load'
+    )
+    _, configured = module._environment_contract(on_page_load, generic)
+    assert 'ADA_TOOL_ADOPTION_MODE=on_page_load' in configured
+
+
+def test_environment_contract_rejects_invalid_adoption_mode(monkeypatch):
+    module = _load_exporter(monkeypatch)
+    specialized, generic = _fixture_contracts(module)
+    invalid = specialized.replace('ADA_TOOL_ADOPTION_MODE=startup', 'ADA_TOOL_ADOPTION_MODE=invalid')
+    with pytest.raises(ValueError, match='ADA_TOOL_ADOPTION_MODE'):
+        module._environment_contract(invalid, generic)
 
 
 def test_portable_pyproject_keeps_entrypoint_and_packages(monkeypatch):

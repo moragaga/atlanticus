@@ -48,6 +48,7 @@ MODES = {
     'ADA_PERSISTENCE_MODE': 'manual-default',
     'ADA_APPLICATION_NAMESPACE': 'manual-default',
     'ADA_TOOL_NAMESPACE': 'manual-default',
+    'ADA_TOOL_ADOPTION_MODE': 'manual-default',
     'ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID': 'manual',
     'ADA_TOOL_LOCAL_BASE_ROOT': 'manual',
     'ADA_STORAGE_CONTAINER_NAME': 'manual-default',
@@ -130,6 +131,8 @@ def _environment_contract(specialized: str, generic: str) -> tuple[str, str]:
             raise ValueError(f'Environment default must be enabled: {name}')
         if mode == 'manual-default' and not value:
             raise ValueError(f'Environment default is missing: {name}')
+        if name == 'ADA_TOOL_ADOPTION_MODE' and value not in {'startup', 'on_page_load'}:
+            raise ValueError('ADA_TOOL_ADOPTION_MODE must be startup or on_page_load')
         if mode.startswith('key-vault') and active:
             raise ValueError(f'Environment secret must remain disabled in the example: {name}')
         if not active and not mode.startswith('key-vault'):
