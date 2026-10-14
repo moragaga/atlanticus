@@ -149,12 +149,12 @@
 .ada-alarm-live-card__area { white-space: nowrap; font-weight: 700; font-size: .64rem; }
 
 .ada-alarm-live-surface .ada-alarm-baseline-surface {
-    --ada-alarm-baseline-y: 88%;
+    --ada-alarm-baseline-y: 74%;
     position: relative;
     z-index: 2;
 }
 .ada-alarm-live-surface .ada-alarm-baseline-surface__trace {
-    height: 3.4rem;
+    height: 2.8rem;
     overflow: visible;
     pointer-events: none;
 }
@@ -200,6 +200,13 @@
 }
 .ada-alarm-live-surface[data-ada-alarm-has-selection='true']
 .ada-alarm-live-route[data-ada-alarm-focus='idle'] { opacity: .3; }
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] ~ .ada-alarm-live-routes .ada-alarm-live-route[data-ada-alarm-focus='idle'],
+.ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] ~ .ada-alarm-live-routes .ada-alarm-live-route[data-ada-alarm-focus='idle'] {
+    stroke: var(--ada-alarm-live-route-tone);
+    opacity: .6;
+}
+.ada-alarm-live-surface[data-ada-alarm-has-selection='true'] .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='mine'] ~ .ada-alarm-live-routes .ada-alarm-live-route[data-ada-alarm-focus='idle'],
+.ada-alarm-live-surface[data-ada-alarm-has-selection='true'] .ada-alarm-live-board[data-ada-alarm-layout='integrated'][data-ada-alarm-presentation='plant'] ~ .ada-alarm-live-routes .ada-alarm-live-route[data-ada-alarm-focus='idle'] { opacity: .3; }
 
 .ada-alarm-live-marker {
     --ada-alarm-live-marker-tone: var(--ada-alarm-live-neutral);
@@ -266,8 +273,9 @@
     stroke: var(--ada-alarm-live-affection-tone);
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
-    stroke-dasharray: 100 100;
-    stroke-dashoffset: 100;
+    /* El trazo queda descubierto progresivamente; 400 equivale al perímetro SVG completo. */
+    stroke-dasharray: 400 400;
+    stroke-dashoffset: 400;
     stroke-linejoin: round;
     stroke-linecap: round;
     opacity: 0;
@@ -360,7 +368,7 @@
     gap: .25rem;
     min-height: 2.75rem;
     padding: .28rem .4rem;
-    border-color: #bdbdbd;
+    border-color: var(--ada-alarm-live-tone);
     border-inline-start: 3px solid var(--ada-alarm-live-tone);
     border-radius: .4rem;
     background: #f2f2f2;
@@ -440,7 +448,7 @@
     to { opacity: 1; transform: scale(1); }
 }
 @keyframes ada-alarm-live-affection-reveal {
-    from { stroke-dashoffset: 100; }
+    from { stroke-dashoffset: 400; }
     to { stroke-dashoffset: 0; }
 }
 
@@ -452,7 +460,7 @@
     .ada-alarm-live-card { min-height: 7rem; font-size: 1rem; }
     .ada-alarm-live-route { stroke-width: 4; }
     .ada-alarm-live-marker__chevron { width: 12px; height: 12px; }
-    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 4.2rem; }
+    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 3.7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
     .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card,

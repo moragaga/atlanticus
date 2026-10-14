@@ -195,13 +195,7 @@
     border-radius: .35rem 0 0 .35rem;
 }
 
-.ada-io-dashboard__overview-controls[data-ada-io-presentation='mine']
-.ada-io-dashboard__overview-control--mine,
-.ada-io-dashboard__overview-controls[data-ada-io-presentation='plant']
-.ada-io-dashboard__overview-control--plant {
-    display: none !important;
-}
-
+/* Los botones Mina y Planta permanecen visibles incluso si el área ya está activa. */
 .ada-io-dashboard__zoom-close {
     top: .35rem;
     right: .35rem;

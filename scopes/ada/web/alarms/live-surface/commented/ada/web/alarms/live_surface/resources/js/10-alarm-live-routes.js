@@ -272,10 +272,10 @@
         svg.setAttribute('viewBox', '0 0 100 100');
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('aria-hidden', 'true');
+        // El contorno representa 400 unidades geométricas; el CSS revela el perímetro completo.
         ['M 50 0 H 100 V 100 H 0 V 0 H 50'].forEach((d) => {
             const path = document.createElementNS(NS, 'path');
             path.setAttribute('d', d);
-            path.setAttribute('pathLength', '100');
             svg.appendChild(path);
         });
         component.appendChild(svg);

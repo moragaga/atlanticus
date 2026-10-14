@@ -271,7 +271,6 @@
         ['M 50 0 H 100 V 100 H 0 V 0 H 50'].forEach((d) => {
             const path = document.createElementNS(NS, 'path');
             path.setAttribute('d', d);
-            path.setAttribute('pathLength', '100');
             svg.appendChild(path);
         });
         component.appendChild(svg);
