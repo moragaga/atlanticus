@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from ada.web.alarms.collector import alarm_live_store_id
 from ada.web.alarms.live_surface import (
@@ -33,9 +33,10 @@ def attach_operational_alarm_surface(
         @dash_app.callback(
             Output(ALARM_LIVE_BOARD_ID, 'children'),
             Output(ALARM_LIVE_BOARD_ID, 'style'),
-            Input(store_id, 'data'),
+            Input(store_id, 'modified_timestamp'),
+            State(store_id, 'data'),
         )
-        def render_alarm_live(data: object):
+        def render_alarm_live(_modified_timestamp: int | None, data: object):
             if can_view is not None and not can_view():
                 return [], {'--ada-alarm-live-slot-count': '1'}
             return (

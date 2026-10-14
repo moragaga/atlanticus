@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from ada.web.alarms.collector import alarm_live_store_id
 from ada.web.alarms.live_surface import (
@@ -16,7 +16,7 @@ from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import WebModule
 
 
-# El callback usa el Tool confirmado para colocar cada tarjeta desde el primer render.
+# Registra la superficie de alarmas preservando su configuración y autorización por herramienta.
 def attach_operational_alarm_surface(
     definition: WebApplicationDefinition, *, tool_key: str,
     can_view: Callable[[], bool] | None = None,
@@ -31,14 +31,19 @@ def attach_operational_alarm_surface(
     store_id = alarm_live_store_id(tool_key)
 
     def register_callbacks(dash_app, _services) -> None:
+        # El timestamp dispara el callback ante una actualización del Store.
+        # El documento se lee como State, sin convertirlo en el disparador.
         @dash_app.callback(
             Output(ALARM_LIVE_BOARD_ID, 'children'),
             Output(ALARM_LIVE_BOARD_ID, 'style'),
-            Input(store_id, 'data'),
+            Input(store_id, 'modified_timestamp'),
+            State(store_id, 'data'),
         )
-        def render_alarm_live(data: object):
+        def render_alarm_live(_modified_timestamp: int | None, data: object):
+            # Una sesión sin permiso no recibe tarjetas; se mantiene el espacio reservado.
             if can_view is not None and not can_view():
                 return [], {'--ada-alarm-live-slot-count': '1'}
+            # La identidad y orden de los componentes se conservan para su distribución visual.
             return (
                 list(build_live_alarm_cards(
                     data, tool_key=tool_key, component_keys=component_keys,

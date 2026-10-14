@@ -60,22 +60,34 @@ def _ready_store():
     }
 
 
-def test_surface_registration_uses_live_store_data_as_input():
+def test_surface_registration_uses_modified_timestamp_and_store_data_as_state():
     dependencies, _ = _registered_callback(_surface())
     assert [(dependency.component_id, dependency.component_property) for dependency in dependencies] == [
         ('ada-alarm-live-board', 'children'),
         ('ada-alarm-live-board', 'style'),
+        ({'type': 'ada-alarm-live-store', 'tool': 'io'}, 'modified_timestamp'),
         ({'type': 'ada-alarm-live-store', 'tool': 'io'}, 'data'),
     ]
     assert type(dependencies[2]).__name__ == 'Input'
+    assert type(dependencies[3]).__name__ == 'State'
 
 
 def test_ready_store_renders_alarm_from_initial_and_updated_data():
     _, callback = _registered_callback(_surface(can_view=lambda: True))
-    children, style = callback(_ready_store())
+    children, style = callback(None, _ready_store())
     assert len(children) == 1
     assert children[0].to_plotly_json()['props']['data-ada-alarm-occurrence-id'] == 'occ-1'
     assert style == {'--ada-alarm-live-slot-count': '6'}
+
+    updated = _ready_store()
+    updated['live']['alarms']['occ-2'] = {
+        'title': 'TK-050', 'color': 'RED',
+    }
+    updated['live']['operator_view'].append({'slot': 2, 'occurrence_id': 'occ-2'})
+    updated_children, updated_style = callback(123456789, updated)
+    assert [card.to_plotly_json()['props']['data-ada-alarm-occurrence-id']
+            for card in updated_children] == ['occ-1', 'occ-2']
+    assert updated_style == {'--ada-alarm-live-slot-count': '6'}
 
 
 def test_two_integrated_alarms_from_updated_projection_render_in_their_slots():
@@ -112,7 +124,7 @@ def test_two_integrated_alarms_from_updated_projection_render_in_their_slots():
     }
     data['live']['operator_view'].append({'slot': 4, 'occurrence_id': 'occ-2'})
     _, callback = _registered_callback(_surface(can_view=lambda: True))
-    children, style = callback(data)
+    children, style = callback(123456789, data)
     props = [item.to_plotly_json()['props'] for item in children]
     assert [(item['data-ada-alarm-occurrence-id'], item['style']['gridColumn']) for item in props] == [
         ('occ-1', '1'), ('occ-2', '4'),
@@ -142,7 +154,7 @@ def test_integrated_overview_uses_tool_component_order_before_browser_animation(
     components = (mine, 'carguio', 'transporte', 'chancado', 'stockpile', 'molienda',
                   flotation, 'fluidos', 'puerto')
     _, callback = _registered_callback(_surface(component_keys=components))
-    children, style = callback(data)
+    children, style = callback(123456789, data)
     assert [card.style['gridColumn'] for card in children] == ['1', '7']
     assert [card.to_plotly_json()['props']['data-ada-alarm-slot']
             for card in children] == ['1', '4']
@@ -151,14 +163,14 @@ def test_integrated_overview_uses_tool_component_order_before_browser_animation(
 
 def test_denied_cards_leave_alarm_board_height_reserved():
     _, callback = _registered_callback(_surface(can_view=lambda: False))
-    children, style = callback(_ready_store())
+    children, style = callback(123456789, _ready_store())
     assert children == []
     assert style == {'--ada-alarm-live-slot-count': '1'}
 
 
 def test_empty_store_keeps_empty_board_with_default_capacity():
     _, callback = _registered_callback(_surface(can_view=lambda: True))
-    children, style = callback(None)
+    children, style = callback(None, None)
     assert children == []
     assert style == {'--ada-alarm-live-slot-count': '1'}
 
