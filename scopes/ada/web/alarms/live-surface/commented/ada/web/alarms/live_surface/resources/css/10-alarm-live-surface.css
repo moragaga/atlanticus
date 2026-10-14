@@ -149,12 +149,12 @@
 .ada-alarm-live-card__area { white-space: nowrap; font-weight: 700; font-size: .64rem; }
 
 .ada-alarm-live-surface .ada-alarm-baseline-surface {
-    --ada-alarm-baseline-y: 74%;
+    --ada-alarm-baseline-y: 78%;
     position: relative;
     z-index: 2;
 }
 .ada-alarm-live-surface .ada-alarm-baseline-surface__trace {
-    height: 2.8rem;
+    height: 2.5rem;
     overflow: visible;
     pointer-events: none;
 }
@@ -268,14 +268,15 @@
     pointer-events: none;
     z-index: 11;
 }
+/* La distancia corresponde al perímetro efectivo de la card en píxeles. */
 .ada-alarm-live-affection-trace path {
     fill: none;
     stroke: var(--ada-alarm-live-affection-tone);
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
     /* El trazo queda descubierto progresivamente; 400 equivale al perímetro SVG completo. */
-    stroke-dasharray: 400 400;
-    stroke-dashoffset: 400;
+    stroke-dasharray: var(--ada-alarm-live-affection-length) var(--ada-alarm-live-affection-length);
+    stroke-dashoffset: var(--ada-alarm-live-affection-length);
     stroke-linejoin: round;
     stroke-linecap: round;
     opacity: 0;
@@ -448,7 +449,7 @@
     to { opacity: 1; transform: scale(1); }
 }
 @keyframes ada-alarm-live-affection-reveal {
-    from { stroke-dashoffset: 400; }
+    from { stroke-dashoffset: var(--ada-alarm-live-affection-length); }
     to { stroke-dashoffset: 0; }
 }
 
@@ -460,7 +461,7 @@
     .ada-alarm-live-card { min-height: 7rem; font-size: 1rem; }
     .ada-alarm-live-route { stroke-width: 4; }
     .ada-alarm-live-marker__chevron { width: 12px; height: 12px; }
-    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 3.7rem; }
+    .ada-alarm-live-surface .ada-alarm-baseline-surface__trace { height: 3.4rem; }
 }
 @media (prefers-reduced-motion: reduce) {
     .ada-alarm-live-route, .ada-alarm-live-marker, .ada-alarm-live-card,

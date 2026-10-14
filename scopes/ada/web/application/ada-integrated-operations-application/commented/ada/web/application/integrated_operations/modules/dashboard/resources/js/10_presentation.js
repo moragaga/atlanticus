@@ -113,6 +113,71 @@
         restoreAlarmBaseline(dashboard);
     }
 
+    // Repartir columnas de la vista activa sin ocultar alarmas de la otra área.
+    function resolveZoomAlarmPlacements(cards, points, presentation) {
+        const count = Math.max(1, points.length, cards.length);
+        const occupied = new Set();
+        const entries = cards.map((card, index) => {
+            const slot = Number(card.dataset.adaAlarmSlot || card.dataset.adaAlarmGroupSlot);
+            const pointIndex = points.findIndex((point) =>
+                point.dataset.adaComponentKey === card.dataset.adaAlarmDisplayComponentKey);
+            const local = card.dataset.adaAlarmDisplayScope === presentation && pointIndex >= 0;
+            const preferred = local
+                ? Math.min(count - 1, Math.floor((pointIndex + .5) * count / points.length))
+                : presentation === 'mine' ? count - 1 : 0;
+            return {card, local, preferred, slot: Number.isFinite(slot) ? slot : index + 1, index};
+        });
+        entries.sort((a, b) => Number(b.local) - Number(a.local)
+            || a.slot - b.slot || a.index - b.index);
+        entries.forEach((entry) => {
+            const available = Array.from({length: count}, (_, index) => index)
+                .filter((index) => !occupied.has(index));
+            available.sort((a, b) => Math.abs(a - entry.preferred) - Math.abs(b - entry.preferred)
+                || (presentation === 'mine' && !entry.local ? b - a : a - b));
+            entry.column = available[0] + 1;
+            occupied.add(available[0]);
+        });
+        return {count, entries};
+    }
+
+    // Esta adaptación pertenece a Operaciones Integradas, no al Live genérico.
+    function synchronizeAlarmCardPositions(dashboard, mode, presentation) {
+        const application = resolveApplication(dashboard);
+        const board = application && application.querySelector('.ada-alarm-live-board');
+        if (!board) {
+            return;
+        }
+        const cards = [...board.children].filter((child) =>
+            child.matches('.ada-alarm-live-card, .ada-alarm-live-group'));
+        const baseline = resolveAlarmBaseline(dashboard);
+        const points = baseline ? [...baseline.querySelectorAll(BASELINE_POINT_SELECTOR)]
+            .filter((point) => !point.hidden && point.dataset.adaScope === presentation
+                && point.dataset.adaAlarmBaselineRegion === 'main') : [];
+        if ((mode !== 'desktop' && mode !== 'tablet')
+            || (presentation !== 'mine' && presentation !== 'plant') || !points.length) {
+            if (board.dataset.adaIoAlarmZoom !== undefined) {
+                delete board.dataset.adaIoAlarmZoom;
+                board.style.removeProperty('--ada-io-alarm-zoom-count');
+            }
+            cards.forEach((card) => {
+                if (card.style.getPropertyValue('--ada-io-alarm-zoom-column')) {
+                    card.style.removeProperty('--ada-io-alarm-zoom-column');
+                }
+            });
+            return;
+        }
+        const plan = resolveZoomAlarmPlacements(cards, points, presentation);
+        board.dataset.adaIoAlarmZoom = presentation;
+        if (board.style.getPropertyValue('--ada-io-alarm-zoom-count') !== String(plan.count)) {
+            board.style.setProperty('--ada-io-alarm-zoom-count', String(plan.count));
+        }
+        plan.entries.forEach(({card, column}) => {
+            if (card.style.getPropertyValue('--ada-io-alarm-zoom-column') !== String(column)) {
+                card.style.setProperty('--ada-io-alarm-zoom-column', String(column));
+            }
+        });
+    }
+
     function synchronizeOverviewControls(dashboard, mode, presentation) {
         const controls = mountOverviewControls(dashboard);
         if (!controls) {
@@ -153,6 +218,7 @@
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
         synchronizeOverviewControls(dashboard, mode, presentation);
+        synchronizeAlarmCardPositions(dashboard, mode, presentation);
     }
 
     function synchronizeAllDashboards() {
@@ -202,6 +268,11 @@
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
         synchronizeOverviewControls(dashboard, mode, presentation);
+        synchronizeAlarmCardPositions(dashboard, mode, presentation);
+    }
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = {resolveZoomAlarmPlacements};
     }
 
     document.addEventListener('click', handleClick);

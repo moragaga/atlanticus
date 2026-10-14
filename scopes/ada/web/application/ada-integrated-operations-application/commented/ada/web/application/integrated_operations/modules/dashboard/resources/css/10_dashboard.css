@@ -234,6 +234,15 @@
     min-width: 0;
 }
 
+/* Las columnas del zoom pertenecen al controlador de Mina/Planta. */
+.ada-alarm-live-board[data-ada-io-alarm-zoom] {
+    grid-template-columns: repeat(var(--ada-io-alarm-zoom-count, 6), minmax(0, 1fr)) !important;
+}
+.ada-alarm-live-board[data-ada-io-alarm-zoom] > .ada-alarm-live-card,
+.ada-alarm-live-board[data-ada-io-alarm-zoom] > .ada-alarm-live-group {
+    grid-column: var(--ada-io-alarm-zoom-column, auto) !important;
+}
+
 @media only screen and (max-width: 1279px) {
     .ada-io-dashboard {
         --ada-io-gap: .5rem;

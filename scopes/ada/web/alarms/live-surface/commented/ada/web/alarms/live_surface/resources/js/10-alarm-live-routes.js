@@ -263,22 +263,36 @@
     }
 
     // Inyecta las dos mitades del recorrido como hijo exterior, nunca dentro del overlay de contenido.
+    // El recorrido usa píxeles efectivos para que nunca avance una cola móvil.
+    function affectionOutline(width, height) {
+        const w = Math.max(2, Math.round(width));
+        const h = Math.max(2, Math.round(height));
+        const middle = (w + 2) / 2;
+        return {
+            width: w + 2, height: h + 2, length: 2 * (w + h),
+            d: `M ${middle} 1 H ${w + 1} V ${h + 1} H 1 V 1 H ${middle}`,
+        };
+    }
+
     function ensureAffectionTrace(component) {
-        if (component.querySelector(':scope > .ada-alarm-live-affection-trace')) {
-            return;
+        let svg = component.querySelector(':scope > .ada-alarm-live-affection-trace');
+        if (!svg) {
+            svg = document.createElementNS(NS, 'svg');
+            svg.setAttribute('class', 'ada-alarm-live-affection-trace');
+            svg.setAttribute('preserveAspectRatio', 'none');
+            svg.setAttribute('aria-hidden', 'true');
+            svg.appendChild(document.createElementNS(NS, 'path'));
+            component.appendChild(svg);
         }
-        const svg = document.createElementNS(NS, 'svg');
-        svg.setAttribute('class', 'ada-alarm-live-affection-trace');
-        svg.setAttribute('viewBox', '0 0 100 100');
-        svg.setAttribute('preserveAspectRatio', 'none');
-        svg.setAttribute('aria-hidden', 'true');
-        // El contorno representa 400 unidades geométricas; el CSS revela el perímetro completo.
-        ['M 50 0 H 100 V 100 H 0 V 0 H 50'].forEach((d) => {
-            const path = document.createElementNS(NS, 'path');
-            path.setAttribute('d', d);
-            svg.appendChild(path);
-        });
-        component.appendChild(svg);
+        const rect = component.getBoundingClientRect();
+        const outline = affectionOutline(rect.width, rect.height);
+        const size = `${outline.width}:${outline.height}`;
+        if (svg.dataset.adaAlarmAffectionSize !== size) {
+            svg.dataset.adaAlarmAffectionSize = size;
+            svg.setAttribute('viewBox', `0 0 ${outline.width} ${outline.height}`);
+            svg.querySelector('path').setAttribute('d', outline.d);
+            svg.style.setProperty('--ada-alarm-live-affection-length', `${outline.length}px`);
+        }
     }
 
     function addMarker(point, key, tone, kind) {
@@ -756,7 +770,7 @@
             routeGeometry, previewPlan, toggleSelection, groupChoice, nextGroupIndex,
             alarmGridColumn, integratedPosition, markerKind, sortedPreviewCandidates,
             targetAddresses, routeTargetKeys, revealArrivalMs, nextCycleAfterSelection,
-            resolveIntegratedPresentation, integratedGridColumn,
+            resolveIntegratedPresentation, integratedGridColumn, affectionOutline,
         };
     }
 })();
