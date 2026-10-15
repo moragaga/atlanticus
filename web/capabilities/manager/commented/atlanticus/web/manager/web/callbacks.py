@@ -142,14 +142,23 @@ def register_manager_callbacks(
             )
         return 'atlanticus-manager__sidebar', 'atlanticus-manager__sidebar-backdrop'
 
+    # En Manager integrado, los estados se consultan solo al navegar dentro de su ruta.
     @app.callback(
         Output(STATUS_STORE_ID, 'data'),
         Output(SUMMARY_ID, 'children'),
         Input(REFRESH_SIGNAL_ID, 'data'),
+        Input(LOCATION_ID, 'pathname'),
         Input(workflow_refresh_signal_id(ALL), 'data'),
         *source_inputs,
     )
-    def refresh_statuses(_refresh: int, _workflow_signals: list[object], *_signals: object):
+    def refresh_statuses(
+        _refresh: int, pathname: str | None, _workflow_signals: list[object], *_signals: object
+    ):
+        if registry.root_route != '/' and not (
+            pathname == registry.root_route
+            or (pathname or '').startswith(f'{registry.root_route}/')
+        ):
+            raise PreventUpdate
         principal = definition.principal_provider()
         states = {}
         for module in registry.visible_modules(principal, authorization):
