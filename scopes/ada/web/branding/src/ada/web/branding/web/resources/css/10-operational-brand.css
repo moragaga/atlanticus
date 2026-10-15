@@ -36,7 +36,7 @@
     overflow: hidden;
     font-size: .34rem;
     font-weight: 400;
-    line-height: 1;
+    /*line-height: 1;*/
     letter-spacing: .03rem;
     text-overflow: ellipsis;
     text-transform: uppercase;
