@@ -6,7 +6,7 @@ from flask import Flask, request, send_from_directory
 
 from atlanticus.web.application import create_web_application
 from atlanticus.web.assets import AssetLayer, AssetPublication
-from atlanticus.web.css_compression import register_css_compression
+from atlanticus.web.http_compression import register_http_compression
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 
 
@@ -32,7 +32,7 @@ def _standalone(tmp_path: Path):
     def health():
         return {'status': 'alive'}
 
-    register_css_compression(
+    register_http_compression(
         app,
         AssetPublication(
             assets_root=root,
@@ -105,7 +105,7 @@ def test_small_css_and_unrelated_resources_remain_uncompressed(tmp_path):
         assert response.status_code == 200
         assert 'Content-Encoding' not in response.headers
     assert 'Accept-Encoding' in client.get('/assets/small.css').vary
-    assert 'Accept-Encoding' not in client.get('/assets/script.js').vary
+    assert 'Accept-Encoding' in client.get('/assets/script.js').vary
     assert 'Accept-Encoding' not in client.get('/health/live').vary
 
 
@@ -124,7 +124,7 @@ def test_previous_request_guards_still_apply(tmp_path):
     def serve(name):
         return send_from_directory(root, name)
 
-    register_css_compression(
+    register_http_compression(
         app,
         AssetPublication(
             assets_root=root, revision='test', manifest_path=root / 'manifest.json',

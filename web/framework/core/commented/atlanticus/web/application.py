@@ -10,7 +10,7 @@ from flask import Flask, request
 
 from atlanticus.web.assets import AssetLayer, resolve_asset_publication
 from atlanticus.web.configuration import WebEnvironment, WebSettings
-from atlanticus.web.css_compression import register_css_compression
+from atlanticus.web.http_compression import register_http_compression
 from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
@@ -210,9 +210,9 @@ def _compose_web_application(
         if module.register_callbacks is not None:
             module.register_callbacks(dash_app, services)
 
-    # Preparar el CSS gzip una sola vez por worker, sin alterar el código de los módulos.
-    # El hook respeta los middlewares registrados anteriormente.
-    register_css_compression(server, assets)
+    # Preparar CSS, JS y SVG gzip; las respuestas Dash se comprimen solo si conviene.
+    # La instalación conserva los middlewares previos y la semántica de callbacks.
+    register_http_compression(server, assets)
 
     runtime = WebApplicationRuntime(
         server=server,
