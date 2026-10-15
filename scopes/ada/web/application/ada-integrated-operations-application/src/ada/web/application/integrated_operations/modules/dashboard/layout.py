@@ -31,6 +31,7 @@ def build_dashboard_layout():
         **{
             'data-ada-module': 'dashboard',
             'data-ada-io-presentation': 'overview',
+            'data-ada-io-alarm-ready': 'false',
         },
     )
 

@@ -33,6 +33,10 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos import (
     register_transporte_fluidos_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.startup import (
+    STARTUP_LOADER_INDEX,
+    register_startup_alarm_readiness,
+)
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
 from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
@@ -42,6 +46,7 @@ from ada.web.ui.level_gauge import ADA_LEVEL_GAUGE_ASSET_LAYER
 from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
 from ada.web.ui.time_series import ADA_TIME_SERIES_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
+from atlanticus.web.index import IndexContribution
 from atlanticus.web.modules import WebModule
 
 DASHBOARD_ASSET_LAYER = AssetLayer(
@@ -75,6 +80,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_flotacion_callback(dash_app, tool_key=tool_key)
             register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
             register_puerto_callback(dash_app, tool_key=tool_key)
+            register_startup_alarm_readiness(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
@@ -93,4 +99,5 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         ),
         register_services=register_services,
         register_callbacks=register_callbacks,
+        index=STARTUP_LOADER_INDEX if binding is not None else IndexContribution(),
     )

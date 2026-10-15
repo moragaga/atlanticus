@@ -9,7 +9,7 @@
 }
 
 .ada-time-status {
-    --ada-time-status-source-width: 11rem;
+    --ada-time-status-source-width: 12rem;
     display: flex;
     align-items: center;
     justify-content: space-between;

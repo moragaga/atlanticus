@@ -1,0 +1,97 @@
+/* Estilo específico del inicio de Operaciones Integradas; no afecta otras aplicaciones. */
+
+.ada-io-startup-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    background: #939292;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 500ms ease, visibility 0s linear 500ms;
+}
+
+/* La visibilidad se retrasa hasta que termina el desvanecimiento. */
+.ada-io-startup-loader--exit {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+html[data-ada-io-loader-skip='true'] .ada-io-startup-loader {
+    display: none;
+}
+
+.ada-io-startup-loader__logo {
+    display: block;
+    width: min(78vw, 840px);
+    max-height: 32vh;
+    height: auto;
+    object-fit: contain;
+}
+
+.ada-io-startup-loader__subtitle {
+    margin: 0;
+    color: #5B5C64;
+    font-family: inherit;
+    font-size: clamp(.95rem, 2vw, 1.5rem);
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-align: center;
+}
+
+/* Dos ondas concéntricas dibujadas solo con CSS. */
+.ada-io-startup-loader__waves {
+    position: relative;
+    width: 64px;
+    height: 64px;
+}
+
+.ada-io-startup-loader__waves div {
+    position: absolute;
+    border: 4px solid #5B5C64;
+    border-radius: 50%;
+    animation: ada-io-loader-ripple 1s ease-out infinite;
+}
+
+.ada-io-startup-loader__waves div:nth-child(2) {
+    animation-delay: -500ms;
+}
+
+@keyframes ada-io-loader-ripple {
+    0% {
+        top: 32px;
+        left: 32px;
+        width: 0;
+        height: 0;
+        opacity: 1;
+    }
+
+    100% {
+        top: 0;
+        left: 0;
+        width: 64px;
+        height: 64px;
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ada-io-startup-loader {
+        transition: none;
+    }
+
+    .ada-io-startup-loader__waves div {
+        animation: none;
+        top: 0;
+        left: 0;
+        width: 64px;
+        height: 64px;
+        opacity: .3;
+    }
+}

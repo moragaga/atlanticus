@@ -12,8 +12,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.layout im
 )
 
 
+
+# La señal inicial de alarmas pertenece al dashboard y cambia con un callback en el navegador.
 def build_dashboard_layout():
-    # Overview contiene simultáneamente Mina y Planta; el zoom cambia solo presentación CSS.
     return html.Section(
         [
             html.Div(
@@ -32,12 +33,13 @@ def build_dashboard_layout():
         **{
             'data-ada-module': 'dashboard',
             'data-ada-io-presentation': 'overview',
+            # El valor inicial no habilita el reveal hasta la primera respuesta operacional.
+            'data-ada-io-alarm-ready': 'false',
         },
     )
 
 
 def _build_overview_controls():
-    # Estos controles no desmontan ningún scope; solo seleccionan qué porción se amplía.
     return html.Div(
         [
             _build_presentation_button(
@@ -58,7 +60,6 @@ def _build_overview_controls():
 
 
 def _build_zoom_controls():
-    # En foco se puede volver a overview o cambiar directamente al scope opuesto.
     return html.Div(
         [
             _build_presentation_button(
