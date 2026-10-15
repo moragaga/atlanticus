@@ -42,6 +42,6 @@ def test_every_area_callback_emits_first_render_signal():
     for binding, register in entries:
         dash = DashStub()
         register(dash, tool_key='integrated_operations')
-        output = dash.outputs[-2]
+        output = dash.outputs[-3]
         assert output.component_id == dashboard_component_id(binding.key)
         assert output.component_property == 'data-ready'

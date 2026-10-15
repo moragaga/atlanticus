@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from dash import html, no_update
+from dash.exceptions import PreventUpdate
 
 from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
@@ -518,3 +519,88 @@ def test_callback_registers_outputs_for_components_systems_and_revision() -> Non
     assert result[4]['latest']['revision'] == 'latest-r1'
     assert collector.refresh_latest_calls == 0
     assert collector.refresh_timeseries_calls == 0
+
+
+def test_first_sync_does_not_publish_empty_data_in_production(monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'production')
+    structure = _structure()
+    collector = PresentationCollectorStub(structure)
+    integration = create_ada_kpi_collector_web_integration(collector)
+    services = ServiceRegistry()
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, WebObservability(
+        application='test-initial-sync', logger=logging.getLogger('test.initial.sync'),
+        json_output=False,
+    ))
+    dash = DashStub()
+    integration.module.register_services(services)
+    integration.module.register_callbacks(dash, services)
+    initial = dash.callback_function(0, None, None, None, None, None)
+    assert len(initial) == 5
+    assert all(item is no_update for item in initial)
+    collector.snapshot = _snapshot(
+        structure,
+        latest_revision='latest-r1',
+        latest_watermark_utc='2026-09-20T20:00:00+00:00',
+        latest_configuration_revision='config-r1',
+        mine_payload=ComponentKpiData(latest=_latest(7, 'latest-r1')),
+    )
+    ready = dash.callback_function(21, None, None, None, None, None)
+    assert ready[0]['latest']['values']['rate']['value'] == '7'
+    assert ready[4]['latest']['revision'] == 'latest-r1'
+    assert len(ready) == 5
+
+
+def test_first_sync_keeps_development_empty_preview(monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
+    collector = PresentationCollectorStub(_structure())
+    integration = create_ada_kpi_collector_web_integration(collector)
+    services = ServiceRegistry()
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, WebObservability(
+        application='test-initial-sync', logger=logging.getLogger('test.initial.sync'),
+        json_output=False,
+    ))
+    dash = DashStub()
+    integration.module.register_services(services)
+    integration.module.register_callbacks(dash, services)
+    initial = dash.callback_function(0, None, None, None, None, None)
+    assert len(initial) == 5
+    assert all(item['latest'] is None for item in initial[:4])
+
+
+def test_interval_adaptation_is_separate_from_collector_outputs(monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'production')
+    collector = PresentationCollectorStub(_structure())
+    integration = create_ada_kpi_collector_web_integration(collector)
+    services = ServiceRegistry()
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, WebObservability(
+        application='test-initial-sync', logger=logging.getLogger('test.initial.sync'),
+        json_output=False,
+    ))
+
+    class CallbackRegistry:
+        def __init__(self):
+            self.callbacks = []
+
+        def callback(self, *outputs):
+            def register(function):
+                self.callbacks.append((outputs, function))
+                return function
+            return register
+
+    dash = CallbackRegistry()
+    integration.module.register_services(services)
+    integration.module.register_callbacks(dash, services)
+    assert len(dash.callbacks) == 2
+    (interval_dependencies, adapt), (collector_dependencies, refresh) = dash.callbacks
+    assert len(interval_dependencies) == 4
+    assert interval_dependencies[0].component_property == 'interval'
+    assert collector_dependencies[-2].component_property == 'data'
+    assert len(collector_dependencies) == 11
+
+    assert adapt(None, 0, 250) is no_update
+    assert adapt(None, 20, 250) == 1000
+    assert adapt(None, 20, 1000) is no_update
+    ready_revision = {'latest': {'revision': 'latest-r1'}, 'timeseries': None}
+    assert adapt(ready_revision, 21, 1000) == 10000
+    assert adapt(ready_revision, 21, 10000) is no_update
+    assert len(refresh(0, None, None, None, None, None)) == 5

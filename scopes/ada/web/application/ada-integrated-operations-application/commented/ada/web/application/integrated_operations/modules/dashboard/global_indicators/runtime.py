@@ -4,6 +4,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dash import Input, Output, html
+
+from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
+from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
 from dash.development.base_component import Component
 
 from ada.web.kpis.collector import system_kpi_store_id
@@ -62,8 +65,10 @@ def create_dashboard_global_indicators_module(
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-slot-empty'),
             # El store de destino de sistema siempre está presente en el layout operativo.
             Input(store_id, 'data'),
+            Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
         )
-        def refresh_global_indicators(store_data: object):
+        def refresh_global_indicators(store_data: object, browser_revision: object):
+            require_initial_delivery(store_data, browser_revision)
             return (
                 build_dashboard_global_indicators_runtime_component(
                     store_data,

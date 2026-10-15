@@ -233,7 +233,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    component, empty = dash_app.callback_function(_store())
+    component, empty = dash_app.callback_function(_store(), {'latest': {'revision': 'latest-r1'}})
     grids = [
         node
         for node in _walk(component)
@@ -267,7 +267,8 @@ def test_runtime_callback_degrades_complete_collection_from_empty_system_store()
             'destination_key': 'global_indicators',
             'latest': None,
             'timeseries': None,
-        }
+        },
+        {'latest': {'revision': 'latest-r1'}},
     )
     placements = [
         node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')

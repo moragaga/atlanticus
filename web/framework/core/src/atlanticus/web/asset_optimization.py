@@ -6,9 +6,6 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
-from rcssmin import cssmin
-from rjsmin import jsmin
-
 from atlanticus.web.errors import WebAssetError
 
 _CSS_BUNDLE_NAME = 'app.min.css'
@@ -23,6 +20,10 @@ def optimize_staged_assets(staging: Path, manifest: dict[str, Any]) -> None:
     js_entries = tuple(manifest.get('js_entries', ()))
 
     if css_entries:
+        try:
+            from rcssmin import cssmin
+        except ModuleNotFoundError as error:
+            raise WebAssetError('Optimized CSS assets require rcssmin') from error
         source = '\n'.join(_read_css_for_bundle(staging, relative) for relative in css_entries)
         bundle = staging / _CSS_BUNDLE_NAME
         bundle.write_text(cssmin(source).rstrip() + '\n', encoding='utf-8')
@@ -32,12 +33,17 @@ def optimize_staged_assets(staging: Path, manifest: dict[str, Any]) -> None:
             list_path.unlink()
         manifest['css_entries'] = [_CSS_BUNDLE_NAME]
 
-    for relative in js_entries:
-        path = staging / relative
-        path.write_text(
-            jsmin(path.read_text(encoding='utf-8')).rstrip() + '\n',
-            encoding='utf-8',
-        )
+    if js_entries:
+        try:
+            from rjsmin import jsmin
+        except ModuleNotFoundError as error:
+            raise WebAssetError('Optimized JavaScript assets require rjsmin') from error
+        for relative in js_entries:
+            path = staging / relative
+            path.write_text(
+                jsmin(path.read_text(encoding='utf-8')).rstrip() + '\n',
+                encoding='utf-8',
+            )
 
 
 def _read_css_for_bundle(staging: Path, relative: str) -> str:

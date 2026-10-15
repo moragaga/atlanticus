@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-# Optimiza el snapshot servido por Dash. Al mover el CSS al bundle raíz, las URL relativas deben
-# seguir apuntando al mismo recurso materializado dentro de la publicación.
+# El snapshot servido por Dash conserva las URLs CSS al agrupar sus archivos en el bundle raíz.
+# La importación diferida permite que Windows ejecute recursos no optimizados sin extensiones C.
 
 import posixpath
 import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
-
-from rcssmin import cssmin
-from rjsmin import jsmin
 
 from atlanticus.web.errors import WebAssetError
 
@@ -26,10 +23,13 @@ def optimize_staged_assets(staging: Path, manifest: dict[str, Any]) -> None:
     js_entries = tuple(manifest.get('js_entries', ()))
 
     if css_entries:
-        # Cada hoja se rebasa desde su ubicación staged antes de concatenarla en app.min.css.
-        source = '\n'.join(
-            _read_css_for_bundle(staging, relative) for relative in css_entries
-        )
+        # Sólo se necesita el minificador si hay CSS que optimizar.
+        try:
+            from rcssmin import cssmin
+        except ModuleNotFoundError as error:
+            raise WebAssetError('Optimized CSS assets require rcssmin') from error
+        # Cada archivo conserva el significado de sus rutas relativas antes de concatenarse.
+        source = '\n'.join(_read_css_for_bundle(staging, relative) for relative in css_entries)
         bundle = staging / _CSS_BUNDLE_NAME
         bundle.write_text(cssmin(source).rstrip() + '\n', encoding='utf-8')
         for relative in css_entries:
@@ -38,13 +38,18 @@ def optimize_staged_assets(staging: Path, manifest: dict[str, Any]) -> None:
             list_path.unlink()
         manifest['css_entries'] = [_CSS_BUNDLE_NAME]
 
-    # JavaScript conserva archivos/rutas y sólo cambia su contenido a minificado.
-    for relative in js_entries:
-        path = staging / relative
-        path.write_text(
-            jsmin(path.read_text(encoding='utf-8')).rstrip() + '\n',
-            encoding='utf-8',
-        )
+    if js_entries:
+        # El JavaScript se minifica sin alterar el orden ni concatenar los archivos.
+        try:
+            from rjsmin import jsmin
+        except ModuleNotFoundError as error:
+            raise WebAssetError('Optimized JavaScript assets require rjsmin') from error
+        for relative in js_entries:
+            path = staging / relative
+            path.write_text(
+                jsmin(path.read_text(encoding='utf-8')).rstrip() + '\n',
+                encoding='utf-8',
+            )
 
 
 def _read_css_for_bundle(staging: Path, relative: str) -> str:
@@ -63,7 +68,7 @@ def _rebase_css_urls(content: str, *, source_parent: PurePosixPath) -> str:
 
 
 def _rebase_css_url(value: str, *, source_parent: PurePosixPath) -> str:
-    # URL absolutas, fragmentos y esquemas embebidos/remotos no dependen de la ubicación del CSS.
+    # Las rutas absolutas, esquemas y fragmentos no se rebajan.
     if not value or value.startswith(('#', '/')):
         return value
 
@@ -72,7 +77,6 @@ def _rebase_css_url(value: str, *, source_parent: PurePosixPath) -> str:
         return value
 
     target = posixpath.normpath(posixpath.join(source_parent.as_posix(), parsed.path))
-    # Una URL relativa nunca puede escapar del snapshot publicado.
     if target == '..' or target.startswith('../') or target.startswith('/'):
         raise WebAssetError(f'CSS asset URL escapes the publication root: {value}')
 

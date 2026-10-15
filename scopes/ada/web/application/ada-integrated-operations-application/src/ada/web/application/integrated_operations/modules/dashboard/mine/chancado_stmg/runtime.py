@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dash import Input, Output
 
+from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
+from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
+
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
     dashboard_component_id,
@@ -28,8 +31,10 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('chancado_stmg'), 'children'),
         Output(dashboard_component_id(CHANCADO_STMG.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, CHANCADO_STMG.tool_component_key), 'data'),
+        Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
     )
-    def refresh_chancado_stmg(store_data: object):
+    def refresh_chancado_stmg(store_data: object, browser_revision: object):
+        require_initial_delivery(store_data, browser_revision)
         readings = decode_chancado_stmg_store(store_data)
         rendered = build_chancado_stmg(
             produccion_global=map_produccion_global_readings(readings),

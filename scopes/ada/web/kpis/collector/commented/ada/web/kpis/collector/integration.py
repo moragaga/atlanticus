@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from dash import Input, Output, State, dcc
+from dash import Input, Output, State, dcc, no_update
 from dash.development.base_component import Component
 from flask import request
 
@@ -28,6 +28,7 @@ from ada.web.kpis.collector.runtime import (
     AdaKpiCollectorPollingRuntime,
     KpiCollectorPollingSettings,
 )
+from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import CallbackRegistrar, WebModule
 from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
@@ -40,6 +41,9 @@ if TYPE_CHECKING:
 ADA_KPI_COLLECTOR_SERVICE_KEY = 'ada.kpi.collector'
 ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY = 'ada.kpi.collector.runtime'
 _START_EXCLUDED_PATH_PREFIXES = ('/health/', '/assets/', '/.auth/')
+_INITIAL_BROWSER_REFRESH_INTERVAL_MS = 250
+_INITIAL_BROWSER_SLOW_RETRY_AFTER = 20
+_INITIAL_BROWSER_SLOW_REFRESH_INTERVAL_MS = 1000
 
 LayoutFactory = Callable[..., object]
 
@@ -214,6 +218,27 @@ def _create_callback_registrar(
     )
 
     def register_callbacks(dash_app: Dash, services: ServiceRegistry) -> None:
+        @dash_app.callback(
+            Output(settings.interval_id, 'interval'),
+            Input(settings.revision_store_id, 'data'),
+            Input(settings.interval_id, 'n_intervals'),
+            State(settings.interval_id, 'interval'),
+        )
+        def adapt_initial_refresh(
+            browser_revision: object, n_intervals: int, current_interval: object,
+        ):
+            latest_ready = (
+                isinstance(browser_revision, dict)
+                and isinstance(browser_revision.get('latest'), dict)
+            )
+            if latest_ready:
+                desired_interval = int(settings.refresh_interval_seconds * 1000)
+            elif isinstance(n_intervals, int) and n_intervals >= _INITIAL_BROWSER_SLOW_RETRY_AFTER:
+                desired_interval = _INITIAL_BROWSER_SLOW_REFRESH_INTERVAL_MS
+            else:
+                desired_interval = _INITIAL_BROWSER_REFRESH_INTERVAL_MS
+            return no_update if current_interval == desired_interval else desired_interval
+
         outputs = tuple(Output(store_id, 'data') for store_id in (*component_ids, *system_ids))
         states = tuple(State(store_id, 'data') for store_id in (*component_ids, *system_ids))
         component_count = len(component_ids)
@@ -231,6 +256,11 @@ def _create_callback_registrar(
             *browser_store_data: object,
         ):
             collector = services.require(ADA_KPI_COLLECTOR_SERVICE_KEY)
+            snapshot = collector.snapshot
+            if not snapshot.has_delivery_data:
+                if WebSettings().environment is WebEnvironment.PRODUCTION:
+                    empty = tuple(no_update for _ in (*component_ids, *system_ids))
+                    return (*empty, no_update)
             component_updates, system_updates, revision = resolve_kpi_collector_browser_update(
                 collector,
                 browser_revision=browser_revision,
@@ -253,7 +283,7 @@ def _build_runtime_components(
     return (
         dcc.Interval(
             id=settings.interval_id,
-            interval=int(settings.refresh_interval_seconds * 1000),
+            interval=_INITIAL_BROWSER_REFRESH_INTERVAL_MS,
             n_intervals=0,
         ),
         # None diferencia una nueva pestaña del snapshot ya sincronizado.
