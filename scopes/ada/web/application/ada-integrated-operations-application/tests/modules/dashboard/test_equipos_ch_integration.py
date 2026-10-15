@@ -78,7 +78,8 @@ def test_provisional_definitions_are_two_equipment_with_twelve_distinct_keys():
 def test_callback_renders_equipment_table_before_untouched_stockpile():
     stub = DashStub()
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
-    root = stub.callback_function(_store({}))
+    root, ready = stub.callback_function(_store({}))
+    assert ready == 'true'
     equipos_ch = root.children[1]
     assert equipos_ch.children[2].to_plotly_json()['type'] == 'Table'
     assert len(equipos_ch.children[2].children[1].children) == 2

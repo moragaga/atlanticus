@@ -2,42 +2,102 @@
     'use strict';
 
     const overlay = document.getElementById('ada-io-startup-loader');
-    if (!overlay || location.pathname !== '/' || overlay.classList.contains('ada-io-startup-loader--exit')) {
+    if (!overlay || location.pathname !== '/' || typeof window.adaIoFinishStartupLoader !== 'function') {
         return;
     }
 
+    const expectedAreas = 9;
+    const dashboardId = 'ada-integrated-operations-dashboard';
+    const globalSlotId = 'ada-operational-header-global-indicators-slot';
+    const alarmBoardId = 'ada-alarm-live-board';
     let scheduled = false;
-    const observer = new MutationObserver(() => scheduleCheck());
+    let dashboardTarget = null;
+    let globalTarget = null;
+    let alarmTarget = null;
+    let watchingDiscovery = false;
 
-    function isReady() {
-        const dashboard = document.getElementById('ada-integrated-operations-dashboard');
-        if (!dashboard || dashboard.dataset.adaIoAlarmReady !== 'true') {
-            return false;
+    const discoveryObserver = new MutationObserver(scheduleCheck);
+    const dashboardObserver = new MutationObserver(scheduleCheck);
+    const globalObserver = new MutationObserver(scheduleCheck);
+    const alarmObserver = new MutationObserver(scheduleCheck);
+
+    function stop() {
+        discoveryObserver.disconnect();
+        dashboardObserver.disconnect();
+        globalObserver.disconnect();
+        alarmObserver.disconnect();
+    }
+
+    function track() {
+        const dashboard = document.getElementById(dashboardId);
+        if (dashboard && dashboard !== dashboardTarget) {
+            dashboardObserver.disconnect();
+            dashboardObserver.observe(dashboard, {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-ready'],
+            });
+            dashboardTarget = dashboard;
+        }
+
+        const globalSlot = document.getElementById(globalSlotId);
+        if (globalSlot && globalSlot !== globalTarget) {
+            globalObserver.disconnect();
+            globalObserver.observe(globalSlot, {
+                childList: true,
+                attributes: true,
+                attributeFilter: ['data-slot-empty'],
+            });
+            globalTarget = globalSlot;
+        }
+
+        const alarmBoard = document.getElementById(alarmBoardId);
+        if (alarmBoard && alarmBoard !== alarmTarget) {
+            alarmObserver.disconnect();
+            alarmObserver.observe(alarmBoard, {
+                attributes: true,
+                attributeFilter: ['style'],
+            });
+            alarmTarget = alarmBoard;
+        }
+
+        if (dashboardTarget && globalTarget && alarmTarget && watchingDiscovery) {
+            discoveryObserver.disconnect();
+            watchingDiscovery = false;
+        }
+    }
+
+    function pending() {
+        const dashboard = document.getElementById(dashboardId);
+        if (!dashboard) {
+            return ['dashboard'];
+        }
+        const areas = Array.from(dashboard.querySelectorAll('[data-ada-io-component-key]'));
+        const missing = areas.filter((area) => area.getAttribute('data-ready') !== 'true')
+            .map((area) => area.getAttribute('data-ada-io-component-key'));
+        if (areas.length !== expectedAreas) {
+            missing.unshift('areas:' + areas.length + '/' + expectedAreas);
         }
         const application = dashboard.closest('#ada-generic-application');
         if (!application || !application.querySelector('[data-ada-io-global-indicators-runtime="true"]')) {
-            return false;
+            missing.push('global_indicators');
         }
-        const panels = dashboard.querySelectorAll('[data-ada-io-component-key]');
-        if (panels.length !== 9) {
-            return false;
+        const board = document.getElementById(alarmBoardId);
+        if (!board || !board.style.getPropertyValue('--ada-alarm-live-slot-count')) {
+            missing.push('alarms_render');
         }
-        return Array.from(panels).every((panel) => {
-            const content = panel.querySelector('[id^="ada-integrated-operations-card-"][id$="-content"]');
-            return content !== null && content.childNodes.length > 0;
-        });
+        return missing;
     }
 
     function check() {
         scheduled = false;
-        if (overlay.classList.contains('ada-io-startup-loader--exit')) {
-            observer.disconnect();
+        if (!document.getElementById('ada-io-startup-loader')) {
+            stop();
             return;
         }
-        if (isReady()) {
-            overlay.classList.add('ada-io-startup-loader--exit');
-            overlay.setAttribute('aria-hidden', 'true');
-            observer.disconnect();
+        track();
+        if (pending().length === 0) {
+            window.adaIoFinishStartupLoader('ready');
         }
     }
 
@@ -48,11 +108,11 @@
         }
     }
 
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['data-ada-io-alarm-ready', 'class'],
-    });
+    window.adaIoStopStartupObservers = stop;
+    window.adaIoStartupPending = pending;
+    if (document.body) {
+        discoveryObserver.observe(document.body, { childList: true, subtree: true });
+        watchingDiscovery = true;
+    }
     scheduleCheck();
 })();

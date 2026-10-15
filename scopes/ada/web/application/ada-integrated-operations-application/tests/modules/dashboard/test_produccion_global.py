@@ -171,9 +171,10 @@ class DashStub:
 def test_chancado_stmg_callback_composes_global_before_existing_stockpile():
     stub = DashStub()
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
-    root = stub.render(_store({}))
+    root, ready = stub.render(_store({}))
+    assert ready == 'true'
     assert stub.args[0].component_id == dashboard_card_content_id('chancado_stmg')
-    assert stub.args[1].component_id == component_kpi_store_id(
+    assert stub.args[2].component_id == component_kpi_store_id(
         'integrated_operations',
         CHANCADO_STMG.tool_component_key,
     )

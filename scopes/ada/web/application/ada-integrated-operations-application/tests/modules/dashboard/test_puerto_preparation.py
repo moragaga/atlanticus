@@ -223,11 +223,11 @@ def test_one_callback_has_two_outputs_and_one_input(monkeypatch):
     monkeypatch.setattr(runtime, 'build_puerto_component', lambda *args: args)
     app = DashStub()
     runtime.register_puerto_callback(app, tool_key='integrated_operations')
-    assert len(app.args) == 3
+    assert len(app.args) == 4
     assert app.args[0].component_id == dashboard_card_content_id('puerto')
     assert app.args[1].component_id == dashboard_card_content_id('desaladora')
-    assert app.args[2].component_id == component_kpi_store_id('integrated_operations', PUERTO.tool_component_key)
-    assert app.callback_fn(store) == ('Puerto', 'Desaladora')
+    assert app.args[3].component_id == component_kpi_store_id('integrated_operations', PUERTO.tool_component_key)
+    assert app.callback_fn(store) == ('Puerto', 'Desaladora', 'true')
     assert calls == [store]
     assert len(refs) == 2
     assert refs[0][0] is refs[1][0] is prepared[0]

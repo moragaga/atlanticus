@@ -33,10 +33,8 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos import (
     register_transporte_fluidos_callback,
 )
-# El loader pertenece a esta aplicación, no al framework genérico de Atlanticus.
 from ada.web.application.integrated_operations.modules.dashboard.startup import (
     STARTUP_LOADER_INDEX,
-    register_startup_alarm_readiness,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
@@ -81,8 +79,6 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_flotacion_callback(dash_app, tool_key=tool_key)
             register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
             register_puerto_callback(dash_app, tool_key=tool_key)
-            # Proyecta solo el estado inicial de alarmas hacia el DOM, sin nuevo backend callback.
-            register_startup_alarm_readiness(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
@@ -101,6 +97,6 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         ),
         register_services=register_services,
         register_callbacks=register_callbacks,
-        # Solo se activa cuando existe un Tool operacional configurado.
+        # El loader se limita al dashboard integrado cuando existe binding operacional.
         index=STARTUP_LOADER_INDEX if binding is not None else IndexContribution(),
     )

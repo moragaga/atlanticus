@@ -1,11 +1,10 @@
-# Un callback por componente: cuatro salidas consumen el mismo resultado preparado.
-# No decodificar de nuevo dentro de los mappers.
 from __future__ import annotations
 
 from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import GENERAL_MINA
 from ada.web.kpis.collector import KpiLatestValueState, component_kpi_store_id
@@ -30,11 +29,14 @@ _SOURCE_STATUS = {
 
 
 def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
+    # La señal forma parte del mismo resultado del render para evitar carreras.
+    # No depende de que el collector haya publicado datos definitivos.
     @dash_app.callback(
         Output(dashboard_card_content_id('movimiento_mina'), 'children'),
         Output(dashboard_card_content_id('remanentes'), 'children'),
         Output(dashboard_card_content_id('perforacion'), 'children'),
         Output(dashboard_card_content_id('mp10'), 'children'),
+        Output(dashboard_component_id(GENERAL_MINA.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
     )
     def refresh_general_mina(store_data: object):
@@ -45,9 +47,11 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
             movimiento = _SOURCE_STATUS[error.state]
         except MovimientoMinaContractError:
             movimiento = DisplayStatus.INVALID
-        return build_general_mina(
+        rendered = build_general_mina(
             movimiento_mina=movimiento,
             remanentes=map_remanentes_readings(readings),
             perforacion=map_perforacion_readings(readings),
             mp10=map_mp10_readings(readings),
         )
+        # Preservamos el orden de las tarjetas y agregamos el marcador del área.
+        return (*rendered, 'true')

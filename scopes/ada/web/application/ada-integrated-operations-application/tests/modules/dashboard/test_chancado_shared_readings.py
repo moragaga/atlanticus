@@ -178,15 +178,15 @@ def test_callback_shares_same_preparation_between_all_six_mappers(monkeypatch):
     monkeypatch.setattr(runtime, 'build_chancado_stmg', lambda **states: states)
     dash = DashStub()
     runtime.register_chancado_stmg_callback(dash, tool_key='operations')
-    assert len(dash.dependencies) == 2
+    assert len(dash.dependencies) == 3
     assert dash.dependencies[0].component_id == dashboard_card_content_id('chancado_stmg')
     assert dash.dependencies[0].component_property == 'children'
-    assert dash.dependencies[1].component_id == component_kpi_store_id(
+    assert dash.dependencies[2].component_id == component_kpi_store_id(
         'operations', CHANCADO_STMG.tool_component_key
     )
-    assert dash.dependencies[1].component_property == 'data'
+    assert dash.dependencies[2].component_property == 'data'
     store = _store({})
-    assert len(dash.render(store)) == 6
+    assert len(dash.render(store)[0]) == 6
     assert calls == [store]
     assert len(received) == 6
     assert all(readings is received[0] for readings in received)

@@ -124,9 +124,10 @@ class DashStub:
 def test_callback_rebuilds_two_images_from_existing_kpi_store():
     stub = DashStub()
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
-    result = stub.callback_function(_store(_values()))
+    result, ready = stub.callback_function(_store(_values()))
+    assert ready == 'true'
     assert stub.callback_args[0].component_id == dashboard_card_content_id('chancado_stmg')
-    assert stub.callback_args[1].component_id == component_kpi_store_id(
+    assert stub.callback_args[2].component_id == component_kpi_store_id(
         'integrated_operations', CHANCADO_STMG.tool_component_key
     )
     assert result.to_plotly_json()['type'] == 'Div'

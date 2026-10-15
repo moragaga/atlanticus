@@ -12,8 +12,6 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.layout im
 )
 
 
-
-# La señal inicial de alarmas pertenece al dashboard y cambia con un callback en el navegador.
 def build_dashboard_layout():
     return html.Section(
         [
@@ -32,9 +30,8 @@ def build_dashboard_layout():
         className='ada-io-dashboard',
         **{
             'data-ada-module': 'dashboard',
+            # La señal de readiness vive en las áreas; el dashboard no almacena estado de alarmas.
             'data-ada-io-presentation': 'overview',
-            # El valor inicial no habilita el reveal hasta la primera respuesta operacional.
-            'data-ada-io-alarm-ready': 'false',
         },
     )
 

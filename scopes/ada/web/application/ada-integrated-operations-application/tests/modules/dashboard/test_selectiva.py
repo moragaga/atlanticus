@@ -246,12 +246,13 @@ class DashStub:
 def test_selectiva_callback_reuses_existing_flotacion_store():
     app = DashStub()
     register_flotacion_callback(app, tool_key='integrated_operations')
-    assert len(app.args) == 3
+    assert len(app.args) == 4
     assert app.args[0].component_id == dashboard_card_content_id('colectiva')
     assert app.args[1].component_id == dashboard_card_content_id('selectiva')
-    assert app.args[2].component_id == component_kpi_store_id(
+    assert app.args[3].component_id == component_kpi_store_id(
         'integrated_operations', FLOTACION.tool_component_key
     )
-    colectiva, selectiva = app.render(_store())
+    colectiva, selectiva, ready = app.render(_store())
+    assert ready == 'true'
     assert isinstance(colectiva, Component)
     assert isinstance(selectiva, Component)

@@ -4,6 +4,7 @@ from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import MOLIENDA
 from ada.web.kpis.collector import component_kpi_store_id
@@ -17,11 +18,13 @@ from .sags import map_molienda_sags_readings
 def register_molienda_callback(dash_app, *, tool_key: str) -> None:
     @dash_app.callback(
         Output(dashboard_card_content_id('molienda'), 'children'),
+        Output(dashboard_component_id(MOLIENDA.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, MOLIENDA.tool_component_key), 'data'),
     )
     def refresh_molienda(store_data: object):
         readings, timeseries = decode_molienda_store(store_data)
-        return build_molienda(
+        rendered = build_molienda(
             map_molienda_overview_readings(readings, timeseries),
             map_molienda_sags_readings(readings),
         )
+        return rendered, 'true'

@@ -1,4 +1,3 @@
-# Cada tarjeta propaga su estado declarado al wrapper común sin cambiar el runtime de KPI.
 from __future__ import annotations
 
 from dash import html
@@ -94,4 +93,6 @@ def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,
         'data-ada-component-key': binding.tool_component_key,
+        # Cada área empieza pendiente. El callback de render la marca ready junto con su contenido.
+        'data-ready': 'false',
     }

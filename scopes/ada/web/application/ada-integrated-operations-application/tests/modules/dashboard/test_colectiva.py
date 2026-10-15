@@ -199,13 +199,15 @@ class DashStub:
 def test_callback_reuses_flotacion_collector_store():
     app = DashStub()
     register_flotacion_callback(app, tool_key='integrated_operations')
-    assert len(app.args) == 3
+    assert len(app.args) == 4
     assert app.args[0].component_id == dashboard_card_content_id('colectiva')
     assert app.args[1].component_id == dashboard_card_content_id('selectiva')
-    assert app.args[2].component_id == component_kpi_store_id(
+    assert app.args[3].component_id == component_kpi_store_id(
         'integrated_operations', FLOTACION.tool_component_key
     )
-    cards = app.render(_store())
+    result = app.render(_store())
+    cards = result[:2]
+    assert result[2] == 'true'
     assert len(cards) == 2 and all(isinstance(card, Component) for card in cards)
 
 

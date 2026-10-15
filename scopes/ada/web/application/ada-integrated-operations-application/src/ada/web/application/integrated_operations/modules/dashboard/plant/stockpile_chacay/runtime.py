@@ -4,6 +4,7 @@ from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     STOCKPILE_CHACAY,
@@ -20,11 +21,13 @@ def register_stockpile_chacay_callback(dash_app, *, tool_key: str) -> None:
     @dash_app.callback(
         Output(dashboard_card_content_id('stockpile_chacay'), 'children'),
         Output(dashboard_card_content_id('tendencia_alimentado'), 'children'),
+        Output(dashboard_component_id(STOCKPILE_CHACAY.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, STOCKPILE_CHACAY.tool_component_key), 'data'),
     )
     def refresh_stockpile_chacay(store_data: object):
         readings, timeseries = decode_stockpile_chacay_store(store_data)
-        return build_stockpile_chacay_cards(
+        rendered = build_stockpile_chacay_cards(
             stockpile=map_stockpile_chacay_readings(readings),
             tendencia=map_tendencia_alimentado_readings(readings, timeseries),
         )
+        return (*rendered, 'true')

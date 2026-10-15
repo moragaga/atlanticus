@@ -136,12 +136,12 @@ def test_runtime_shares_one_decoder_result_between_both_mappers(monkeypatch):
         dashboard_card_content_id('transporte_global'),
         dashboard_card_content_id('numero_operativo'),
     ]
-    assert dash.outputs[2].component_id == component_kpi_store_id(
+    assert dash.outputs[3].component_id == component_kpi_store_id(
         'operations', TRANSPORTE.tool_component_key
     )
     raw = {'latest': {'values': {}}}
     returned = dash.render(raw)
-    assert tuple(returned) == ('transporte_global_turno', 'numero_operativo_turno')
+    assert tuple(returned) == ('transporte_global_turno', 'numero_operativo_turno', 'true')
     assert calls == [raw]
     assert seen == [prepared, prepared]
     assert seen[0] is seen[1]

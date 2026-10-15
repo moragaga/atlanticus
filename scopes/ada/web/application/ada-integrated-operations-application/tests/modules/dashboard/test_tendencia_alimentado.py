@@ -182,10 +182,11 @@ def test_callback_consumes_existing_plant_component_store():
     register_stockpile_chacay_callback(app, tool_key='integrated_operations')
     assert app.args[0].component_id == dashboard_card_content_id('stockpile_chacay')
     assert app.args[1].component_id == dashboard_card_content_id('tendencia_alimentado')
-    assert app.args[2].component_id == component_kpi_store_id(
+    assert app.args[3].component_id == component_kpi_store_id(
         'integrated_operations', STOCKPILE_CHACAY.tool_component_key
     )
     result = app.refresh(_store())
-    assert len(result) == 2
+    assert len(result) == 3
     assert isinstance(result[0], Component)
     assert isinstance(result[1], Component)
+    assert result[2] == 'true'

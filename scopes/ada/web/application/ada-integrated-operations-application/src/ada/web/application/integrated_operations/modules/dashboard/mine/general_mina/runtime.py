@@ -4,6 +4,7 @@ from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import GENERAL_MINA
 from ada.web.kpis.collector import KpiLatestValueState, component_kpi_store_id
@@ -33,6 +34,7 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('remanentes'), 'children'),
         Output(dashboard_card_content_id('perforacion'), 'children'),
         Output(dashboard_card_content_id('mp10'), 'children'),
+        Output(dashboard_component_id(GENERAL_MINA.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
     )
     def refresh_general_mina(store_data: object):
@@ -43,9 +45,10 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
             movimiento = _SOURCE_STATUS[error.state]
         except MovimientoMinaContractError:
             movimiento = DisplayStatus.INVALID
-        return build_general_mina(
+        rendered = build_general_mina(
             movimiento_mina=movimiento,
             remanentes=map_remanentes_readings(readings),
             perforacion=map_perforacion_readings(readings),
             mp10=map_mp10_readings(readings),
         )
+        return (*rendered, 'true')

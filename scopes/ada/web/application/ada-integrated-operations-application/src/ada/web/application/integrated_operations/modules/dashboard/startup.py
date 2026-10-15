@@ -1,11 +1,5 @@
-from dash import Input, Output
-
-from ada.web.alarms.collector import alarm_live_store_id
-from ada.web.alarms.live_surface import ALARM_LIVE_BOARD_ID
 from ada.web.branding.web import DEFAULT_OPERATIONAL_BRAND_LOGO_SRC
 from atlanticus.web.index import IndexContribution
-
-from .ids import DASHBOARD_ROOT_ID
 
 STARTUP_LOADER_INDEX = IndexContribution(
     body_start_fragments=(
@@ -20,32 +14,33 @@ STARTUP_LOADER_INDEX = IndexContribution(
         ),
         (
             '<script>'
+            '(function(){'
             'if(location.pathname!=="/"){'
-            'document.documentElement.dataset.adaIoLoaderSkip="true";'
-            '}else{window.setTimeout(function(){'
+            'document.documentElement.dataset.adaIoLoaderSkip="true";return;}'
+            'document.documentElement.dataset.adaIoLoaderActive="true";'
+            'var finished=false;'
+            'window.adaIoFinishStartupLoader=function(reason){'
+            'if(finished){return;}finished=true;'
+            'if(reason==="timeout"){'
+            'console.warn("[WARN] ADA startup loader timeout. Pending:",'
+            'window.adaIoStartupPending?window.adaIoStartupPending():["unknown"]);}'
+            'if(window.adaIoStopStartupObservers){window.adaIoStopStartupObservers();}'
             'var loader=document.getElementById("ada-io-startup-loader");'
             'if(loader){loader.classList.add("ada-io-startup-loader--exit");'
             'loader.setAttribute("aria-hidden","true");}'
-            '},29500);}'
+            'window.setTimeout(function(){'
+            'delete document.documentElement.dataset.adaIoLoaderActive;'
+            'if(loader){loader.remove();}'
+            'delete window.adaIoFinishStartupLoader;'
+            'delete window.adaIoStartupPending;'
+            'delete window.adaIoStopStartupObservers;'
+            '},500);'
+            '};'
+            'window.setTimeout(function(){'
+            'window.adaIoFinishStartupLoader("timeout");'
+            '},14500);'
+            '})();'
             '</script>'
         ),
     ),
 )
-
-
-def register_startup_alarm_readiness(dash_app, *, tool_key: str) -> None:
-    dash_app.clientside_callback(
-        """function(data, boardStyle) {
-            const availability = data && data.availability;
-            const resolved = ['ready', 'missing', 'invalid', 'unavailable', 'retired']
-                .includes(availability);
-            const rendered = boardStyle && boardStyle['--ada-alarm-live-slot-count'];
-            const triggers = dash_clientside.callback_context.triggered || [];
-            const boardUpdated = triggers.some((trigger) =>
-                trigger.prop_id === 'ada-alarm-live-board.style');
-            return resolved && rendered && boardUpdated ? 'true' : 'false';
-        }""",
-        Output(DASHBOARD_ROOT_ID, 'data-ada-io-alarm-ready'),
-        Input(alarm_live_store_id(tool_key), 'data'),
-        Input(ALARM_LIVE_BOARD_ID, 'style'),
-    )

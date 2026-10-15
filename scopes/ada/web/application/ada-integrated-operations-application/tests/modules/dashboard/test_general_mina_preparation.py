@@ -94,14 +94,14 @@ class DashStub:
 def test_callback_has_one_input_and_four_independent_outputs():
     dash = DashStub()
     runtime.register_general_mina_callback(dash, tool_key='operations')
-    assert len(dash.args) == 5
+    assert len(dash.args) == 6
     assert [output.component_id for output in dash.args[:4]] == [
         'ada-integrated-operations-card-movimiento_mina-content',
         'ada-integrated-operations-card-remanentes-content',
         'ada-integrated-operations-card-perforacion-content',
         'ada-integrated-operations-card-mp10-content',
     ]
-    assert len(dash.render({'latest': None})) == 4
+    assert len(dash.render({'latest': None})) == 5
 
 
 def test_callback_prepares_once_and_shares_result_with_every_mapper(monkeypatch):
@@ -131,7 +131,7 @@ def test_callback_prepares_once_and_shares_result_with_every_mapper(monkeypatch)
     store = {'latest': None}
     result = dash.render(store)
     assert calls == [store]
-    assert len(result) == 4
+    assert len(result) == 5
     assert len(received) == 4
     assert all(value is received[0] for value in received)
     assert received[0] is not store

@@ -93,4 +93,5 @@ def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,
         'data-ada-component-key': binding.tool_component_key,
+        'data-ready': 'false',
     }

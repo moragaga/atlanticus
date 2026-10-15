@@ -264,11 +264,12 @@ def test_callback_consumes_existing_plant_store_and_renders_first_card():
     register_stockpile_chacay_callback(dash_app, tool_key='integrated_operations')
     assert dash_app.args[0].component_id == dashboard_card_content_id('stockpile_chacay')
     assert dash_app.args[1].component_id == dashboard_card_content_id('tendencia_alimentado')
-    assert dash_app.args[2].component_id == component_kpi_store_id(
+    assert dash_app.args[3].component_id == component_kpi_store_id(
         'integrated_operations', STOCKPILE_CHACAY.tool_component_key
     )
     result = dash_app.render(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry('3')}))
-    assert isinstance(result, tuple) and len(result) == 2
+    assert isinstance(result, tuple) and len(result) == 3
     assert isinstance(result[0], Component)
     assert isinstance(result[1], Component)
+    assert result[2] == 'true'
     assert getattr(_position_presentation(result[0]), 'aria-label') == 'Posición del carro: P3'

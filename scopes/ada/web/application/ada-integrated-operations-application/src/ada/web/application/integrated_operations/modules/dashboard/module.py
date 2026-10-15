@@ -35,7 +35,6 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.transport
 )
 from ada.web.application.integrated_operations.modules.dashboard.startup import (
     STARTUP_LOADER_INDEX,
-    register_startup_alarm_readiness,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
@@ -80,7 +79,6 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_flotacion_callback(dash_app, tool_key=tool_key)
             register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
             register_puerto_callback(dash_app, tool_key=tool_key)
-            register_startup_alarm_readiness(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

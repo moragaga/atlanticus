@@ -4,6 +4,7 @@ from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import CHANCADO_STMG
 from ada.web.kpis.collector import component_kpi_store_id
@@ -22,16 +23,17 @@ from .produccion_global import map_produccion_global_readings
 from .stockpile import map_stockpile_mina_readings
 
 
-# El runtime recibe el store de Dash y coordina una única preparación de KPI para los seis mappers.
 def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
+    # La señal forma parte del mismo resultado del render para evitar carreras.
+    # No depende de que el collector haya publicado datos definitivos.
     @dash_app.callback(
         Output(dashboard_card_content_id('chancado_stmg'), 'children'),
+        Output(dashboard_component_id(CHANCADO_STMG.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, CHANCADO_STMG.tool_component_key), 'data'),
     )
     def refresh_chancado_stmg(store_data: object):
-        # La misma instancia llega a todos los mappers; no se reconstruye el lector.
         readings = decode_chancado_stmg_store(store_data)
-        return build_chancado_stmg(
+        rendered = build_chancado_stmg(
             produccion_global=map_produccion_global_readings(readings),
             equipos_ch=map_equipos_ch_readings(readings, EQUIPOS_CH_DEFINITIONS),
             stockpile_mina=map_stockpile_mina_readings(readings),
@@ -41,3 +43,5 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
             ),
             leyes=map_leyes_readings(readings),
         )
+        # Una sola tarjeta y el marcador de primer render.
+        return rendered, 'true'

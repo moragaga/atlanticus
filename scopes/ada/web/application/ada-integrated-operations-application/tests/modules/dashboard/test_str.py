@@ -303,9 +303,11 @@ def test_callback_uses_transporte_fluidos_store():
     assert [arg.component_id for arg in app.args[:4]] == [
         dashboard_card_content_id(key) for key in ('str', 'stc', 'tranque', 'sta')
     ]
-    assert app.args[4].component_id == component_kpi_store_id(
+    assert app.args[5].component_id == component_kpi_store_id(
         'integrated_operations', TRANSPORTE_FLUIDOS.tool_component_key
     )
-    children = app.render(_store())
+    result = app.render(_store())
+    children = result[:4]
+    assert result[4] == 'true'
     assert len(children) == 4
     assert all(isinstance(child, Component) for child in children)

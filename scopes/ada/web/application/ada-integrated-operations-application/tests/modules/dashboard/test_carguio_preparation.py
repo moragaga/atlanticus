@@ -147,12 +147,12 @@ def test_runtime_decodes_once_and_supplies_same_data_to_three_mappers(monkeypatc
         dashboard_card_content_id('equipos_servicio'),
         dashboard_card_content_id('gestion_carguio_turno'),
     ]
-    assert dash.outputs[3].component_id == component_kpi_store_id(
+    assert dash.outputs[4].component_id == component_kpi_store_id(
         'operations', CARGUIO.tool_component_key
     )
     raw = {'latest': {'values': {}}}
     result = dash.render(raw)
-    assert len(result) == 3
+    assert len(result) == 4
     assert calls == [raw]
     assert len(received) == 3
     assert all(item is prepared for item in received)

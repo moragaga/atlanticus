@@ -157,11 +157,11 @@ def test_one_callback_supplies_two_cards_from_the_same_preparation(monkeypatch):
         dashboard_card_content_id('stockpile_chacay'),
         dashboard_card_content_id('tendencia_alimentado'),
     ]
-    assert dash.args[2].component_id == component_kpi_store_id(
+    assert dash.args[3].component_id == component_kpi_store_id(
         'operations', STOCKPILE_CHACAY.tool_component_key
     )
     raw = {'latest': {'values': {}}}
-    assert dash.render(raw) == {'stockpile': 'stockpile', 'tendencia': 'trend'}
+    assert dash.render(raw) == ('stockpile', 'tendencia', 'true')
     assert sources == [raw]
     assert len(seen) == 2
     assert seen[0] is seen[1] is prepared[0]

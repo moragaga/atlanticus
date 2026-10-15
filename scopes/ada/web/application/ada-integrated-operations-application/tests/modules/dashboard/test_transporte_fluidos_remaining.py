@@ -172,7 +172,7 @@ def test_callbacks_read_shared_fluid_store_without_new_collector():
     assert [item.component_id for item in app.args[:4]] == [
         dashboard_card_content_id(key) for key in ('str', 'stc', 'tranque', 'sta')
     ]
-    assert app.args[4].component_id == component_kpi_store_id(
+    assert app.args[5].component_id == component_kpi_store_id(
         'operations', TRANSPORTE_FLUIDOS.tool_component_key
     )
-    assert len(app.renderer(_store())) == 4
+    assert len(app.renderer(_store())) == 5

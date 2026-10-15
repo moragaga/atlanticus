@@ -147,14 +147,14 @@ def test_one_callback_fans_out_same_readings_and_keeps_raw_history(monkeypatch):
     monkeypatch.setattr(runtime, 'build_transporte_fluidos', lambda *sections: sections[:4])
     app = DashStub()
     runtime.register_transporte_fluidos_callback(app, tool_key='operations')
-    assert len(app.args) == 5
+    assert len(app.args) == 6
     assert [item.component_id for item in app.args[:4]] == [
         dashboard_card_content_id(name) for name in ('str', 'stc', 'tranque', 'sta')
     ]
-    assert app.args[4].component_id == component_kpi_store_id(
+    assert app.args[5].component_id == component_kpi_store_id(
         'operations', TRANSPORTE_FLUIDOS.tool_component_key
     )
-    assert len(app.render(raw)) == 4
+    assert len(app.render(raw)) == 5
     assert len(received) == 6
     assert decoding == [raw]
     assert all(item[1] is prepared for item in received)

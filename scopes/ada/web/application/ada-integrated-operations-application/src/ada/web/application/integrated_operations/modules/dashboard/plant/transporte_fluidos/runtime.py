@@ -4,6 +4,7 @@ from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     TRANSPORTE_FLUIDOS,
@@ -26,11 +27,12 @@ def register_transporte_fluidos_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('stc'), 'children'),
         Output(dashboard_card_content_id('tranque'), 'children'),
         Output(dashboard_card_content_id('sta'), 'children'),
+        Output(dashboard_component_id(TRANSPORTE_FLUIDOS.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, TRANSPORTE_FLUIDOS.tool_component_key), 'data'),
     )
     def refresh_transporte_fluidos(store_data: object):
         readings = decode_transporte_fluidos_store(store_data)
-        return build_transporte_fluidos(
+        rendered = build_transporte_fluidos(
             map_str_overview_readings(readings, store_data),
             map_str_espesadores_readings(readings),
             map_str_ductos_readings(readings),
@@ -38,3 +40,4 @@ def register_transporte_fluidos_callback(dash_app, *, tool_key: str) -> None:
             map_tranque_readings(readings),
             map_sta_readings(readings),
         )
+        return (*rendered, 'true')

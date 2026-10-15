@@ -149,13 +149,13 @@ def test_one_callback_decodes_once_and_delivers_same_readings_to_four_mappers(mo
     monkeypatch.setattr(runtime, 'build_flotacion', lambda *parts: parts[:2])
     app = DashStub()
     runtime.register_flotacion_callback(app, tool_key='integrated_operations')
-    assert len(app.outputs) == 3
+    assert len(app.outputs) == 4
     assert app.outputs[0].component_id == dashboard_card_content_id('colectiva')
     assert app.outputs[1].component_id == dashboard_card_content_id('selectiva')
-    assert app.outputs[2].component_id == component_kpi_store_id(
+    assert app.outputs[3].component_id == component_kpi_store_id(
         'integrated_operations', FLOTACION.tool_component_key
     )
-    assert app.render(source) == ('overview', 'process')
+    assert app.render(source) == ('overview', 'process', 'true')
     assert calls == [source]
     assert len(received) == 4
     assert all(value is prepared[0] for _, value, _ in received)

@@ -187,11 +187,12 @@ def test_chancado_callback_renders_leyes_after_correas_with_same_store():
     app = DashStub()
     register_chancado_stmg_callback(app, tool_key='integrated_operations')
     assert app.arguments[0].component_id == dashboard_card_content_id('chancado_stmg')
-    assert app.arguments[1].component_id == component_kpi_store_id(
+    assert app.arguments[2].component_id == component_kpi_store_id(
         'integrated_operations', CHANCADO_STMG.tool_component_key
     )
     store = _store({_keys()[0]: _entry('12,3456789')})
-    root = app.render(store)
+    root, ready = app.render(store)
+    assert ready == 'true'
     last = root.children[-1]
     inspected = [item for item in _components(last) if hasattr(item, 'data-kpi-inspection-key')]
     assert len(root.children) == 6

@@ -1,10 +1,10 @@
-# Versión pedagógica: Los cuatro Outputs consumen el mismo conjunto de lecturas preparado desde un único Store.
 from __future__ import annotations
 
 from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
+    dashboard_component_id,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     TRANSPORTE_FLUIDOS,
@@ -22,16 +22,19 @@ from .tranque import map_tranque_readings
 
 
 def register_transporte_fluidos_callback(dash_app, *, tool_key: str) -> None:
+    # La señal forma parte del mismo resultado del render para evitar carreras.
+    # No depende de que el collector haya publicado datos definitivos.
     @dash_app.callback(
         Output(dashboard_card_content_id('str'), 'children'),
         Output(dashboard_card_content_id('stc'), 'children'),
         Output(dashboard_card_content_id('tranque'), 'children'),
         Output(dashboard_card_content_id('sta'), 'children'),
+        Output(dashboard_component_id(TRANSPORTE_FLUIDOS.key), 'data-ready'),
         Input(component_kpi_store_id(tool_key, TRANSPORTE_FLUIDOS.tool_component_key), 'data'),
     )
     def refresh_transporte_fluidos(store_data: object):
         readings = decode_transporte_fluidos_store(store_data)
-        return build_transporte_fluidos(
+        rendered = build_transporte_fluidos(
             map_str_overview_readings(readings, store_data),
             map_str_espesadores_readings(readings),
             map_str_ductos_readings(readings),
@@ -39,3 +42,5 @@ def register_transporte_fluidos_callback(dash_app, *, tool_key: str) -> None:
             map_tranque_readings(readings),
             map_sta_readings(readings),
         )
+        # Preservamos el orden de las tarjetas y agregamos el marcador del área.
+        return (*rendered, 'true')

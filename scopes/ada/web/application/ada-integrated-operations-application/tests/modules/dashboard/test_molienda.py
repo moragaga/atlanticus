@@ -248,7 +248,9 @@ def test_callback_uses_existing_molienda_component_store():
     dash_app = DashStub()
     register_molienda_callback(dash_app, tool_key='integrated_operations')
     assert dash_app.args[0].component_id == dashboard_card_content_id('molienda')
-    assert dash_app.args[1].component_id == component_kpi_store_id(
+    assert dash_app.args[2].component_id == component_kpi_store_id(
         'integrated_operations', MOLIENDA.tool_component_key
     )
-    assert isinstance(dash_app.render(_store()), Component)
+    content, ready = dash_app.render(_store())
+    assert isinstance(content, Component)
+    assert ready == 'true'

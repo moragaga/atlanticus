@@ -141,12 +141,12 @@ def test_callback_prepares_once_and_supplies_same_mapping_to_both_mappers(monkey
     monkeypatch.setattr(runtime, 'build_molienda', lambda *parts: parts)
     app = DashStub()
     runtime.register_molienda_callback(app, tool_key='integrated_operations')
-    assert len(app.outputs) == 2
+    assert len(app.outputs) == 3
     assert app.outputs[0].component_id == dashboard_card_content_id('molienda')
-    assert app.outputs[1].component_id == component_kpi_store_id(
+    assert app.outputs[2].component_id == component_kpi_store_id(
         'integrated_operations', MOLIENDA.tool_component_key
     )
-    assert app.render(source) == ('overview', 'sags')
+    assert app.render(source) == (('overview', 'sags'), 'true')
     assert calls == [source]
     assert len(received) == 2
     assert received[0][0] is prepared[0] and received[1][0] is prepared[0]
