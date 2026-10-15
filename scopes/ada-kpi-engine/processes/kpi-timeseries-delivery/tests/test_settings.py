@@ -19,6 +19,7 @@ def _configuration(tmp_path, interval='1', workers='2'):
         'APPLICATION': 'ada-kpi-timeseries-delivery-local',
         'VOLUMEN_PATH': str(tmp_path),
         'KPI_HISTORIAN_APPLICATION': 'ada-kpi-historian-local',
+        'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
         'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS': interval,
         'KPI_TIMESERIES_DELIVERY_MAX_WORKERS': workers,
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
@@ -36,6 +37,8 @@ def test_settings_use_historian_poll_and_worker_pool_without_cosmos_variables(tm
     keys = {spec.key for spec in configuration_specs()}
 
     assert settings.historian_application == 'ada-kpi-historian-local'
+    assert settings.kpi_materialization_application == 'ada-kpi-materialization-local'
+    assert 'KPI_MATERIALIZATION_APPLICATION' in keys
     assert settings.poll_interval_seconds == 1
     assert settings.max_workers == 2
     assert 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS' in keys

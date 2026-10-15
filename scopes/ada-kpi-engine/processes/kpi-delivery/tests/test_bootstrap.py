@@ -31,6 +31,7 @@ def test_local_bootstrap_resolves_named_tool_connection_variables(tmp_path):
             'APPLICATION': 'ada-kpi-delivery-local',
             'VOLUMEN_PATH': str(tmp_path.resolve()),
             'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
+            'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
             'POLL_INTERVAL_SECONDS': '1',
             'TOOL_A_ENDPOINT': 'http://localhost:8081',
             'TOOL_A_DATABASE': 'ada',
@@ -38,5 +39,6 @@ def test_local_bootstrap_resolves_named_tool_connection_variables(tmp_path):
         },
     )
 
+    assert configuration.require('KPI_MATERIALIZATION_APPLICATION') == 'ada-kpi-materialization-local'
     assert configuration.require('TOOL_A_DATABASE') == 'ada'
     assert 'TOOL_A_KEY' in configuration.sensitive_keys

@@ -23,7 +23,7 @@ from .support import (
 
 
 def _store(tmp_path):
-    return LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve()))
+    return LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve(), application='materializer-a'))
 
 
 def test_job_materializes_each_tool_independently(tmp_path):

@@ -93,7 +93,10 @@ def build_composition(
     )
     job = KpiLatestDeliveryRuntimeJob(
         store=LocalKpiRegistryStore(
-            root=materialization_root(runtime_configuration.volume_path),
+            root=materialization_root(
+                runtime_configuration.volume_path,
+                application=settings.kpi_materialization_application,
+            ),
         ),
         expected_tool_keys=connections,
         kpi_state=KpiCommitStateRepository(upstream_store),

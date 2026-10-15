@@ -8,6 +8,7 @@ from ada.processes.kpi_delivery.errors import KpiDeliveryConfigurationError
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 KPI_RUNTIME_APPLICATION_VARIABLE = 'KPI_RUNTIME_APPLICATION'
+KPI_MATERIALIZATION_APPLICATION_VARIABLE = 'KPI_MATERIALIZATION_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 MAX_WORKERS_VARIABLE = 'KPI_DELIVERY_MAX_WORKERS'
 
@@ -16,6 +17,8 @@ MAX_WORKERS_VARIABLE = 'KPI_DELIVERY_MAX_WORKERS'
 # Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryProcessSettings:
     kpi_runtime_application: str
+    # Identidad del productor del registro, independiente del consumidor.
+    kpi_materialization_application: str
     poll_interval_seconds: float
     max_workers: int
 
@@ -27,6 +30,10 @@ class KpiDeliveryProcessSettings:
             kpi_runtime_application=_required_text(
                 configuration.require(KPI_RUNTIME_APPLICATION_VARIABLE),
                 KPI_RUNTIME_APPLICATION_VARIABLE,
+            ),
+            kpi_materialization_application=_required_text(
+                configuration.require(KPI_MATERIALIZATION_APPLICATION_VARIABLE),
+                KPI_MATERIALIZATION_APPLICATION_VARIABLE,
             ),
             poll_interval_seconds=_non_negative_float(
                 configuration.require(POLL_INTERVAL_VARIABLE),
@@ -46,6 +53,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=KPI_RUNTIME_APPLICATION_VARIABLE),
+        ConfigurationVariableSpec(key=KPI_MATERIALIZATION_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=MAX_WORKERS_VARIABLE, default='2'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),

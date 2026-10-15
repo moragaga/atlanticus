@@ -36,6 +36,7 @@ def test_local_bootstrap_resolves_multiple_named_tool_connections(tmp_path):
             'APPLICATION': 'ada-kpi-timeseries-delivery-local',
             'VOLUMEN_PATH': str(tmp_path.resolve()),
             'KPI_HISTORIAN_APPLICATION': 'ada-kpi-historian-local',
+            'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
             'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS': '1',
             'KPI_TIMESERIES_DELIVERY_MAX_WORKERS': '2',
             'TOOL_A_ENDPOINT': 'http://localhost:8081',
@@ -51,6 +52,7 @@ def test_local_bootstrap_resolves_multiple_named_tool_connections(tmp_path):
         environment=configuration.environment,
     )
 
+    assert configuration.require('KPI_MATERIALIZATION_APPLICATION') == 'ada-kpi-materialization-local'
     assert tuple(connections) == ('tool_a', 'tool_b')
     assert connections['tool_a'].database_name == 'ada-a'
     assert connections['tool_b'].database_name == 'ada-b'

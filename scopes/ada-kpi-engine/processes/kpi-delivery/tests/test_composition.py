@@ -14,6 +14,7 @@ def _configuration(tmp_path):
         'APPLICATION': 'ada-kpi-delivery-local',
         'VOLUMEN_PATH': str(tmp_path.resolve()),
         'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
+        'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
         'POLL_INTERVAL_SECONDS': '1',
         'KPI_DELIVERY_MAX_WORKERS': '2',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
@@ -46,6 +47,9 @@ def test_composition_starts_before_materialization_is_ready(tmp_path):
 
         assert result.status is KpiLatestDeliveryIterationStatus.MATERIALIZATION_PENDING
         assert context.next_delay == READINESS_RETRY_SECONDS
+        assert composition.job._store.root == (
+            tmp_path.resolve() / 'ada-kpi-materialization-local/materialization/registries'
+        )
         assert tuple(composition.publishers) == ('tool_a',)
         assert tuple(composition.clients) == ('tool_a',)
         assert composition.definition.sleep_seconds == 1

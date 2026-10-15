@@ -72,7 +72,10 @@ def build_composition(
     job = KpiMaterializationJob(
         repositories=repositories,
         store=LocalKpiRegistryStore(
-            root=materialization_root(runtime_configuration.volume_path),
+            root=materialization_root(
+                runtime_configuration.volume_path,
+                application=runtime_configuration.application,
+            ),
         ),
     )
     definition = JobDefinition(

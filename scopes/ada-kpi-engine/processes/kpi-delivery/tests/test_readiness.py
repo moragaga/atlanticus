@@ -55,7 +55,9 @@ def _projection():
 
 
 def test_runtime_job_waits_for_materialization_then_freezes_it(tmp_path):
-    store = LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve()))
+    store = LocalKpiRegistryStore(
+        root=materialization_root(tmp_path.resolve(), application='ada-kpi-materialization-local')
+    )
     publishers = {'tool_a': SnapshotPublisher('tool_a')}
     kpi_state = CommitStateReader(None)
     job = KpiLatestDeliveryRuntimeJob(

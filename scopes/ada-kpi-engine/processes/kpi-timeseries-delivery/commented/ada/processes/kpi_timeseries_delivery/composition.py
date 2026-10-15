@@ -120,7 +120,9 @@ def build_composition(
     job = KpiTimeseriesDeliveryRuntimeJob(
         store=LocalKpiRegistryStore(
             root=materialization_root(
-                runtime_configuration.volume_path
+                runtime_configuration.volume_path,
+                # Usa el registro del productor configurado, no el del proceso actual.
+                application=settings.kpi_materialization_application,
             ),
         ),
         expected_tool_keys=connections,

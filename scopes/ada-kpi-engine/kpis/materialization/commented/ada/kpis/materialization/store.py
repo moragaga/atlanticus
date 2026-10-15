@@ -12,10 +12,12 @@ from ada.kpis.materialization.contract import (
 )
 from ada.kpis.materialization.errors import KpiMaterializationStoreError
 from atlanticus.state import AtomicJsonStore, StateError
+from atlanticus.state.models import validate_application
 
 
 # Expone una operación del contrato manteniendo validación explícita.
-def materialization_root(volume_path: str | Path) -> Path:
+# La autoridad del registro se ubica bajo la identidad del proceso productor.
+def materialization_root(volume_path: str | Path, *, application: str) -> Path:
     if not isinstance(volume_path, str | Path):
         raise KpiMaterializationStoreError('VOLUMEN_PATH must be a filesystem path')
     if isinstance(volume_path, str) and volume_path != volume_path.strip():
@@ -23,7 +25,7 @@ def materialization_root(volume_path: str | Path) -> Path:
     path = Path(volume_path).expanduser()
     if not path.is_absolute():
         raise KpiMaterializationStoreError('VOLUMEN_PATH must be absolute')
-    return path / 'ada-kpi-engine' / 'materialization' / 'registries'
+    return path / validate_application(application) / 'materialization' / 'registries'
 
 
 # Agrupa una responsabilidad con estado o ciclo de vida propio.

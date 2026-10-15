@@ -11,9 +11,10 @@ from ada.kpis.materialization.contract import (
 )
 from ada.kpis.materialization.errors import KpiMaterializationStoreError
 from atlanticus.state import AtomicJsonStore, StateError
+from atlanticus.state.models import validate_application
 
 
-def materialization_root(volume_path: str | Path) -> Path:
+def materialization_root(volume_path: str | Path, *, application: str) -> Path:
     if not isinstance(volume_path, str | Path):
         raise KpiMaterializationStoreError('VOLUMEN_PATH must be a filesystem path')
     if isinstance(volume_path, str) and volume_path != volume_path.strip():
@@ -21,7 +22,7 @@ def materialization_root(volume_path: str | Path) -> Path:
     path = Path(volume_path).expanduser()
     if not path.is_absolute():
         raise KpiMaterializationStoreError('VOLUMEN_PATH must be absolute')
-    return path / 'ada-kpi-engine' / 'materialization' / 'registries'
+    return path / validate_application(application) / 'materialization' / 'registries'
 
 
 class LocalKpiRegistryStore:

@@ -9,6 +9,7 @@ from ada.processes.kpi_timeseries_delivery.errors import (
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 HISTORIAN_APPLICATION_VARIABLE = 'KPI_HISTORIAN_APPLICATION'
+KPI_MATERIALIZATION_APPLICATION_VARIABLE = 'KPI_MATERIALIZATION_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS'
 MAX_WORKERS_VARIABLE = 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS'
 
@@ -16,6 +17,7 @@ MAX_WORKERS_VARIABLE = 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS'
 @dataclass(frozen=True, slots=True)
 class KpiTimeseriesDeliveryProcessSettings:
     historian_application: str
+    kpi_materialization_application: str
     poll_interval_seconds: float
     max_workers: int
 
@@ -30,6 +32,10 @@ class KpiTimeseriesDeliveryProcessSettings:
             historian_application=_required_text(
                 configuration.require(HISTORIAN_APPLICATION_VARIABLE),
                 HISTORIAN_APPLICATION_VARIABLE,
+            ),
+            kpi_materialization_application=_required_text(
+                configuration.require(KPI_MATERIALIZATION_APPLICATION_VARIABLE),
+                KPI_MATERIALIZATION_APPLICATION_VARIABLE,
             ),
             poll_interval_seconds=_non_negative_float(
                 configuration.require(POLL_INTERVAL_VARIABLE),
@@ -48,6 +54,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=HISTORIAN_APPLICATION_VARIABLE),
+        ConfigurationVariableSpec(key=KPI_MATERIALIZATION_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=MAX_WORKERS_VARIABLE, default='2'),
         ConfigurationVariableSpec(

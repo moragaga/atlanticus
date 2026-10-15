@@ -11,7 +11,7 @@ from .support import projection
 
 
 def test_store_persists_one_registry_per_tool(tmp_path):
-    root = materialization_root(tmp_path.resolve())
+    root = materialization_root(tmp_path.resolve(), application='materializer-a')
     store = LocalKpiRegistryStore(root=root)
     document = materialize_registry(tool_key='tool_a', projection=projection())
 
@@ -23,7 +23,7 @@ def test_store_persists_one_registry_per_tool(tmp_path):
 
 
 def test_store_removes_only_unconfigured_tools(tmp_path):
-    store = LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve()))
+    store = LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve(), application='materializer-a'))
     store.replace(
         tool_key='tool_a',
         document=materialize_registry(tool_key='tool_a', projection=projection()),
@@ -41,7 +41,7 @@ def test_store_removes_only_unconfigured_tools(tmp_path):
 
 
 def test_store_rejects_symlinked_registry(tmp_path):
-    root = materialization_root(tmp_path.resolve())
+    root = materialization_root(tmp_path.resolve(), application='materializer-a')
     store = LocalKpiRegistryStore(root=root)
     store.replace(
         tool_key='tool_a',
@@ -56,7 +56,21 @@ def test_store_rejects_symlinked_registry(tmp_path):
         store.read('tool_a')
 
 
-def test_materialization_root_is_stable_and_shared(tmp_path):
-    assert materialization_root(tmp_path.resolve()) == (
-        tmp_path.resolve() / 'ada-kpi-engine/materialization/registries'
+def test_materialization_root_is_application_scoped(tmp_path):
+    assert materialization_root(tmp_path.resolve(), application='materializer-a') == (
+        tmp_path.resolve() / 'materializer-a/materialization/registries'
     )
+
+
+def test_materialization_root_is_isolated_per_application(tmp_path):
+    first = materialization_root(tmp_path.resolve(), application='materializer-a')
+    second = materialization_root(tmp_path.resolve(), application='materializer-b')
+
+    assert first != second
+    assert first.parent.parent == tmp_path.resolve() / 'materializer-a'
+    assert second.parent.parent == tmp_path.resolve() / 'materializer-b'
+
+
+def test_materialization_root_rejects_unsafe_application(tmp_path):
+    with pytest.raises(ValueError):
+        materialization_root(tmp_path.resolve(), application='../other')

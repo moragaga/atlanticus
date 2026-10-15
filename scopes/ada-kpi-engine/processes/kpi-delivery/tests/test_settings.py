@@ -15,6 +15,7 @@ def _configuration(tmp_path, interval='1', workers='2'):
         'APPLICATION': 'ada-kpi-delivery-local',
         'VOLUMEN_PATH': str(tmp_path),
         'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
+        'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
         'POLL_INTERVAL_SECONDS': interval,
         'KPI_DELIVERY_MAX_WORKERS': workers,
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
@@ -32,6 +33,8 @@ def test_settings_use_generic_runtime_poll_and_delivery_worker_pool(tmp_path):
     keys = {spec.key for spec in configuration_specs()}
 
     assert settings.kpi_runtime_application == 'ada-kpi-runtime-local'
+    assert settings.kpi_materialization_application == 'ada-kpi-materialization-local'
+    assert 'KPI_MATERIALIZATION_APPLICATION' in keys
     assert settings.poll_interval_seconds == 1
     assert settings.max_workers == 2
     assert 'POLL_INTERVAL_SECONDS' in keys

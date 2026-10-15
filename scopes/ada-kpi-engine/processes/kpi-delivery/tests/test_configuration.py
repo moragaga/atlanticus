@@ -50,7 +50,9 @@ def _projection(revision='registry-r1', *, tool_key='tool_a'):
 
 
 def _store(tmp_path):
-    return LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve()))
+    return LocalKpiRegistryStore(
+        root=materialization_root(tmp_path.resolve(), application='ada-kpi-materialization-local')
+    )
 
 
 def test_frozen_configuration_reads_all_registries_once_at_start(tmp_path):

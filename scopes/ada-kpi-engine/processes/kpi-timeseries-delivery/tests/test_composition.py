@@ -16,6 +16,7 @@ def _configuration(tmp_path):
         'APPLICATION': 'ada-kpi-timeseries-delivery-local',
         'VOLUMEN_PATH': str(tmp_path.resolve()),
         'KPI_HISTORIAN_APPLICATION': 'ada-kpi-historian-local',
+        'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
         'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS': '1',
         'KPI_TIMESERIES_DELIVERY_MAX_WORKERS': '2',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
@@ -54,6 +55,9 @@ def test_composition_starts_with_multiple_tools_before_materialization_is_ready(
         assert result.status is KpiTimeseriesDeliveryIterationStatus.MATERIALIZATION_PENDING
         assert result.tool_count == 2
         assert context.next_delay == READINESS_RETRY_SECONDS
+        assert composition.job._store.root == (
+            tmp_path.resolve() / 'ada-kpi-materialization-local/materialization/registries'
+        )
         assert tuple(composition.publishers) == ('tool_a', 'tool_b')
         assert tuple(composition.clients) == ('tool_a', 'tool_b')
         assert composition.definition.sleep_seconds == 1
