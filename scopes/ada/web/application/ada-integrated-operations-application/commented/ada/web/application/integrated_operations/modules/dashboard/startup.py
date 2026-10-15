@@ -3,6 +3,8 @@ from atlanticus.web.index import IndexContribution
 
 # El desbloqueo del scroll ocurre al terminar la transición de 500 ms.
 # El fallback se dispara a los 14,5 segundos, aunque falten áreas.
+# Cancelamos el temporizador al recibir ready para evitar invocar una función eliminada.
+# El timeout verifica que la función siga disponible ante una carrera del navegador.
 
 # Índice de la aplicación: el loader se inyecta antes de montar Dash.
 # La salida es por señales de primer render, con límite total de 15 segundos.
@@ -23,9 +25,10 @@ STARTUP_LOADER_INDEX = IndexContribution(
             'if(location.pathname!=="/"){'
             'document.documentElement.dataset.adaIoLoaderSkip="true";return;}'
             'document.documentElement.dataset.adaIoLoaderActive="true";'
-            'var finished=false;'
+            'var finished=false;var timeoutId=null;'
             'window.adaIoFinishStartupLoader=function(reason){'
             'if(finished){return;}finished=true;'
+            'if(timeoutId!==null){window.clearTimeout(timeoutId);timeoutId=null;}'
             'if(reason==="timeout"){'
             'console.warn("[WARN] ADA startup loader timeout. Pending:",'
             'window.adaIoStartupPending?window.adaIoStartupPending():["unknown"]);}'
@@ -41,8 +44,9 @@ STARTUP_LOADER_INDEX = IndexContribution(
             'delete window.adaIoStopStartupObservers;'
             '},500);'
             '};'
-            'window.setTimeout(function(){'
-            'window.adaIoFinishStartupLoader("timeout");'
+            'timeoutId=window.setTimeout(function(){'
+            'if(typeof window.adaIoFinishStartupLoader==="function"){'
+            'window.adaIoFinishStartupLoader("timeout");}'
             '},14500);'
             '})();'
             '</script>'

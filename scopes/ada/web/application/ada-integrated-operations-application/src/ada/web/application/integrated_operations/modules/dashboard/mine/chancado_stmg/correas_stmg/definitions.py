@@ -35,12 +35,12 @@ class CorreaStmgMetricDefinition:
 
 
 CORREAS_STMG_DEFINITIONS = (
-    CorreaStmgDefinition('CV005', 'estado_correa_005_inst'),
-    CorreaStmgDefinition('CV006', 'estado_correa_006_inst'),
-    CorreaStmgDefinition('CV007', 'estado_correa_007_inst'),
+    CorreaStmgDefinition('CV005', 'correa_stmg_005_estado_inst'),
+    CorreaStmgDefinition('CV006', 'correa_stmg_006_estado_inst'),
+    CorreaStmgDefinition('CV007', 'correa_stmg_007_estado_inst'),
 )
 
 CORREAS_STMG_METRIC = CorreaStmgMetricDefinition(
     label='Transp. STMG',
-    value_kpi_key='transportado_stmg_inst',
+    value_kpi_key='stmg_transportado_acc',
 )

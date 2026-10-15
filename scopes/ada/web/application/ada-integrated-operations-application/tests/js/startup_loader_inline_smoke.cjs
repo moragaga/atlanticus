@@ -22,8 +22,9 @@ assert.equal(result.status, 0, result.stderr);
 const script = result.stdout.trim();
 assert.ok(script);
 
-function run(pathname, expectedTimeout = 14500) {
+function run(pathname, reason = 'timeout', expectedTimeout = 14500) {
     const timers = [];
+    let nextTimerId = 0;
     let removed = false;
     const attributes = {};
     const classes = new Set();
@@ -38,7 +39,16 @@ function run(pathname, expectedTimeout = 14500) {
     };
     const warnings = [];
     const window = {
-        setTimeout: (fn, ms) => { timers.push({ fn, ms }); },
+        setTimeout: (fn, ms) => {
+            const timer = { id: ++nextTimerId, fn, ms, canceled: false };
+            timers.push(timer);
+            return timer.id;
+        },
+        clearTimeout: (id) => {
+            const timer = timers.find((item) => item.id === id);
+            assert.ok(timer);
+            timer.canceled = true;
+        },
         adaIoStartupPending: () => ['area_2', 'alarms_render'],
     };
     vm.runInNewContext(script, {
@@ -51,21 +61,31 @@ function run(pathname, expectedTimeout = 14500) {
         return;
     }
     assert.equal(document.documentElement.dataset.adaIoLoaderActive, 'true');
-    assert.equal(timers.shift().ms, expectedTimeout);
-    const timeout = window.adaIoFinishStartupLoader;
-    timeout('timeout');
-    assert.equal(warnings.length, 1);
+    const fallback = timers[0];
+    assert.equal(fallback.ms, expectedTimeout);
+    if (reason === 'ready') {
+        window.adaIoFinishStartupLoader('ready');
+        assert.equal(fallback.canceled, true);
+        assert.equal(warnings.length, 0);
+    } else {
+        fallback.fn();
+        assert.equal(fallback.canceled, true);
+        assert.equal(warnings.length, 1);
+    }
     assert.ok(classes.has('ada-io-startup-loader--exit'));
     assert.equal(attributes['aria-hidden'], 'true');
     assert.equal(document.documentElement.dataset.adaIoLoaderActive, 'true');
-    const fade = timers.shift();
+    const fade = timers[1];
     assert.equal(fade.ms, 500);
     fade.fn();
     assert.equal(removed, true);
     assert.equal(document.documentElement.dataset.adaIoLoaderActive, undefined);
-    timeout('ready');
-    assert.equal(warnings.length, 1);
+    assert.equal(window.adaIoFinishStartupLoader, undefined);
+    assert.equal(window.adaIoStartupPending, undefined);
+    fallback.fn();
+    assert.equal(warnings.length, reason === 'ready' ? 0 : 1);
 }
-run('/');
+run('/', 'timeout');
+run('/', 'ready');
 run('/manager');
 console.log('Startup loader timeout and scroll restore: OK');

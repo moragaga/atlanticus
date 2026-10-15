@@ -1,10 +1,16 @@
 html[data-ada-io-loader-active='true'] {
     overflow: hidden !important;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto !important;
+    scrollbar-width: none !important;
+    background-color: #E1E1E1 !important;
 }
 
 html[data-ada-io-loader-active='true'] body {
     overflow: hidden !important;
+}
+
+html[data-ada-io-loader-active='true']::-webkit-scrollbar {
+    display: none;
 }
 
 .ada-io-startup-loader {
