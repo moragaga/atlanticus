@@ -442,11 +442,12 @@ class IncrementalAlarmPersistence(AlarmPersistence):
                     try:
                         size = path.stat().st_size
                         path.unlink()
-                        fd = os.open(path.parent, os.O_RDONLY)
-                        try:
-                            os.fsync(fd)
-                        finally:
-                            os.close(fd)
+                        if os.name != 'nt':
+                            fd = os.open(path.parent, os.O_RDONLY)
+                            try:
+                                os.fsync(fd)
+                            finally:
+                                os.close(fd)
                     except OSError as error:
                         raise AlarmPersistenceWriteError('could not remove compacted WAL segment') from error
                 removed += size

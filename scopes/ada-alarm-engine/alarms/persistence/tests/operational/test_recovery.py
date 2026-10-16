@@ -92,7 +92,7 @@ def test_crash_during_multiple_snapshot_replaces_is_idempotently_recovered(
 
     def fail_second_group(relative_path, value):
         nonlocal group_writes
-        if str(relative_path).startswith('runtime/state/groups/'):
+        if Path(relative_path).parts[:3] == ('runtime', 'state', 'groups'):
             group_writes += 1
             if group_writes == 2:
                 raise OSError('forced snapshot failure')
