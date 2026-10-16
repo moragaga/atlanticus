@@ -63,7 +63,7 @@ class _Context:
         self.iteration = {}
         self.work = False
         self.delay = None
-        self.definition = SimpleNamespace(sleep_seconds=4.5)
+        self.definition = SimpleNamespace(poll_interval_seconds=4.5)
         self.logger = _Logger()
 
     def get_memory(self, key, default=None):

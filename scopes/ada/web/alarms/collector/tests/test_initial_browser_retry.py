@@ -42,9 +42,9 @@ def test_alarm_fast_retry_until_first_completed_read_then_normal():
     integration.module.register_callbacks(dash, services)
     adapt, refresh = dash.callbacks
     waiting = {'tool_key': 'tool-a', 'availability': 'waiting', 'live': None}
-    assert adapt(waiting, 0, 1000) is no_update
-    assert adapt(waiting, 20, 1000) == 5000
+    assert adapt(waiting, 1000) is no_update
+    assert adapt(waiting, 1000) is no_update
     collector.refresh()
     missing = refresh(1, waiting)
     assert missing['availability'] == 'missing'
-    assert adapt(missing, 1, 1000) == 5000
+    assert adapt(missing, 1000) == 5000

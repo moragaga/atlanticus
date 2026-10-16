@@ -60,7 +60,7 @@ def test_composition_starts_with_multiple_tools_before_materialization_is_ready(
         )
         assert tuple(composition.publishers) == ('tool_a', 'tool_b')
         assert tuple(composition.clients) == ('tool_a', 'tool_b')
-        assert composition.definition.sleep_seconds == 1
+        assert composition.definition.poll_interval_seconds == 1
         assert composition.settings.max_workers == 2
     finally:
         composition.parallel_publisher.close()

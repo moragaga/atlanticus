@@ -20,7 +20,7 @@ def test_composition_uses_existing_http_dataset_and_runtime(tmp_path: Path):
     composition = build_composition(configuration=config)
     assert composition.definition.job_key == 'meteodata-materialization'
     assert composition.definition.run_once is True
-    assert composition.definition.sleep_seconds == 0
+    assert composition.definition.poll_interval_seconds == 0
     assert (
         composition.definition.iteration_timeout_seconds
         < composition.definition.execution_timeout_seconds

@@ -283,7 +283,7 @@ def _merge_store(
     update_latest: bool,
     update_timeseries: bool,
     clear_timeseries: bool,
-) -> dict[str, object]:
+) -> object:
     updated = _normalize_store_data(
         current,
         tool_key=tool_key,
@@ -296,6 +296,9 @@ def _merge_store(
         updated['timeseries'] = candidate['timeseries']
     elif clear_timeseries:
         updated['timeseries'] = None
+    # La revision de otra fuente no fuerza un render si este destino no cambio.
+    if isinstance(current, Mapping) and updated == current:
+        return no_update
     return updated
 
 

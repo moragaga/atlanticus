@@ -132,7 +132,7 @@ def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
         module_name='ada.processes.kpi_delivery',
         service_name='kpi-delivery',
         job_key='kpi-delivery',
-        sleep_seconds=poll_interval_seconds,
+        poll_interval_seconds=poll_interval_seconds,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

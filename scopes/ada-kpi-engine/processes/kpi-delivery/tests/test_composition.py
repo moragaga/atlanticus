@@ -52,6 +52,6 @@ def test_composition_starts_before_materialization_is_ready(tmp_path):
         )
         assert tuple(composition.publishers) == ('tool_a',)
         assert tuple(composition.clients) == ('tool_a',)
-        assert composition.definition.sleep_seconds == 1
+        assert composition.definition.poll_interval_seconds == 1
     finally:
         composition.parallel_publisher.close()

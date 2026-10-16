@@ -26,7 +26,6 @@ from ada.web.kpis.collector.runtime import (
     AdaKpiCollectorPollingRuntime,
     KpiCollectorPollingSettings,
 )
-from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import CallbackRegistrar, WebModule
 from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
@@ -39,9 +38,7 @@ if TYPE_CHECKING:
 ADA_KPI_COLLECTOR_SERVICE_KEY = 'ada.kpi.collector'
 ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY = 'ada.kpi.collector.runtime'
 _START_EXCLUDED_PATH_PREFIXES = ('/health/', '/assets/', '/.auth/')
-_INITIAL_BROWSER_REFRESH_INTERVAL_MS = 250
-_INITIAL_BROWSER_SLOW_RETRY_AFTER = 20
-_INITIAL_BROWSER_SLOW_REFRESH_INTERVAL_MS = 1000
+_INITIAL_BROWSER_REFRESH_INTERVAL_MS = 1000
 
 LayoutFactory = Callable[..., object]
 
@@ -223,26 +220,18 @@ def _create_callback_registrar(
         @dash_app.callback(
             Output(settings.interval_id, 'interval'),
             Input(settings.revision_store_id, 'data'),
-            Input(settings.interval_id, 'n_intervals'),
             State(settings.interval_id, 'interval'),
         )
-        def adapt_initial_refresh(
-            browser_revision: object, n_intervals: int, current_interval: object,
-        ):
-            latest_ready = (
+        def adapt_initial_refresh(browser_revision: object, current_interval: object):
+            completed = (
                 isinstance(browser_revision, Mapping)
-                and (
-                    browser_revision.get('initial_latest_state') in {'ready', 'empty', 'error'}
-                    or isinstance(browser_revision.get('latest'), Mapping)
-                )
+                and browser_revision.get('initial_latest_state') in {'ready', 'empty', 'error'}
             )
-            if latest_ready:
-                desired_interval = int(settings.refresh_interval_seconds * 1000)
-            elif isinstance(n_intervals, int) and n_intervals >= _INITIAL_BROWSER_SLOW_RETRY_AFTER:
-                desired_interval = _INITIAL_BROWSER_SLOW_REFRESH_INTERVAL_MS
-            else:
-                desired_interval = _INITIAL_BROWSER_REFRESH_INTERVAL_MS
-            return no_update if current_interval == desired_interval else desired_interval
+            desired = (
+                int(settings.refresh_interval_seconds * 1000)
+                if completed else _INITIAL_BROWSER_REFRESH_INTERVAL_MS
+            )
+            return no_update if current_interval == desired else desired
 
         outputs = tuple(Output(store_id, 'data') for store_id in (*component_ids, *system_ids))
         states = tuple(State(store_id, 'data') for store_id in (*component_ids, *system_ids))
@@ -270,11 +259,7 @@ def _create_callback_registrar(
                 else polling_runtime.initial_latest_state
             )
             source_states = polling_runtime.source_states
-            if (
-                initial_state == 'pending'
-                and not snapshot.has_delivery_data
-                and WebSettings().environment is WebEnvironment.PRODUCTION
-            ):
+            if initial_state == 'pending':
                 empty = tuple(no_update for _ in (*component_ids, *system_ids))
                 return (*empty, no_update)
             component_updates, system_updates, revision = resolve_kpi_collector_browser_update(
@@ -317,7 +302,7 @@ def _build_runtime_components(
             storage_type='memory',
             data=None,
         ),
-        *_build_store_components(structure=structure, snapshot=snapshot),
+        *_build_store_components(structure=structure, snapshot=snapshot, pending=True),
     )
 
 
@@ -335,6 +320,7 @@ def _build_store_components(
     *,
     structure: ToolStructure,
     snapshot: KpiCollectorSnapshot,
+    pending: bool = False,
 ) -> tuple[Component, ...]:
     component_stores = {store.component_key: store for store in snapshot.stores}
     system_stores = {store.destination_key: store for store in snapshot.system_stores}
@@ -342,7 +328,7 @@ def _build_store_components(
         dcc.Store(
             id=component_kpi_store_id(structure.tool_key, component.key),
             storage_type='memory',
-            data=project_component_store_data(component_stores[component.key]),
+            data=None if pending else project_component_store_data(component_stores[component.key]),
         )
         for component in structure.components
     )
@@ -350,7 +336,7 @@ def _build_store_components(
         dcc.Store(
             id=system_kpi_store_id(structure.tool_key, destination_key),
             storage_type='memory',
-            data=project_system_store_data(system_stores[destination_key]),
+            data=None if pending else project_system_store_data(system_stores[destination_key]),
         )
         for destination_key in system_kpi_destination_keys(structure)
     )

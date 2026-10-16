@@ -112,7 +112,7 @@ def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
         module_name='ada.processes.kpi_historian',
         service_name='kpi-historian',
         job_key='kpi-historian',
-        sleep_seconds=poll_interval_seconds,
+        poll_interval_seconds=poll_interval_seconds,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

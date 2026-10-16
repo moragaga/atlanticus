@@ -81,7 +81,7 @@ def build_composition(
         module_name='ada.processes.alarm_delivery',
         service_name='alarm-delivery',
         job_key='alarm-delivery',
-        sleep_seconds=settings.poll_seconds,
+        poll_interval_seconds=settings.poll_seconds,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

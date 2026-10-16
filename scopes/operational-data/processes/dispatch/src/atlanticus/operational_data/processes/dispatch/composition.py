@@ -23,7 +23,7 @@ DISPATCH_JOB_DEFINITION = JobDefinition(
     module_name='atlanticus.operational_data.processes.dispatch',
     service_name='dispatch',
     job_key='dispatch-materialization',
-    sleep_seconds=0,
+    poll_interval_seconds=0,
     iteration_timeout_seconds=580,
     execution_timeout_seconds=600,
     shutdown_grace_seconds=10,
@@ -84,7 +84,7 @@ def build_composition(
         catalog=resolved_catalog,
         definition=replace(
             DISPATCH_JOB_DEFINITION,
-            sleep_seconds=settings.poll_interval_seconds,
+            poll_interval_seconds=settings.poll_interval_seconds,
         ),
         producer=producer,
     )

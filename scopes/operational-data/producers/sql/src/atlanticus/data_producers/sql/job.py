@@ -155,7 +155,7 @@ class SqlDataProducerJob:
         context.set_memory(self._cursor_memory_key, 0)
         context.set_memory(self._failures_memory_key, 0)
         context.set_memory(self._first_failure_memory_key, None)
-        poll_seconds = context.definition.sleep_seconds
+        poll_seconds = context.definition.poll_interval_seconds
         context.set_next_iteration_delay(poll_seconds)
         context.set_iteration_fact('cycle_completed', True)
         context.set_iteration_fact('next_cycle_delay_seconds', poll_seconds)

@@ -64,7 +64,7 @@ def build_composition(
         job_key='alarm-materialization',
         # La ejecución termina tras READY, BLOCKED, UNCHANGED o PENDING agotado.
         run_once=True,
-        sleep_seconds=0,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

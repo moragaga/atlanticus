@@ -35,7 +35,6 @@ ADA_ALARM_COLLECTOR_SERVICE_KEY = 'ada.alarm.collector'
 ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY = 'ada.alarm.collector.runtime'
 _EXCLUDED_START_PATHS = ('/health/', '/assets/', '/.auth/')
 _INITIAL_BROWSER_REFRESH_INTERVAL_MS = 1000
-_INITIAL_BROWSER_RETRY_LIMIT = 20
 LayoutFactory = Callable[..., object]
 
 
@@ -130,18 +129,17 @@ def create_ada_alarm_collector_web_integration(
         @dash_app.callback(
             Output(settings.interval_id, 'interval'),
             Input(store_id, 'data'),
-            Input(settings.interval_id, 'n_intervals'),
             State(settings.interval_id, 'interval'),
         )
-        def adapt_initial_refresh(store_data: object, n_intervals: int, interval: object):
-            initialized = (
+        # Espera de un segundo hasta resultado real, incluso si no hay documento.
+        def adapt_initial_refresh(store_data: object, interval: object):
+            completed = (
                 isinstance(store_data, dict)
                 and store_data.get('availability') not in {None, 'waiting'}
             )
             desired = (
                 int(settings.refresh_interval_seconds * 1000)
-                if initialized or (isinstance(n_intervals, int) and n_intervals >= _INITIAL_BROWSER_RETRY_LIMIT)
-                else _INITIAL_BROWSER_REFRESH_INTERVAL_MS
+                if completed else _INITIAL_BROWSER_REFRESH_INTERVAL_MS
             )
             return no_update if desired == interval else desired
 

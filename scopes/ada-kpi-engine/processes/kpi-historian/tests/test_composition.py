@@ -29,7 +29,7 @@ def test_composition_separates_historian_from_kpi_runtime_authority(tmp_path) ->
     assert composition.definition.module_name == 'ada.processes.kpi_historian'
     assert composition.definition.service_name == 'kpi-historian'
     assert composition.definition.job_key == 'kpi-historian'
-    assert composition.definition.sleep_seconds == 1
+    assert composition.definition.poll_interval_seconds == 1
     assert composition.evaluations.paths.application_root == tmp_path / 'ada-kpi-runtime-local'
     assert composition.runtime_configuration.application == 'ada-kpi-historian-local'
     assert composition.settings.reprocess_current is False

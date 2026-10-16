@@ -66,7 +66,7 @@ def test_composition_passes_notpii_identity_to_data_producer(monkeypatch, tmp_pa
     monkeypatch.setattr(module, 'build_notpii_data_producer', fake_builder)
     composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
 
-    assert composition.definition.sleep_seconds == 3.5
+    assert composition.definition.poll_interval_seconds == 3.5
     assert composition.producer is sentinel
     assert captured['producer_key'] == 'notpii'
     assert captured['dataset_namespace'] == ('pi', 'not_pii')

@@ -74,7 +74,7 @@ class _Context:
         self.iteration = {}
         self.work = False
         self.delay = None
-        self.definition = SimpleNamespace(sleep_seconds=poll_seconds)
+        self.definition = SimpleNamespace(poll_interval_seconds=poll_seconds)
         self.logger = _Logger()
         self.cancel_on_check = cancel_on_check
         self.cancel_checks = 0

@@ -1,3 +1,5 @@
+from dash import Output
+
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_component_id,
 )
@@ -42,6 +44,9 @@ def test_every_area_callback_emits_first_render_signal():
     for binding, register in entries:
         dash = DashStub()
         register(dash, tool_key='integrated_operations')
-        output = dash.outputs[-3]
-        assert output.component_id == dashboard_component_id(binding.key)
-        assert output.component_property == 'data-ready'
+        assert any(
+            isinstance(output, Output)
+            and output.component_id == dashboard_component_id(binding.key)
+            and output.component_property == 'data-ready'
+            for output in dash.outputs
+        )

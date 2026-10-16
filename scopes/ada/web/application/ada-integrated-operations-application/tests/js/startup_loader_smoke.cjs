@@ -6,30 +6,17 @@ const vm = require('node:vm');
 const script = fs.readFileSync(path.resolve(__dirname,
     '../../src/ada/web/application/integrated_operations/modules/dashboard/resources/js/05_startup_loader.js'), 'utf8');
 
-function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
-    alarms = false, time = false, count = 9, route = '/'} = {}) {
+function fixture({count = 9, ready = 0, globals = false, alarms = false, time = false, route = '/'} = {}) {
     const frames = [];
     const observers = [];
     const reasons = [];
-    const appAttrs = {'data-ada-content-state-presentation': mode};
     const areas = Array.from({length: count}, (_, i) => ({
-        getAttribute: (name) => name === 'data-ready' ? (i < ready ? 'true' : 'false')
-            : name === 'data-ada-io-component-key' ? `area_${i}` : null,
+        getAttribute: (key) => key === 'data-ready' ? (i < ready ? 'true' : 'false') : null,
     }));
-    const parent = {};
     const dashboard = {querySelectorAll: () => areas};
-    const indicator = {getAttribute: (name) => name === 'data-ready' && globals ? 'true' : 'false'};
-    const board = {getAttribute: (name) => name === 'data-ready' && alarms ? 'true' : 'false'};
-    const clock = {getAttribute: (name) => name === 'data-ready'
-        ? (time === 'degraded' ? 'degraded' : time ? 'true' : 'false') : null};
-    let app = null;
-    if (mounted) app = {
-        parentNode: parent,
-        getAttribute: (name) => appAttrs[name] || null,
-        setAttribute: (name, value) => {appAttrs[name] = value;},
-        contains: (node) => [dashboard, indicator, board].includes(node),
-        querySelector: () => clock,
-    };
+    const indicator = {getAttribute: () => globals ? 'true' : 'false'};
+    const board = {getAttribute: () => alarms ? 'true' : 'false'};
+    const clock = {getAttribute: () => time ? 'true' : 'false'};
     const elements = {
         'ada-io-startup-loader': {},
         'ada-integrated-operations-dashboard': dashboard,
@@ -37,9 +24,9 @@ function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
         'ada-alarm-live-board': board,
     };
     const document = {
-        body: {},
-        addEventListener() {},
-        getElementById: (id) => id === 'ada-generic-application' ? app : elements[id] || null,
+        body: {}, addEventListener() {},
+        getElementById: (id) => elements[id] || null,
+        querySelector: () => clock,
     };
     const window = {
         requestAnimationFrame: (fn) => frames.push(fn),
@@ -47,65 +34,39 @@ function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
     };
     class Observer {
         constructor(fn) {this.fn = fn; this.active = false; observers.push(this);}
-        observe(target, options) {this.active = true; this.target = target; this.options = options;}
+        observe(_target, _options) {this.active = true;}
         disconnect() {this.active = false;}
     }
     vm.runInNewContext(script, {window, document, location: {pathname: route}, MutationObserver: Observer});
-    function flush() {let remaining = 20; while (frames.length && remaining--) frames.shift()(); assert.ok(remaining > 0);}
-    function flushOne() {if (frames.length) frames.shift()();}
+    function flush() {let safety = 20; while (frames.length && safety--) frames.shift()(); assert.ok(safety > 0);}
     function notify() {observers.filter(o => o.active).forEach(o => o.fn());}
-    return {
-        flush, flushOne, notify, reasons, appAttrs, observers, window,
-        setReady: (n) => {ready = n; notify();},
-        setGlobal: () => {globals = true; notify();},
-        setAlarm: () => {alarms = true; notify();},
-        setTime: () => {time = true; notify();},
-        replaceApp: () => {app = {...app, parentNode: parent}; notify();},
+    return {flush, reasons, observers,
+        readyAreas: () => {ready = count; notify();},
+        readyGlobal: () => {globals = true; notify();},
+        readyAlarm: () => {alarms = true; notify();},
+        readyTime: () => {time = true; notify();},
     };
 }
-
 {
     const p = fixture(); p.flush();
     assert.deepEqual(p.reasons, []);
-    assert.equal(Array.from(p.window.adaIoStartupPending()).length, 12);
-    p.setReady(9); p.flush();
-    assert.deepEqual(Array.from(p.window.adaIoStartupPending()),
-        ['global_indicators', 'alarms_render', 'time_status']);
-    p.setGlobal(); p.flush(); assert.deepEqual(p.reasons, []);
-    p.setAlarm(); p.flush(); assert.deepEqual(p.reasons, []);
-    p.setTime(); p.flush(); assert.deepEqual(p.reasons, ['ready']);
-    assert.equal(p.observers.every(o => !o.active), true);
+    p.readyAreas(); p.flush(); assert.deepEqual(p.reasons, []);
+    p.readyGlobal(); p.flush(); assert.deepEqual(p.reasons, []);
+    p.readyAlarm(); p.flush(); assert.deepEqual(p.reasons, []);
+    p.readyTime(); p.flush(); assert.deepEqual(p.reasons, ['ready']);
+    assert.equal(p.observers.length, 1);
+    assert.equal(p.observers[0].active, false);
 }
 {
-    const p = fixture({mode: 'authoring'}); p.flush();
-    assert.deepEqual(p.reasons, ['ready']);
-    assert.equal(p.appAttrs['data-startup-bypass'], 'true');
-}
-{
-    const p = fixture({mode: 'normal', count: 8, ready: 8, globals: true, alarms: true, time: true});
-    p.flush(); assert.equal(p.reasons.length, 0);
-    assert.ok(Array.from(p.window.adaIoStartupPending()).includes('areas:8/9'));
+    const p = fixture({count: 8, ready: 8, globals: true, alarms: true, time: true});
+    p.flush(); assert.deepEqual(p.reasons, []);
 }
 {
     const p = fixture({route: '/manager'}); p.flush();
-    assert.deepEqual(p.reasons, []);
     assert.equal(p.observers.length, 0);
 }
 {
-    const p = fixture({ready: 9, globals: true, alarms: true, time: true});
-    p.flush(); assert.deepEqual(p.reasons, ['ready']);
-}
-{
-    const p = fixture({ready: 8, globals: true, alarms: true, time: true});
-    p.flush(); assert.deepEqual(p.reasons, []);
-    p.replaceApp(); p.flush(); assert.deepEqual(p.reasons, []);
-    p.setReady(9); p.flush(); assert.deepEqual(p.reasons, ['ready']);
-}
-{
-    const p = fixture({ready: 9, globals: true, alarms: true, time: 'degraded'});
-    p.flushOne();
-    assert.deepEqual(p.reasons, []);
-    p.flushOne();
+    const p = fixture({ready: 9, globals: true, alarms: true, time: true}); p.flush();
     assert.deepEqual(p.reasons, ['ready']);
 }
-console.log('Startup loader: readiness, deferred paint and authoring bypass OK');
+console.log('Startup loader: one-shot readiness and disconnected observer OK');

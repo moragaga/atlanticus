@@ -73,7 +73,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmModelerCo
         module_name='ada.processes.alarm_modeler',
         service_name='alarm-modeler',
         job_key='alarm-modeler',
-        sleep_seconds=settings.poll_seconds,
+        poll_interval_seconds=settings.poll_seconds,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

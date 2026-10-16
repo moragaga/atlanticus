@@ -71,7 +71,7 @@ def test_runtime_uses_robust_ten_minute_execution_and_lease_contract() -> None:
     assert NOTPII_JOB_DEFINITION.lease_timeout_seconds == 30
     assert NOTPII_JOB_DEFINITION.lease_renew_seconds == 10
     assert NOTPII_JOB_DEFINITION.lease_wait_seconds is None
-    assert NOTPII_JOB_DEFINITION.sleep_seconds == 0
+    assert NOTPII_JOB_DEFINITION.poll_interval_seconds == 0
 
 
 def test_configuration_specs_include_only_active_service_bus_mode() -> None:

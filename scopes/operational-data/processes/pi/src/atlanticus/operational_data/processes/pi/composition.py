@@ -21,7 +21,7 @@ PI_WEB_API_JOB_DEFINITION = JobDefinition(
     module_name='atlanticus.operational_data.processes.pi',
     service_name='pi-web-api',
     job_key='pi-web-api-materialization',
-    sleep_seconds=0,
+    poll_interval_seconds=0,
     iteration_timeout_seconds=580,
     execution_timeout_seconds=600,
     shutdown_grace_seconds=10,
@@ -90,7 +90,7 @@ def build_composition(
         client=client,
         definition=replace(
             PI_WEB_API_JOB_DEFINITION,
-            sleep_seconds=settings.poll_interval_seconds,
+            poll_interval_seconds=settings.poll_interval_seconds,
         ),
         producer=producer,
     )

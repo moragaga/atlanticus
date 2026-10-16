@@ -8,14 +8,18 @@ const source = path.resolve(__dirname,
     '../../src/ada/web/application/integrated_operations/modules/dashboard/startup.py');
 const extract = String.raw`
 import ast, pathlib
-source = pathlib.Path(__import__('sys').argv[1]).read_text()
+source = pathlib.Path(__import__('sys').argv[1]).read_text(encoding='utf-8')
 tree = ast.parse(source)
 index = next(node for node in tree.body if isinstance(node, ast.Assign) and any(getattr(x, 'id', '') == 'STARTUP_LOADER_INDEX' for x in node.targets))
 fragments = next(kw.value for kw in index.value.keywords if kw.arg == 'body_start_fragments')
 items = eval(compile(ast.Expression(fragments), '<startup>', 'eval'), {'DEFAULT_OPERATIONAL_BRAND_LOGO_SRC': '/test.svg'})
 print(items[1][len('<script>'):-len('</script>')])
 `;
-const result = spawnSync(process.env.PYTHON || 'python3', ['-c', extract, source], {
+const venvPython = path.resolve(__dirname, '../../.venv',
+    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+const python = process.env.PYTHON || (fs.existsSync(venvPython) ? venvPython :
+    process.platform === 'win32' ? 'python' : 'python3');
+const result = spawnSync(python, ['-c', extract, source], {
     encoding: 'utf8',
 });
 assert.equal(result.status, 0, result.stderr);
@@ -49,7 +53,6 @@ function run(pathname, reason = 'timeout', expectedTimeout = 14500) {
             assert.ok(timer);
             timer.canceled = true;
         },
-        adaIoStartupPending: () => ['area_2', 'alarms_render'],
     };
     vm.runInNewContext(script, {
         document, window, location: { pathname },
@@ -81,7 +84,6 @@ function run(pathname, reason = 'timeout', expectedTimeout = 14500) {
     assert.equal(removed, true);
     assert.equal(document.documentElement.dataset.adaIoLoaderActive, undefined);
     assert.equal(window.adaIoFinishStartupLoader, undefined);
-    assert.equal(window.adaIoStartupPending, undefined);
     fallback.fn();
     assert.equal(warnings.length, reason === 'ready' ? 0 : 1);
 }

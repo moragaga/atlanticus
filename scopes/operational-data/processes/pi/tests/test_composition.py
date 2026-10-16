@@ -78,7 +78,7 @@ class FakeClient:
 
 
 def test_job_definition_prioritizes_freshness_without_extra_pi_requests() -> None:
-    assert PI_WEB_API_JOB_DEFINITION.sleep_seconds == 0
+    assert PI_WEB_API_JOB_DEFINITION.poll_interval_seconds == 0
     assert PI_WEB_API_JOB_DEFINITION.execution_timeout_seconds == 600
     assert PI_WEB_API_JOB_DEFINITION.shutdown_grace_seconds == 10
     assert PI_WEB_API_JOB_DEFINITION.safe_execution_seconds == 590
@@ -99,7 +99,7 @@ def test_composition_defers_webid_preparation_until_runtime(
     monkeypatch.setattr(composition_module, 'PiWebApiClient', FakeClient)
     composition = build_composition(configuration=configuration, catalog=catalog)
 
-    assert composition.definition.sleep_seconds == 2.5
+    assert composition.definition.poll_interval_seconds == 2.5
     assert composition.producer.job.preparation is None
     assert composition.client.open_count == 0
     assert composition.client.close_count == 0
@@ -121,7 +121,7 @@ def test_execute_keeps_pi_client_open_while_runtime_invokes_job(
     monkeypatch.setattr(composition_module, 'PiWebApiClient', FakeClient)
 
     def fake_execute_job(*, definition, iteration, argv, environ):
-        assert definition.sleep_seconds == 2.5
+        assert definition.poll_interval_seconds == 2.5
         assert definition.execution_timeout_seconds == 600
         assert definition.iteration_timeout_seconds == 580
         assert definition.shutdown_grace_seconds == 10

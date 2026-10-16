@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dash import Input, Output, State
+from dash import Input, Output
 
 from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
-from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
 
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
@@ -27,13 +26,11 @@ def register_flotacion_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('colectiva'), 'children'),
         Output(dashboard_card_content_id('selectiva'), 'children'),
         Output(dashboard_component_id(FLOTACION.key), 'data-ready'),
-        # La revision del collector dispara el render; el contenido viaja como State.
-        Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
-        Input('ada-generic-application', 'data-ada-content-state-presentation'),
-        State(component_kpi_store_id(tool_key, FLOTACION.tool_component_key), 'data'),
+        Input(component_kpi_store_id(tool_key, FLOTACION.tool_component_key), 'data'),
     )
-    def refresh_flotacion(browser_revision: object, presentation_mode: object, store_data: object):
-        require_initial_delivery(store_data, browser_revision, presentation_mode)
+    def refresh_flotacion(store_data: object):
+        # La primera lectura habilita el store; sin revision KPI global.
+        require_initial_delivery(store_data)
         readings, timeseries = decode_flotacion_store(store_data)
         rendered = build_flotacion(
             map_colectiva_overview_readings(readings, timeseries),

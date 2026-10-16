@@ -68,7 +68,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmHistorian
         service_name='alarm-historian',
         job_key='alarm-historian',
         run_once=True,
-        sleep_seconds=0,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

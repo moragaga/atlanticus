@@ -213,12 +213,7 @@ def test_layout_wrapper_mounts_component_and_system_stores() -> None:
     assert children[4].id == component_kpi_store_id('process', 'plant')
     assert children[5].id == system_kpi_store_id('process', 'global_indicators')
     assert children[6].id == system_kpi_store_id('process', 'time_status')
-    assert children[5].data == {
-        'tool_key': 'process',
-        'destination_key': 'global_indicators',
-        'latest': None,
-        'timeseries': None,
-    }
+    assert all(child.data is None for child in children[3:7])
 
 
 def test_empty_snapshot_publishes_all_stores_once_before_no_update() -> None:
@@ -552,7 +547,7 @@ def test_first_sync_does_not_publish_empty_data_in_production(monkeypatch):
     assert len(ready) == 5
 
 
-def test_first_sync_keeps_development_empty_preview(monkeypatch):
+def test_local_mode_waits_for_first_collector_execution(monkeypatch):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     collector = PresentationCollectorStub(_structure())
     integration = create_ada_kpi_collector_web_integration(collector)
@@ -564,25 +559,29 @@ def test_first_sync_keeps_development_empty_preview(monkeypatch):
     dash = DashStub()
     integration.module.register_services(services)
     integration.module.register_callbacks(dash, services)
-    initial = dash.callback_function(0, None, None, None, None, None)
-    assert len(initial) == 5
-    assert all(item['latest'] is None for item in initial[:4])
+    assert all(value is no_update for value in dash.callback_function(0, None, None, None, None, None))
+    from ada.web.kpis.collector.runtime import AdaKpiCollectorPollingRuntime
+    runtime = services.require('ada.kpi.collector.runtime', AdaKpiCollectorPollingRuntime)
+    runtime.poll_due(now=0.0)
+    first = dash.callback_function(1, None, None, None, None, None)
+    assert all(value['latest'] is None for value in first[:4])
+    assert first[-1]['initial_latest_state'] == 'error'
+    unchanged = dash.callback_function(2, first[-1], *first[:4])
+    assert all(value is no_update for value in unchanged)
 
 
-def test_interval_adaptation_is_separate_from_collector_outputs(monkeypatch):
-    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'production')
+def test_interval_returns_to_ten_seconds_after_first_result():
     collector = PresentationCollectorStub(_structure())
     integration = create_ada_kpi_collector_web_integration(collector)
     services = ServiceRegistry()
     services.add(WEB_OBSERVABILITY_SERVICE_KEY, WebObservability(
-        application='test-initial-sync', logger=logging.getLogger('test.initial.sync'),
+        application='test-interval-sync', logger=logging.getLogger('test.interval.sync'),
         json_output=False,
     ))
 
     class CallbackRegistry:
         def __init__(self):
             self.callbacks = []
-
         def callback(self, *outputs):
             def register(function):
                 self.callbacks.append((outputs, function))
@@ -593,18 +592,46 @@ def test_interval_adaptation_is_separate_from_collector_outputs(monkeypatch):
     integration.module.register_services(services)
     integration.module.register_callbacks(dash, services)
     assert len(dash.callbacks) == 2
-    (interval_dependencies, adapt), (collector_dependencies, refresh) = dash.callbacks
-    assert len(interval_dependencies) == 4
-    assert interval_dependencies[0].component_property == 'interval'
-    assert collector_dependencies[-2].component_property == 'data'
-    assert len(collector_dependencies) == 11
-
-    assert adapt(None, 0, 250) is no_update
-    assert adapt(None, 20, 250) == 1000
-    assert adapt(None, 20, 1000) is no_update
-    ready_revision = {'latest': {'revision': 'latest-r1'}, 'timeseries': None}
-    assert adapt(ready_revision, 21, 1000) == 10000
-    assert adapt(ready_revision, 21, 10000) is no_update
-    assert adapt({'initial_latest_state': 'empty'}, 1, 1000) == 10000
-    assert adapt({'initial_latest_state': 'error'}, 1, 1000) == 10000
+    (interval_dependencies, adapt), (_, refresh) = dash.callbacks
+    assert len(interval_dependencies) == 3
+    assert adapt(None, 1000) is no_update
+    assert adapt({'initial_latest_state': 'ready'}, 1000) == 10000
+    assert adapt({'initial_latest_state': 'empty'}, 1000) == 10000
+    assert adapt({'initial_latest_state': 'error'}, 1000) == 10000
+    assert adapt({'initial_latest_state': 'error'}, 10000) is no_update
     assert len(refresh(0, None, None, None, None, None)) == 5
+
+
+def test_a_new_latest_revision_does_not_resend_unaffected_stores():
+    structure = _structure()
+    collector = PresentationCollectorStub(structure)
+    collector.snapshot = _snapshot(
+        structure, latest_revision='latest-r2',
+        latest_watermark_utc='2026-09-20T20:01:00+00:00',
+        latest_configuration_revision='config-r1',
+        mine_payload=ComponentKpiData(latest=_latest(8, 'latest-r2')),
+    )
+    previous = {
+        'latest': {
+            'revision': 'latest-r1',
+            'watermark_utc': '2026-09-20T20:00:00+00:00',
+            'configuration_revision': 'config-r1',
+        },
+        'timeseries': None,
+    }
+    old_stores = (
+        {'tool_key': 'process', 'component_key': 'mine',
+         'latest': {'old': True}, 'timeseries': None},
+        {'tool_key': 'process', 'component_key': 'plant',
+         'latest': None, 'timeseries': None},
+    )
+    old_systems = tuple(project_system_store_data(item)
+                        for item in collector.snapshot.system_stores)
+    components, systems, revision = resolve_kpi_collector_browser_update(
+        collector, browser_revision=previous,
+        browser_component_data=old_stores, browser_system_data=old_systems,
+    )
+    assert components[0]['latest']['values']['rate']['value'] == '8'
+    assert components[1] is no_update
+    assert all(value is no_update for value in systems)
+    assert revision['latest']['revision'] == 'latest-r2'

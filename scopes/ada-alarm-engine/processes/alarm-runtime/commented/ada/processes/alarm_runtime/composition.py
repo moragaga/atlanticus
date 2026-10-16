@@ -195,7 +195,7 @@ def build_composition(
         module_name='ada.processes.alarm_runtime',
         service_name='alarm-runtime',
         job_key='alarm-runtime',
-        sleep_seconds=settings.poll_interval_seconds,
+        poll_interval_seconds=settings.poll_interval_seconds,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,
