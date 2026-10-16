@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from atlanticus.runtime._authority import JobAuthorityStore
 from atlanticus.runtime._fence import PhysicalAuthorityFence
+from atlanticus.runtime._successor import SuccessorIntent, SuccessorIntentStore
 from atlanticus.runtime.errors import (
     AtlanticusRuntimeError,
     ConcurrentExecutionError,
@@ -100,6 +101,7 @@ class ExecutionLease:
         scheduled_at_utc: datetime | None = None,
         authority_deadline_utc: datetime | None = None,
         wall_clock: Callable[[], datetime] | None = None,
+        successor_handoff: bool = False,
     ) -> None:
         normalized_job_key = service_name if job_key is None else job_key
         validate_path_segment(application, name='application')
@@ -116,6 +118,10 @@ class ExecutionLease:
             _require_utc_datetime(authority_deadline_utc, 'authority_deadline_utc')
         if wall_clock is not None and not callable(wall_clock):
             raise TypeError('wall_clock must be callable')
+        if not isinstance(successor_handoff, bool):
+            raise TypeError('successor_handoff must be a bool')
+        if successor_handoff and scheduled_at_utc is None:
+            raise ValueError('successor_handoff requires scheduled_at_utc')
         self._directory = resolve_runtime_root(volume_path, application=application) / 'leases'
         self._path = self._directory / f'{job_key_segment}.json'
         self._physical_fence = PhysicalAuthorityFence(
@@ -127,6 +133,12 @@ class ExecutionLease:
             volume_path=volume_path,
             application=application,
             job_key=normalized_job_key,
+        )
+        self._successor_store = SuccessorIntentStore(
+            volume_path=volume_path,
+            application=application,
+            job_key=normalized_job_key,
+            clock=lambda: self._now(),
         )
         self._application = application
         self._service_name = service_name
@@ -155,6 +167,7 @@ class ExecutionLease:
         self._process_id = resolved_process_id
         self._scheduled_at_utc = scheduled_at_utc
         self._authority_deadline_utc = authority_deadline_utc
+        self._successor_handoff = successor_handoff
         self._wall_clock = _utc_now if wall_clock is None else wall_clock
         self._owner_token = str(uuid4())
         self._generation: int | None = None
@@ -178,6 +191,45 @@ class ExecutionLease:
     @property
     def fence_path(self) -> Path:
         return self._physical_fence.path
+
+    @property
+    def successor_path(self) -> Path:
+        return self._successor_store.path
+
+    def announce_successor(self, *, ttl_seconds: float) -> bool:
+        if not self._successor_handoff or self._scheduled_at_utc is None:
+            raise ValueError('successor handoff is not enabled')
+        return self._successor_store.announce(
+            run_id=self._run_id,
+            scheduled_at_utc=self._scheduled_at_utc,
+            ttl_seconds=ttl_seconds,
+        )
+
+    def pending_successor(self) -> SuccessorIntent | None:
+        if not self._successor_handoff or not self._acquired:
+            return None
+        self.raise_if_unhealthy()
+        assert self._scheduled_at_utc is not None
+        return self._successor_store.pending_for(
+            run_id=self._run_id,
+            scheduled_at_utc=self._scheduled_at_utc,
+        )
+
+    def clear_successor(self) -> bool:
+        if not self._successor_handoff:
+            return False
+        return self._successor_store.clear(run_id=self._run_id)
+
+    def _is_superseded_by_successor(self) -> bool:
+        if not self._successor_handoff:
+            return False
+        assert self._scheduled_at_utc is not None
+        intent = self._successor_store.read()
+        return (
+            intent is not None
+            and intent.run_id != self._run_id
+            and intent.scheduled_at_utc >= self._scheduled_at_utc
+        )
 
     @property
     def acquired(self) -> bool:
@@ -206,6 +258,13 @@ class ExecutionLease:
             fence_descriptor = self._physical_fence.try_acquire()
             if fence_descriptor is not None:
                 try:
+                    if self._is_superseded_by_successor():
+                        acquisition = LeaseAcquisition(
+                            waited_seconds=round(time.monotonic() - started, 6),
+                            skipped_reason='successor_superseded',
+                        )
+                        self._acquisition = acquisition
+                        return acquisition
                     existing = self._read_payload()
                     if existing is None or self._is_expired(existing):
                         if existing is not None:
