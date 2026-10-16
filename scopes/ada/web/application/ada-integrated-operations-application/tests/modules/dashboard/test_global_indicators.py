@@ -233,7 +233,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    component, empty = dash_app.callback_function(_store(), {'latest': {'revision': 'latest-r1'}})
+    component, empty, ready = dash_app.callback_function(_store(), {'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}})
     grids = [
         node
         for node in _walk(component)
@@ -243,6 +243,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     assert module.name == 'ada-integrated-operations-global-indicators'
     assert module.asset_layers == ()
     assert empty == 'false'
+    assert ready == 'true'
     assert len(grids) == 1
     assert _props(component)['data-ada-content-state'] == 'ready'
     assert _props(component)['data-ada-content-state-operational'] == 'true'
@@ -251,7 +252,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
         'tool': 'integrated_operations',
         'destination': 'global_indicators',
     }
-    outputs = dash_app.callback_args[:2]
+    outputs = dash_app.callback_args[:3]
     assert all(output.component_id == GLOBAL_INDICATORS_SLOT_ID for output in outputs)
 
 
@@ -261,20 +262,21 @@ def test_runtime_callback_degrades_complete_collection_from_empty_system_store()
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    component, empty = dash_app.callback_function(
+    component, empty, ready = dash_app.callback_function(
         {
             'tool_key': 'integrated_operations',
             'destination_key': 'global_indicators',
             'latest': None,
             'timeseries': None,
         },
-        {'latest': {'revision': 'latest-r1'}},
+        {'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}},
     )
     placements = [
         node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')
     ]
 
     assert empty == 'false'
+    assert ready == 'true'
     assert len(placements) == 3
     assert _props(component)['data-ada-content-state'] == 'source_error'
     assert _props(component)['data-ada-content-state-declared'] == 'ready'

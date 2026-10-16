@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from dash.exceptions import PreventUpdate
+
 import pytest
 
 from ada.contracts.tools.sources import (
@@ -277,6 +279,7 @@ def test_runtime_host_starts_as_data_error_and_keeps_stable_identity() -> None:
         'tool': 'process',
     }
     assert props['data-ada-time-status-runtime-host'] == 'true'
+    assert props['data-ready'] == 'false'
     child = props['children']
     child_props = child.to_plotly_json()['props']
     assert child_props['data-ada-time-status-tool-key'] == 'process'
@@ -330,7 +333,13 @@ def test_runtime_callback_consumes_browser_system_store_without_polling() -> Non
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    rendered = dash_app.callback_function(_store({'pi_last_update': _ok(_NOW)}))
+    with pytest.raises(PreventUpdate):
+        dash_app.callback_function(_store({'pi_last_update': _ok(_NOW)}), None)
+    rendered, ready = dash_app.callback_function(
+        _store({'pi_last_update': _ok(_NOW)}),
+        {'initial_latest_state': 'ready'},
+    )
+    assert ready == 'true'
     source = next(
         component
         for component in _walk(rendered)

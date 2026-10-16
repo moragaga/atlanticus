@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 from dash import Input, Output, html
+from dash.exceptions import PreventUpdate
 from dash.development.base_component import Component
 
 from ada.web.kpis.collector import system_kpi_store_id
+from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
 from ada.web.ui.time_status import build_time_status, build_time_status_detail
 from atlanticus.web.modules import WebModule
 
@@ -34,7 +37,7 @@ def build_time_status_runtime_host(binding: TimeStatusRuntimeBinding) -> Compone
     return html.Div(
         build_time_status_runtime_component(None, binding=binding),
         id=time_status_runtime_host_id(binding.tool_key),
-        **{'data-ada-time-status-runtime-host': 'true'},
+        **{'data-ada-time-status-runtime-host': 'true', 'data-ready': 'false'},
     )
 
 
@@ -66,10 +69,17 @@ def create_time_status_runtime_module(binding: TimeStatusRuntimeBinding) -> WebM
     def register_callbacks(dash_app: Dash, _services) -> None:
         @dash_app.callback(
             Output(host_id, 'children'),
+            Output(host_id, 'data-ready'),
             Input(store_id, 'data', allow_optional=True),
+            Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
         )
-        def refresh_time_status(store_data: object):
-            return build_time_status_runtime_component(store_data, binding=binding)
+        def refresh_time_status(store_data: object, browser_revision: object):
+            if (
+                not isinstance(browser_revision, Mapping)
+                or browser_revision.get('initial_latest_state') not in {'ready', 'empty', 'error'}
+            ):
+                raise PreventUpdate
+            return build_time_status_runtime_component(store_data, binding=binding), 'true'
 
     return WebModule(
         name='ada-time-status-runtime',

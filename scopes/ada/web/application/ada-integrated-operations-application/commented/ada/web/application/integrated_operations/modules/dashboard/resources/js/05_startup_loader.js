@@ -6,92 +6,86 @@
         return;
     }
 
-    // Los nueve callbacks señalan explícitamente data-ready=true en sus áreas.
-    const expectedAreas = 9;
+    // El loader observa la preparación de doce consumidores, sin leer Cosmos desde JS.
     const dashboardId = 'ada-integrated-operations-dashboard';
-    const globalSlotId = 'ada-operational-header-global-indicators-slot';
-    const alarmBoardId = 'ada-alarm-live-board';
+    const globalId = 'ada-operational-header-global-indicators-slot';
+    const alarmId = 'ada-alarm-live-board';
+    const timeSelector = '[data-ada-time-status-runtime-host="true"]';
+    const expectedAreas = 9;
     let scheduled = false;
-    let dashboardTarget = null;
-    let globalTarget = null;
-    let alarmTarget = null;
-    let watchingDiscovery = false;
+    let application = null;
+    let applicationParent = null;
 
-    // Solo usamos el observador global para descubrir los tres puntos de montaje.
-    // Después observamos atributos concretos, sin recorrer cambios de clases del dashboard.
     const discoveryObserver = new MutationObserver(scheduleCheck);
-    const dashboardObserver = new MutationObserver(scheduleCheck);
-    const globalObserver = new MutationObserver(scheduleCheck);
-    const alarmObserver = new MutationObserver(scheduleCheck);
+    const applicationObserver = new MutationObserver(scheduleCheck);
+    const parentObserver = new MutationObserver(scheduleCheck);
 
     function stop() {
         discoveryObserver.disconnect();
-        dashboardObserver.disconnect();
-        globalObserver.disconnect();
-        alarmObserver.disconnect();
+        applicationObserver.disconnect();
+        parentObserver.disconnect();
+        application = null;
+        applicationParent = null;
     }
 
+    // Reasigna observadores cuando React sustituye el árbol de la aplicación.
     function track() {
-        const dashboard = document.getElementById(dashboardId);
-        if (dashboard && dashboard !== dashboardTarget) {
-            dashboardObserver.disconnect();
-            dashboardObserver.observe(dashboard, {
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['data-ready'],
-            });
-            dashboardTarget = dashboard;
+        const current = document.getElementById('ada-generic-application');
+        if (current === application) {
+            return;
         }
-
-        const globalSlot = document.getElementById(globalSlotId);
-        if (globalSlot && globalSlot !== globalTarget) {
-            globalObserver.disconnect();
-            globalObserver.observe(globalSlot, {
-                childList: true,
-                attributes: true,
-                attributeFilter: ['data-slot-empty'],
-            });
-            globalTarget = globalSlot;
+        applicationObserver.disconnect();
+        parentObserver.disconnect();
+        application = current;
+        applicationParent = current ? current.parentNode : null;
+        if (!current) {
+            if (document.body) {
+                discoveryObserver.observe(document.body, {childList: true, subtree: true});
+            }
+            return;
         }
-
-        const alarmBoard = document.getElementById(alarmBoardId);
-        if (alarmBoard && alarmBoard !== alarmTarget) {
-            alarmObserver.disconnect();
-            alarmObserver.observe(alarmBoard, {
-                attributes: true,
-                attributeFilter: ['style'],
-            });
-            alarmTarget = alarmBoard;
-        }
-
-        if (dashboardTarget && globalTarget && alarmTarget && watchingDiscovery) {
-            discoveryObserver.disconnect();
-            watchingDiscovery = false;
+        discoveryObserver.disconnect();
+        applicationObserver.observe(current, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ready'],
+        });
+        if (applicationParent) {
+            parentObserver.observe(applicationParent, {childList: true});
         }
     }
 
-    // La alarma se considera renderizada cuando el callback publica la capacidad,
-    // incluso si el collector continúa en waiting y no existen alarmas visibles.
+    // Authoring omite sólo la barrera de inicio, nunca falsifica los datos.
     function pending() {
         const dashboard = document.getElementById(dashboardId);
-        if (!dashboard) {
+        if (!dashboard || !application || !application.contains(dashboard)) {
             return ['dashboard'];
         }
+        if (application.getAttribute('data-ada-content-state-presentation') === 'authoring') {
+            application.setAttribute('data-startup-bypass', 'true');
+            return [];
+        }
+        application.setAttribute('data-startup-bypass', 'false');
         const areas = Array.from(dashboard.querySelectorAll('[data-ada-io-component-key]'));
-        const missing = areas.filter((area) => area.getAttribute('data-ready') !== 'true')
+        const result = areas.filter((area) => area.getAttribute('data-ready') !== 'true')
             .map((area) => area.getAttribute('data-ada-io-component-key'));
         if (areas.length !== expectedAreas) {
-            missing.unshift('areas:' + areas.length + '/' + expectedAreas);
+            result.unshift('areas:' + areas.length + '/' + expectedAreas);
         }
-        const application = dashboard.closest('#ada-generic-application');
-        if (!application || !application.querySelector('[data-ada-io-global-indicators-runtime="true"]')) {
-            missing.push('global_indicators');
+        const global = document.getElementById(globalId);
+        if (!global || !application.contains(global) || global.getAttribute('data-ready') !== 'true') {
+            result.push('global_indicators');
         }
-        const board = document.getElementById(alarmBoardId);
-        if (!board || !board.style.getPropertyValue('--ada-alarm-live-slot-count')) {
-            missing.push('alarms_render');
+        const alarm = document.getElementById(alarmId);
+        if (!alarm || !application.contains(alarm) || alarm.getAttribute('data-ready') !== 'true') {
+            result.push('alarms_render');
         }
-        return missing;
+        const time = application.querySelector(timeSelector);
+        if (!time || time.getAttribute('data-ready') !== 'true') {
+            result.push('time_status');
+        }
+        return result;
     }
 
     function check() {
@@ -106,6 +100,7 @@
         }
     }
 
+    // Un único frame agrupa notificaciones de los observadores y limita trabajo en main thread.
     function scheduleCheck() {
         if (!scheduled) {
             scheduled = true;
@@ -114,10 +109,14 @@
     }
 
     window.adaIoStopStartupObservers = stop;
-    window.adaIoStartupPending = pending;
+    window.adaIoStartupPending = () => {
+        track();
+        return pending();
+    };
     if (document.body) {
-        discoveryObserver.observe(document.body, { childList: true, subtree: true });
-        watchingDiscovery = true;
+        discoveryObserver.observe(document.body, {childList: true, subtree: true});
+    } else {
+        document.addEventListener('DOMContentLoaded', scheduleCheck, {once: true});
     }
     scheduleCheck();
 })();

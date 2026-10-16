@@ -92,6 +92,7 @@ def _build_slot(
     attributes['data-slot-empty'] = 'true' if content is None else 'false'
     if component_id is not None:
         attributes['id'] = component_id
+        attributes['data-ready'] = 'false'
     return html.Div(
         [] if content is None else [content],
         className=class_name,

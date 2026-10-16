@@ -34,12 +34,13 @@ def attach_operational_alarm_surface(
         @dash_app.callback(
             Output(ALARM_LIVE_BOARD_ID, 'children'),
             Output(ALARM_LIVE_BOARD_ID, 'style'),
+            Output(ALARM_LIVE_BOARD_ID, 'data-ready'),
             Input(store_id, 'modified_timestamp'),
             State(store_id, 'data'),
         )
         def render_alarm_live(_modified_timestamp: int | None, data: object):
             if can_view is not None and not can_view():
-                return [], {'--ada-alarm-live-slot-count': '1'}
+                return [], {'--ada-alarm-live-slot-count': '1'}, 'true'
             if (
                 not isinstance(data, dict)
                 or data.get('availability') not in {
@@ -54,6 +55,7 @@ def attach_operational_alarm_surface(
                 {'--ada-alarm-live-slot-count': str(resolve_live_alarm_capacity(
                     data, tool_key=tool_key,
                 ))},
+                'true',
             )
 
     return replace(

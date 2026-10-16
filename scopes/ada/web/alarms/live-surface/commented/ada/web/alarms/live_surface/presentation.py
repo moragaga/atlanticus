@@ -20,6 +20,7 @@ def build_alarm_live_surface(projection: AlarmBaselineProjection) -> html.Div:
                 role='region',
                 **{
                     'aria-label': 'Alarmas operacionales',
+                    'data-ready': 'false',
                     # La vista inicial ya reserva nueve columnas antes del primer render de JS.
                     **(
                         {'data-ada-alarm-layout': 'integrated',

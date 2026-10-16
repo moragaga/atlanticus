@@ -61,6 +61,7 @@ def create_dashboard_global_indicators_module(
         @dash_app.callback(
             Output(GLOBAL_INDICATORS_SLOT_ID, 'children'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-slot-empty'),
+            Output(GLOBAL_INDICATORS_SLOT_ID, 'data-ready'),
             Input(store_id, 'data'),
             Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
         )
@@ -72,6 +73,7 @@ def create_dashboard_global_indicators_module(
                     binding=binding,
                 ),
                 'false',
+                'true',
             )
 
     return WebModule(
