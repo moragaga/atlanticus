@@ -14,6 +14,7 @@ from ada.web.alarms.collector.models import (
     AlarmCollectorRefreshStatus,
     AlarmCollectorSnapshot,
     AlarmDeliveryReader,
+    AlarmLiveContainerMissingError,
     AlarmLiveReadError,
 )
 
@@ -47,6 +48,9 @@ class AdaAlarmCollector:
     def refresh(self) -> AlarmCollectorRefreshResult:
         try:
             candidate = self._reader.read(tool_key=self._tool_key)
+        except AlarmLiveContainerMissingError:
+            self._mark(AlarmCollectorAvailability.CONTAINER_MISSING)
+            raise
         except AlarmLiveReadError:
             self._mark(AlarmCollectorAvailability.UNAVAILABLE)
             raise
@@ -60,6 +64,7 @@ class AdaAlarmCollector:
             raise
         availability = (
             AlarmCollectorAvailability.RETIRED if document['retired']
+            else AlarmCollectorAvailability.EMPTY if not document['alarms']
             else AlarmCollectorAvailability.READY
         )
         with self._lock:

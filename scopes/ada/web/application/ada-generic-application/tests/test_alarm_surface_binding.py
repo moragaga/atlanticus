@@ -185,3 +185,33 @@ def test_duplicate_surface_is_rejected():
     definition = attach_operational_alarm_surface(create_application_definition(), tool_key='io')
     with pytest.raises(ValueError, match='already attached'):
         attach_operational_alarm_surface(definition, tool_key='io')
+
+
+def test_alarm_surface_renders_empty_and_missing_independently_of_time_status():
+    _, callback = _registered_callback(_surface())
+    for availability in ('empty', 'missing', 'container_missing', 'unavailable'):
+        children, style, ready = callback(100, {'availability': availability})
+        assert ready == 'true'
+        assert len(children) == 1
+        assert style["--ada-alarm-live-slot-count"]
+
+
+def test_alarm_surface_does_not_label_status_messages_as_cached_alarms():
+    _, callback = _registered_callback(_surface())
+    for availability in ('empty', 'missing', 'container_missing', 'unavailable', 'invalid'):
+        children, _style, ready = callback(100, {'availability': availability, 'live': None})
+        assert ready == 'true'
+        assert len(children) == 1
+        assert children[0].to_plotly_json()['props'].get('data-ada-alarm-source-stale') is None
+
+
+def test_alarm_surface_marks_only_real_cached_alarm_cards_as_stale():
+    _, callback = _registered_callback(_surface())
+    for availability in ('missing', 'container_missing', 'unavailable', 'invalid'):
+        data = _ready_store()
+        data['availability'] = availability
+        children, _style, ready = callback(100, data)
+        assert ready == 'true'
+        assert len(children) == 2
+        assert children[0].to_plotly_json()['props']['data-ada-alarm-source-stale'] == 'true'
+        assert children[1].to_plotly_json()['props']['data-ada-alarm-occurrence-id'] == 'occ-1'

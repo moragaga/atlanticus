@@ -27,6 +27,11 @@ class KpiDeliveryReadError(KpiCollectorError):
     pass
 
 
+# Permite distinguir el contenedor ausente de un documento no publicado.
+class KpiDeliveryContainerMissingError(KpiDeliveryReadError):
+    pass
+
+
 class KpiCollectorRefreshStatus(StrEnum):
     UPDATED = 'updated'
     UNCHANGED = 'unchanged'

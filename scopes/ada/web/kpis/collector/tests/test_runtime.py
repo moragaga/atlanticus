@@ -491,3 +491,21 @@ def test_background_poller_survives_initial_source_failure_without_breaking_requ
     assert polling_runtime.is_running
 
     polling_runtime.stop()
+
+
+
+def test_source_diagnostics_separate_container_and_unavailability() -> None:
+    from ada.web.kpis.collector import KpiDeliveryContainerMissingError
+
+    collector = CollectorStub()
+    collector.latest_error = KpiDeliveryContainerMissingError('missing container')
+    runtime, _ = _runtime(collector)
+    runtime.poll_due(now=0.0)
+    assert runtime.source_states['latest'] == 'container_missing'
+    assert runtime.source_states['timeseries'] == 'ready'
+    collector.latest_error = None
+    runtime.poll_due(now=10.0)
+    assert runtime.source_states['latest'] == 'ready'
+    collector.latest_error = KpiDeliveryReadError('unavailable')
+    runtime.poll_due(now=20.0)
+    assert runtime.source_states['latest'] == 'unavailable'

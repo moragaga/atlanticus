@@ -9,9 +9,15 @@ class AlarmLiveReadError(RuntimeError):
     pass
 
 
+class AlarmLiveContainerMissingError(AlarmLiveReadError):
+    pass
+
+
 class AlarmCollectorAvailability(StrEnum):
     WAITING = 'waiting'
     READY = 'ready'
+    EMPTY = 'empty'
+    CONTAINER_MISSING = 'container_missing'
     RETIRED = 'retired'
     MISSING = 'missing'
     INVALID = 'invalid'

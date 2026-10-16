@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
 from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
@@ -22,11 +22,12 @@ def register_molienda_callback(dash_app, *, tool_key: str) -> None:
     @dash_app.callback(
         Output(dashboard_card_content_id('molienda'), 'children'),
         Output(dashboard_component_id(MOLIENDA.key), 'data-ready'),
-        Input(component_kpi_store_id(tool_key, MOLIENDA.tool_component_key), 'data'),
         Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
+        Input('ada-generic-application', 'data-ada-content-state-presentation'),
+        State(component_kpi_store_id(tool_key, MOLIENDA.tool_component_key), 'data'),
     )
-    def refresh_molienda(store_data: object, browser_revision: object):
-        require_initial_delivery(store_data, browser_revision)
+    def refresh_molienda(browser_revision: object, presentation_mode: object, store_data: object):
+        require_initial_delivery(store_data, browser_revision, presentation_mode)
         readings, timeseries = decode_molienda_store(store_data)
         rendered = build_molienda(
             map_molienda_overview_readings(readings, timeseries),

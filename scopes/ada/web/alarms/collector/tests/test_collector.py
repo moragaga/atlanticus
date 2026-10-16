@@ -142,3 +142,29 @@ def test_recovery_after_missing_source_keeps_valid_cache_until_new_delivery() ->
     assert collector.refresh().status is AlarmCollectorRefreshStatus.UNCHANGED
     assert collector.snapshot.availability is AlarmCollectorAvailability.READY
     assert collector.snapshot.document == original
+
+
+
+def test_valid_live_with_zero_alarms_is_empty_not_missing() -> None:
+    reader = Reader()
+    reader.value = live(count=0)
+    collector = AdaAlarmCollector(tool_key='tool-a', reader=reader)
+    collector.refresh()
+    assert collector.snapshot.availability is AlarmCollectorAvailability.EMPTY
+    assert collector.snapshot.document is not None
+    assert collector.snapshot.document['alarms'] == {}
+
+
+def test_absent_container_keeps_previous_document_and_diagnostic() -> None:
+    from ada.web.alarms.collector.models import AlarmLiveContainerMissingError
+
+    reader = Reader()
+    reader.value = live(count=1)
+    collector = AdaAlarmCollector(tool_key='tool-a', reader=reader)
+    collector.refresh()
+    original = collector.snapshot.document
+    reader.error = AlarmLiveContainerMissingError('container missing')
+    with pytest.raises(AlarmLiveContainerMissingError):
+        collector.refresh()
+    assert collector.snapshot.availability is AlarmCollectorAvailability.CONTAINER_MISSING
+    assert collector.snapshot.document == original

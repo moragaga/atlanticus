@@ -23,6 +23,10 @@ class KpiDeliveryReadError(KpiCollectorError):
     pass
 
 
+class KpiDeliveryContainerMissingError(KpiDeliveryReadError):
+    pass
+
+
 class KpiCollectorRefreshStatus(StrEnum):
     UPDATED = 'updated'
     UNCHANGED = 'unchanged'

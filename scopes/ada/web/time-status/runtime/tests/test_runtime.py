@@ -334,12 +334,13 @@ def test_runtime_callback_consumes_browser_system_store_without_polling() -> Non
     module.register_callbacks(dash_app, object())
 
     with pytest.raises(PreventUpdate):
-        dash_app.callback_function(_store({'pi_last_update': _ok(_NOW)}), None)
+        dash_app.callback_function(None, _store({'pi_last_update': _ok(_NOW)}))
     rendered, ready = dash_app.callback_function(
-        _store({'pi_last_update': _ok(_NOW)}),
         {'initial_latest_state': 'ready'},
+        _store({'pi_last_update': _ok(_NOW)}),
     )
     assert ready == 'true'
+
     source = next(
         component
         for component in _walk(rendered)
@@ -384,3 +385,10 @@ def test_runtime_detail_marks_missing_dispatch_and_keeps_extra_source() -> None:
     invalid = rows[1]['children'][1].to_plotly_json()['props']
     assert invalid['data-ada-time-status-detail-timestamp-utc'] == ''
     assert invalid['children'] == 'Sin información temporal disponible'
+
+
+def test_time_status_renders_degraded_content_without_latest():
+    dash_app = DashStub()
+    create_time_status_runtime_module(_binding()).register_callbacks(dash_app, object())
+    _, ready = dash_app.callback_function({'initial_latest_state': 'empty'}, None)
+    assert ready == 'true'

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
 from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
@@ -33,11 +33,13 @@ def register_transporte_fluidos_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('tranque'), 'children'),
         Output(dashboard_card_content_id('sta'), 'children'),
         Output(dashboard_component_id(TRANSPORTE_FLUIDOS.key), 'data-ready'),
-        Input(component_kpi_store_id(tool_key, TRANSPORTE_FLUIDOS.tool_component_key), 'data'),
+        # La revision del collector dispara el render; el contenido viaja como State.
         Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
+        Input('ada-generic-application', 'data-ada-content-state-presentation'),
+        State(component_kpi_store_id(tool_key, TRANSPORTE_FLUIDOS.tool_component_key), 'data'),
     )
-    def refresh_transporte_fluidos(store_data: object, browser_revision: object):
-        require_initial_delivery(store_data, browser_revision)
+    def refresh_transporte_fluidos(browser_revision: object, presentation_mode: object, store_data: object):
+        require_initial_delivery(store_data, browser_revision, presentation_mode)
         readings = decode_transporte_fluidos_store(store_data)
         rendered = build_transporte_fluidos(
             map_str_overview_readings(readings, store_data),

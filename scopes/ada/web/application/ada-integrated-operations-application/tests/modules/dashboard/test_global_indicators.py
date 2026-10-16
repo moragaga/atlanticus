@@ -233,7 +233,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     dash_app = DashStub()
     module.register_callbacks(dash_app, object())
 
-    component, empty, ready = dash_app.callback_function(_store(), {'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}})
+    component, empty, ready = dash_app.callback_function({'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}}, 'normal', _store())
     grids = [
         node
         for node in _walk(component)
@@ -263,13 +263,14 @@ def test_runtime_callback_degrades_complete_collection_from_empty_system_store()
     module.register_callbacks(dash_app, object())
 
     component, empty, ready = dash_app.callback_function(
+        {'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}},
+        'normal',
         {
             'tool_key': 'integrated_operations',
             'destination_key': 'global_indicators',
             'latest': None,
             'timeseries': None,
         },
-        {'initial_latest_state': 'ready', 'latest': {'revision': 'latest-r1'}},
     )
     placements = [
         node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')
@@ -363,4 +364,32 @@ def test_unconfigured_tool_does_not_mount_global_indicator_runtime_or_fail_exten
 
     assert tuple(module.name for module in extension.modules) == (
         'ada-integrated-operations-dashboard',
+    )
+
+
+def test_global_indicators_use_shared_revision_and_authoring_bypass():
+    from dash.exceptions import PreventUpdate
+    dash_app = DashStub()
+    create_dashboard_global_indicators_module(_binding()).register_callbacks(dash_app, object())
+    with pytest.raises(PreventUpdate):
+        dash_app.callback_function(None, 'normal', _store())
+    _, _, ready = dash_app.callback_function(None, 'authoring', _store())
+    assert ready == 'true'
+
+def test_runtime_callback_binds_revision_and_presentation_before_store_state() -> None:
+    from dash import Input, State
+    from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
+
+    module = create_dashboard_global_indicators_module(_binding())
+    dash_app = DashStub()
+    module.register_callbacks(dash_app, object())
+    dependencies = dash_app.callback_args[-3:]
+
+    assert isinstance(dependencies[0], Input)
+    assert dependencies[0].component_id == DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
+    assert isinstance(dependencies[1], Input)
+    assert dependencies[1].component_id == 'ada-generic-application'
+    assert isinstance(dependencies[2], State)
+    assert dependencies[2].component_id == system_kpi_store_id(
+        'integrated_operations', GLOBAL_INDICATORS_DESTINATION_KEY,
     )

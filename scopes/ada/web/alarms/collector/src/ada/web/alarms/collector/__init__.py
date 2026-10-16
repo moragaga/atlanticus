@@ -20,6 +20,7 @@ from ada.web.alarms.collector.models import (
     AlarmCollectorRefreshResult,
     AlarmCollectorRefreshStatus,
     AlarmCollectorSnapshot,
+    AlarmLiveContainerMissingError,
     AlarmLiveReadError,
 )
 from ada.web.alarms.collector.presentation import (
@@ -54,6 +55,7 @@ __all__ = [
     'AlarmCollectorSnapshot',
     'AlarmLiveContractError',
     'AlarmLiveReadError',
+    'AlarmLiveContainerMissingError',
     'AlarmLiveReaderSettings',
     'CosmosAlarmLiveReader',
     'alarm_live_store_id',

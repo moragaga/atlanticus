@@ -20,7 +20,8 @@ function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
     const dashboard = {querySelectorAll: () => areas};
     const indicator = {getAttribute: (name) => name === 'data-ready' && globals ? 'true' : 'false'};
     const board = {getAttribute: (name) => name === 'data-ready' && alarms ? 'true' : 'false'};
-    const clock = {getAttribute: (name) => name === 'data-ready' && time ? 'true' : 'false'};
+    const clock = {getAttribute: (name) => name === 'data-ready'
+        ? (time === 'degraded' ? 'degraded' : time ? 'true' : 'false') : null};
     let app = null;
     if (mounted) app = {
         parentNode: parent,
@@ -51,9 +52,10 @@ function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
     }
     vm.runInNewContext(script, {window, document, location: {pathname: route}, MutationObserver: Observer});
     function flush() {let remaining = 20; while (frames.length && remaining--) frames.shift()(); assert.ok(remaining > 0);}
+    function flushOne() {if (frames.length) frames.shift()();}
     function notify() {observers.filter(o => o.active).forEach(o => o.fn());}
     return {
-        flush, notify, reasons, appAttrs, observers, window,
+        flush, flushOne, notify, reasons, appAttrs, observers, window,
         setReady: (n) => {ready = n; notify();},
         setGlobal: () => {globals = true; notify();},
         setAlarm: () => {alarms = true; notify();},
@@ -99,4 +101,11 @@ function fixture({mode = 'normal', ready = 0, mounted = true, globals = false,
     p.replaceApp(); p.flush(); assert.deepEqual(p.reasons, []);
     p.setReady(9); p.flush(); assert.deepEqual(p.reasons, ['ready']);
 }
-console.log('Startup loader: 12 readiness flags, remount and authoring bypass OK');
+{
+    const p = fixture({ready: 9, globals: true, alarms: true, time: 'degraded'});
+    p.flushOne();
+    assert.deepEqual(p.reasons, []);
+    p.flushOne();
+    assert.deepEqual(p.reasons, ['ready']);
+}
+console.log('Startup loader: readiness, deferred paint and authoring bypass OK');

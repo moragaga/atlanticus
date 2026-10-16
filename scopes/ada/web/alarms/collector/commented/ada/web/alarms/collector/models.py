@@ -11,10 +11,17 @@ class AlarmLiveReadError(RuntimeError):
     pass
 
 
+# Ausencia comprobada del contenedor, distinta del documento ausente.
+class AlarmLiveContainerMissingError(AlarmLiveReadError):
+    pass
+
+
 # Agrupa una responsabilidad operativa y sus invariantes.
 class AlarmCollectorAvailability(StrEnum):
     WAITING = 'waiting'
     READY = 'ready'
+    EMPTY = 'empty'
+    CONTAINER_MISSING = 'container_missing'
     RETIRED = 'retired'
     MISSING = 'missing'
     INVALID = 'invalid'

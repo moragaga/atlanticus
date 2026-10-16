@@ -15,6 +15,7 @@ from ada.contracts.tools.structure import ToolStructure
 from ada.web.components import build_empty_component_stores
 from ada.web.kpis.collector.models import KpiCollectorSnapshot, SystemKpiStoreSnapshot
 from ada.web.kpis.collector.presentation import (
+    DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID,
     KpiCollectorPresentationSettings,
     KpiCollectorPresentationSource,
     component_kpi_store_id,
@@ -117,7 +118,16 @@ def attach_ada_kpi_presentation_stores(
             raise TypeError('KPI presentation store integration requires a Dash Component layout')
         _append_runtime_components(
             resolved,
-            _build_store_components(structure=structure, snapshot=snapshot),
+            (*_build_store_components(structure=structure, snapshot=snapshot),
+             dcc.Store(
+                 id=DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID,
+                 data={'latest': None, 'timeseries': None,
+                       # Sin collector, la presentacion queda degradada y no pendiente.
+                       'initial_latest_state': 'error',
+                       'source_states': {'latest': 'not_configured',
+                                         'timeseries': 'not_configured'}},
+                 storage_type='memory',
+             )),
         )
         return resolved
 
@@ -267,6 +277,8 @@ def _create_callback_registrar(
                 'ready' if snapshot.latest_revision is not None
                 else polling_runtime.initial_latest_state
             )
+            # La revision incluye el resultado de ambas fuentes sin nuevos stores.
+            source_states = polling_runtime.source_states
             if (
                 initial_state == 'pending'
                 and not snapshot.has_delivery_data
@@ -282,13 +294,15 @@ def _create_callback_registrar(
             )
             if revision is no_update:
                 current = browser_revision if isinstance(browser_revision, Mapping) else {}
-                if current.get('initial_latest_state') == initial_state:
+                if (current.get('initial_latest_state') == initial_state
+                    and current.get('source_states') == source_states):
                     return (*component_updates, *system_updates, no_update)
                 revision = {
                     'latest': current.get('latest'),
                     'timeseries': current.get('timeseries'),
                 }
-            revision = {**revision, 'initial_latest_state': initial_state}
+            revision = {**revision, 'initial_latest_state': initial_state,
+                        'source_states': source_states}
             return (*component_updates, *system_updates, revision)
 
     return register_callbacks

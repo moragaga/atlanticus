@@ -32,6 +32,7 @@ from ada.web.kpis.collector.models import (
     KpiCollectorRefreshStatus,
     KpiCollectorSnapshot,
     KpiDeliveryReader,
+    KpiDeliveryContainerMissingError,
     KpiDeliveryReadError,
     SystemKpiStoreSnapshot,
 )
@@ -87,6 +88,7 @@ __all__ = [
     'KpiCollectorRefreshStatus',
     'KpiCollectorSnapshot',
     'KpiDeliveryReadError',
+    'KpiDeliveryContainerMissingError',
     'KpiDeliveryReader',
     'component_kpi_store_id',
     'create_ada_kpi_collector_module',

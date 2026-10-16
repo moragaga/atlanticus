@@ -12,6 +12,7 @@ from ada.web.kpis.collector.models import (
     KpiCollectorContractError,
     KpiCollectorRefreshResult,
     KpiCollectorRefreshStatus,
+    KpiDeliveryContainerMissingError,
     KpiDeliveryReadError,
 )
 from atlanticus.web.observability import WebObservability
@@ -103,11 +104,19 @@ class AdaKpiCollectorPollingRuntime:
         self._next_timeseries_due: float | None = None
         self._incident_signatures: dict[str, tuple[str, str]] = {}
         self._initial_latest_state = 'pending'
+        self._latest_source_state = 'waiting'
+        self._timeseries_source_state = 'waiting'
 
     @property
     def initial_latest_state(self) -> str:
         with self._state_lock:
             return self._initial_latest_state
+
+    @property
+    def source_states(self) -> dict[str, str]:
+        with self._state_lock:
+            return {'latest': self._latest_source_state,
+                    'timeseries': self._timeseries_source_state}
 
     def _record_latest_result(self, result: KpiCollectorRefreshResult | None) -> None:
         if result is None:
@@ -123,6 +132,14 @@ class AdaKpiCollectorPollingRuntime:
             state = 'ready'
         with self._state_lock:
             self._initial_latest_state = state
+            self._latest_source_state = (
+                'document_missing' if result is not None
+                and result.status is KpiCollectorRefreshStatus.MISSING
+                else result.status.value if result is not None
+                and result.status in {KpiCollectorRefreshStatus.STALE,
+                                      KpiCollectorRefreshStatus.INCOMPATIBLE}
+                else 'ready' if result is not None else 'unavailable'
+            )
 
     @property
     def settings(self) -> KpiCollectorPollingSettings:
@@ -210,6 +227,8 @@ class AdaKpiCollectorPollingRuntime:
                 except Exception as error:
                     latest_error = error
                     self._record_latest_result(None)
+                    with self._state_lock:
+                        self._latest_source_state = self._error_source_state(error)
                     self._report_refresh_failure('latest', error)
                 else:
                     self._record_latest_result(latest_result)
@@ -219,8 +238,19 @@ class AdaKpiCollectorPollingRuntime:
                     timeseries_result = self._collector.refresh_timeseries()
                 except Exception as error:
                     timeseries_error = error
+                    with self._state_lock:
+                        self._timeseries_source_state = self._error_source_state(error)
                     self._report_refresh_failure('timeseries', error)
                 else:
+                    with self._state_lock:
+                        self._timeseries_source_state = (
+                            'document_missing' if timeseries_result is not None
+                            and timeseries_result.status is KpiCollectorRefreshStatus.MISSING
+                            else timeseries_result.status.value if timeseries_result is not None
+                            and timeseries_result.status in {KpiCollectorRefreshStatus.STALE,
+                                KpiCollectorRefreshStatus.INCOMPATIBLE}
+                            else 'ready'
+                        )
                     self._clear_refresh_failure('timeseries')
             return KpiCollectorPollCycle(
                 latest=latest_result,
@@ -272,6 +302,16 @@ class AdaKpiCollectorPollingRuntime:
             interval_seconds=self._settings.timeseries_interval_seconds,
             completed_at=completed_at,
         )
+
+    @staticmethod
+    def _error_source_state(error: Exception) -> str:
+        if isinstance(error, KpiDeliveryContainerMissingError):
+            return 'container_missing'
+        if isinstance(error, KpiDeliveryReadError):
+            return 'unavailable'
+        if isinstance(error, KpiCollectorContractError):
+            return 'invalid'
+        return 'unavailable'
 
     def _report_refresh_failure(self, source: str, error: Exception) -> None:
         signature = (type(error).__name__, str(error))

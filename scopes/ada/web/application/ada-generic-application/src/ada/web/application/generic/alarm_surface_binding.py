@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
-from dash import Input, Output, State
+from dash import Input, Output, State, html
 from dash.exceptions import PreventUpdate
 
 from ada.web.alarms.collector import alarm_live_store_id
@@ -44,14 +44,35 @@ def attach_operational_alarm_surface(
             if (
                 not isinstance(data, dict)
                 or data.get('availability') not in {
-                    'ready', 'retired', 'missing', 'invalid', 'unavailable'
+                    'ready', 'empty', 'retired', 'missing', 'container_missing',
+                    'invalid', 'unavailable'
                 }
             ):
                 raise PreventUpdate
+            rendered = list(build_live_alarm_cards(
+                data, tool_key=tool_key, component_keys=component_keys,
+            ))
+            availability = data['availability']
+            has_actual_cards = bool(rendered)
+            if not rendered:
+                captions = {
+                    'empty': 'Sin alarmas activas',
+                    'missing': 'No existe una publicacion de alarmas',
+                    'container_missing': 'Contenedor de alarmas no disponible',
+                    'invalid': 'Publicacion de alarmas invalida',
+                    'unavailable': 'No se pudo consultar alarmas',
+                    'retired': 'Alarmas retiradas',
+                }
+                message = captions.get(availability, 'Sin alarmas activas')
+                rendered = [html.Div(message, role='status', className='ada-alarm-live-status')]
+            if has_actual_cards and availability not in {'ready', 'empty'}:
+                rendered.insert(0, html.Div(
+                    'Mostrando alarmas de una publicacion anterior',
+                    role='status',
+                    **{'data-ada-alarm-source-stale': 'true'},
+                ))
             return (
-                list(build_live_alarm_cards(
-                    data, tool_key=tool_key, component_keys=component_keys,
-                )),
+                rendered,
                 {'--ada-alarm-live-slot-count': str(resolve_live_alarm_capacity(
                     data, tool_key=tool_key,
                 ))},

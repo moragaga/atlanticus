@@ -208,7 +208,7 @@ def attach_ada_alarm_presentation_store(
             raise TypeError('Alarm presentation store requires a Dash Component layout')
         snapshot = AlarmCollectorSnapshot(
             tool_key=key,
-            availability=AlarmCollectorAvailability.WAITING,
+            availability=AlarmCollectorAvailability.UNAVAILABLE,
             semantic_sha256=None,
             document=None,
         )

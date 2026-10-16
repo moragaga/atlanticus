@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from time import monotonic
 from typing import Any, Protocol
 
 from ada.web.kpis.collector.contracts import (
@@ -9,8 +10,12 @@ from ada.web.kpis.collector.contracts import (
     KPI_LATEST_DELIVERY_ITEM_ID,
     KPI_TIMESERIES_DELIVERY_ITEM_ID,
 )
-from ada.web.kpis.collector.models import KpiDeliveryReadError
-from atlanticus.connectivity.cosmos import CosmosError
+from ada.web.kpis.collector.models import (
+    KpiDeliveryReadError, KpiDeliveryContainerMissingError,
+)
+from atlanticus.connectivity.cosmos import (
+    CosmosClient, CosmosContainerNotFoundError, CosmosError, CosmosInventory,
+)
 
 
 def _validate_container_name(value: object, field_name: str) -> None:
@@ -49,6 +54,9 @@ class CosmosKpiDeliveryReader:
     settings: CosmosKpiDeliveryReaderSettings = field(
         default_factory=CosmosKpiDeliveryReaderSettings
     )
+    _inventory_cache: dict[str, tuple[float, bool]] = field(
+        default_factory=dict, init=False, repr=False,
+    )
 
     def __post_init__(self) -> None:
         if not callable(getattr(self.client, 'find_item', None)):
@@ -70,10 +78,33 @@ class CosmosKpiDeliveryReader:
 
     def _read(self, *, container_name: str, item_id: str) -> Mapping[str, Any] | None:
         try:
-            return self.client.find_item(
+            document = self.client.find_item(
                 container_name=container_name,
                 item_id=item_id,
                 partition_key=KPI_DELIVERY_PARTITION_ID,
             )
+        except CosmosContainerNotFoundError as error:
+            raise KpiDeliveryContainerMissingError('Could not read KPI delivery from Cosmos: container missing') from error
         except CosmosError as error:
             raise KpiDeliveryReadError('Could not read KPI delivery from Cosmos') from error
+        if document is None and self._container_missing(container_name):
+            raise KpiDeliveryContainerMissingError('Could not read KPI delivery from Cosmos: container missing')
+        return document
+
+    def _container_missing(self, name: str) -> bool:
+        if not isinstance(self.client, CosmosClient):
+            return False
+        now = monotonic()
+        last = self._inventory_cache.get(name)
+        if last is not None and now - last[0] < 60.0:
+            return last[1]
+        try:
+            CosmosInventory(client=self.client).read_container(container_name=name)
+        except CosmosContainerNotFoundError:
+            missing = True
+        except CosmosError as error:
+            raise KpiDeliveryReadError('Could not inspect KPI delivery container') from error
+        else:
+            missing = False
+        self._inventory_cache[name] = (now, missing)
+        return missing

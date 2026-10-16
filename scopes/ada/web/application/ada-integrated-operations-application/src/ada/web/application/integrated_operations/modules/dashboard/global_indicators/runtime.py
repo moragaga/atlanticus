@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dash import Input, Output, html
+from dash import Input, Output, State, html
 
 from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
 from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
@@ -62,11 +62,13 @@ def create_dashboard_global_indicators_module(
             Output(GLOBAL_INDICATORS_SLOT_ID, 'children'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-slot-empty'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-ready'),
-            Input(store_id, 'data'),
             Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
+            Input('ada-generic-application', 'data-ada-content-state-presentation'),
+            State(store_id, 'data'),
         )
-        def refresh_global_indicators(store_data: object, browser_revision: object):
-            require_initial_delivery(store_data, browser_revision)
+        def refresh_global_indicators(browser_revision: object, presentation_mode: object,
+                                      store_data: object):
+            require_initial_delivery(store_data, browser_revision, presentation_mode)
             return (
                 build_dashboard_global_indicators_runtime_component(
                     store_data,

@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from dash import Input, Output, html
+from dash import Input, Output, State, html
 from dash.exceptions import PreventUpdate
 from dash.development.base_component import Component
 
@@ -68,16 +68,39 @@ def create_time_status_runtime_module(binding: TimeStatusRuntimeBinding) -> WebM
         @dash_app.callback(
             Output(host_id, 'children'),
             Output(host_id, 'data-ready'),
-            Input(store_id, 'data', allow_optional=True),
             Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
+            State(store_id, 'data', allow_optional=True),
         )
-        def refresh_time_status(store_data: object, browser_revision: object):
+        def refresh_time_status(browser_revision: object, store_data: object):
             if (
                 not isinstance(browser_revision, Mapping)
                 or browser_revision.get('initial_latest_state') not in {'ready', 'empty', 'error'}
             ):
                 raise PreventUpdate
-            return build_time_status_runtime_component(store_data, binding=binding), 'true'
+            rendered = build_time_status_runtime_component(store_data, binding=binding)
+            states = browser_revision.get('source_states')
+            if isinstance(states, Mapping):
+                descriptions = {
+                    'container_missing': 'Contenedor no disponible',
+                    'document_missing': 'Publicacion no encontrada',
+                    'invalid': 'Publicacion invalida',
+                    'incompatible': 'Publicacion incompatible',
+                    'stale': 'Publicacion desactualizada',
+                    'unavailable': 'Fuente no disponible',
+                    'not_configured': 'Fuente sin configurar',
+                }
+                messages = [
+                    f'{source}: {descriptions[state]}'
+                    for source, state in states.items()
+                    if state in descriptions
+                ]
+                if messages:
+                    rendered = html.Div([
+                        rendered,
+                        html.Div('; '.join(messages), role='status',
+                                 **{'data-ada-kpi-source-diagnostic': 'true'}),
+                    ])
+            return rendered, 'true'
 
     return WebModule(
         name='ada-time-status-runtime',

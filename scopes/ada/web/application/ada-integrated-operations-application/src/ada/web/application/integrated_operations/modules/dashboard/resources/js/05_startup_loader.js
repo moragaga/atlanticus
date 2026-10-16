@@ -79,7 +79,7 @@
             result.push('alarms_render');
         }
         const time = application.querySelector(timeSelector);
-        if (!time || time.getAttribute('data-ready') !== 'true') {
+        if (!time || !['true', 'degraded'].includes(time.getAttribute('data-ready'))) {
             result.push('time_status');
         }
         return result;
@@ -93,7 +93,12 @@
         }
         track();
         if (pending().length === 0) {
-            window.adaIoFinishStartupLoader('ready');
+            window.requestAnimationFrame(() => {
+                if (document.getElementById('ada-io-startup-loader')
+                    && pending().length === 0) {
+                    window.adaIoFinishStartupLoader('ready');
+                }
+            });
         }
     }
 

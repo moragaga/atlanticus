@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
 from ada.web.kpis.collector.presentation import DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID
@@ -38,11 +38,12 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
         Output(dashboard_card_content_id('perforacion'), 'children'),
         Output(dashboard_card_content_id('mp10'), 'children'),
         Output(dashboard_component_id(GENERAL_MINA.key), 'data-ready'),
-        Input(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
         Input(DEFAULT_KPI_COLLECTOR_REVISION_STORE_ID, 'data'),
+        Input('ada-generic-application', 'data-ada-content-state-presentation'),
+        State(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
     )
-    def refresh_general_mina(store_data: object, browser_revision: object):
-        require_initial_delivery(store_data, browser_revision)
+    def refresh_general_mina(browser_revision: object, presentation_mode: object, store_data: object):
+        require_initial_delivery(store_data, browser_revision, presentation_mode)
         readings = decode_general_mina_store(store_data)
         try:
             movimiento = map_movimiento_mina_readings(readings)
