@@ -20,7 +20,8 @@ class JobDefinition:
     service_name: str
     job_key: str | None = None
     run_once: bool = False
-    sleep_seconds: float = 0.0
+    # Pausa completa tras la iteración; el tiempo de cálculo no se descuenta.
+    poll_interval_seconds: float = 0.0
     iteration_timeout_seconds: float = 300.0
     execution_timeout_seconds: float = 330.0
     shutdown_grace_seconds: float = 15.0
@@ -41,7 +42,7 @@ class JobDefinition:
         if not isinstance(self.run_once, bool):
             raise TypeError('run_once must be a bool')
 
-        _validate_non_negative('sleep_seconds', self.sleep_seconds)
+        _validate_non_negative('poll_interval_seconds', self.poll_interval_seconds)
         _validate_positive('iteration_timeout_seconds', self.iteration_timeout_seconds)
         _validate_positive('execution_timeout_seconds', self.execution_timeout_seconds)
         _validate_positive('shutdown_grace_seconds', self.shutdown_grace_seconds)

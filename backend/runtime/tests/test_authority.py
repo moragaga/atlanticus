@@ -298,8 +298,12 @@ def test_heartbeat_retries_repeated_transient_fence_contention(tmp_path, monkeyp
     renewed_expiration = initial_expiration
     while renewed_expiration <= initial_expiration and time.monotonic() < deadline:
         time.sleep(0.01)
+        try:
+            payload = lease.path.read_text(encoding='utf-8')
+        except PermissionError:
+            continue
         renewed_expiration = datetime.fromisoformat(
-            json.loads(lease.path.read_text(encoding='utf-8'))['expires_at_utc']
+            json.loads(payload)['expires_at_utc']
         )
 
     lease.stop_renewal()

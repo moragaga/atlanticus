@@ -44,7 +44,6 @@ from atlanticus.runtime.errors import (
 from atlanticus.runtime.lease import ExecutionLease, LeaseAcquisition, RecoveredLease
 from atlanticus.runtime.options import RuntimeOptions, parse_runtime_options
 
-_ITERATION_ESTIMATE_WINDOW = 5
 _AZURE_OBSERVABILITY_VARIABLES = (
     'ATLANTICUS_AZURE_OBSERVABILITY_MODE',
     'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE',
@@ -130,12 +129,14 @@ def execute_job(
         )
     run_id = str(uuid4())
     correlation_id = str(uuid4())
+    successor_handoff = configuration.job_schedule_cron is not None and not options.run_once
     context = JobRuntimeContext.create(
         definition=definition,
         configuration=configuration,
         run_id=run_id,
         correlation_id=correlation_id,
         clock=time.monotonic,
+        successor_handoff=successor_handoff,
     )
     lease = ExecutionLease(
         volume_path=configuration.volume_path,
@@ -146,13 +147,30 @@ def execute_job(
         run_id=run_id,
         lease_timeout_seconds=definition.lease_timeout_seconds,
         renewal_seconds=definition.lease_renew_seconds,
-        wait_seconds=_effective_lease_wait_seconds(definition, context),
+        wait_seconds=_effective_lease_wait_seconds(
+            definition, context, successor_handoff=successor_handoff
+        ),
         poll_seconds=definition.lease_poll_seconds,
         scheduled_at_utc=context.scheduled_at_utc,
         authority_deadline_utc=_effective_authority_deadline(context),
         wall_clock=context._utc_now,
+        successor_handoff=successor_handoff,
     )
-    acquisition = lease.acquire()
+    if successor_handoff:
+        lease.announce_successor(ttl_seconds=_successor_signal_ttl(definition, context))
+    try:
+        acquisition = lease.acquire()
+    except BaseException:
+        if successor_handoff:
+            lease.clear_successor()
+        raise
+    if successor_handoff:
+        try:
+            lease.clear_successor()
+        except BaseException:
+            if lease.acquired:
+                lease.release(completed=False)
+            raise
     observability_configured = False
     primary_error: BaseException | None = None
     execution_result: RuntimeExecutionResult | None = None
@@ -254,7 +272,6 @@ def _run_iterations(
 ) -> RuntimeExecutionResult:
     started = context.started_monotonic
     iteration_count = 0
-    recent_iteration_durations: list[float] = []
     work_iterations = 0
     empty_iterations = 0
     stop_reason = 'completed'
@@ -306,9 +323,6 @@ def _run_iterations(
                         lease.assert_current()
                         duration_seconds = time.monotonic() - iteration_started
                         iteration_count += 1
-                        recent_iteration_durations.append(duration_seconds)
-                        if len(recent_iteration_durations) > _ITERATION_ESTIMATE_WINDOW:
-                            del recent_iteration_durations[0]
                         if resources_started:
                             resources.checkpoint()
 
@@ -357,21 +371,22 @@ def _run_iterations(
                         if options.run_once:
                             stop_reason = 'run_once'
                             break
-
+                        if lease.pending_successor() is not None:
+                            stop_reason = 'successor_ready'
+                            break
                         requested_delay = context._next_iteration_delay()
-                        sleep_seconds = (
-                            max(0.0, definition.sleep_seconds - duration_seconds)
+                        delay_seconds = (
+                            definition.poll_interval_seconds
                             if requested_delay is None
                             else requested_delay
                         )
-                        estimated_duration = _estimate_next_iteration_duration(
-                            recent_iteration_durations
-                        )
-                        required_for_next = sleep_seconds + estimated_duration
-                        if context.safe_remaining_seconds <= required_for_next:
-                            stop_reason = 'insufficient_remaining_time'
+                        if _wait_for_next_iteration(
+                            context=context, lease=lease, seconds=delay_seconds,
+                            poll_seconds=definition.lease_poll_seconds,
+                        ):
+                            stop_reason = 'successor_ready'
                             break
-                        if sleep_seconds > 0 and not context.wait(sleep_seconds):
+                        if context.should_stop:
                             if context.stop_reason is not None:
                                 cancellation_reason = context.stop_reason
                             else:
@@ -514,22 +529,43 @@ def _run_drain(
     lease.assert_current()
 
 
-def _estimate_next_iteration_duration(durations: Sequence[float]) -> float:
-    recent = tuple(durations[-_ITERATION_ESTIMATE_WINDOW:])
-    if not recent:
-        raise ValueError('durations must contain at least one value')
-    average = sum(recent) / len(recent)
-    return max(recent[-1], average)
+def _wait_for_next_iteration(
+    *, context: JobRuntimeContext, lease: ExecutionLease, seconds: float, poll_seconds: float
+) -> bool:
+    if context.execution_mode != 'scheduled_external':
+        context.wait(seconds)
+        return False
+    deadline = context.clock() + seconds
+    while not context.should_stop:
+        lease.assert_current()
+        if lease.pending_successor() is not None:
+            return True
+        remaining = deadline - context.clock()
+        if remaining <= 0:
+            return False
+        context.wait(min(poll_seconds, remaining))
+    return False
+
+
+def _successor_signal_ttl(definition: JobDefinition, context: JobRuntimeContext) -> float:
+    configured = definition.lease_wait_seconds
+    wait = context.safe_remaining_seconds if configured is None else min(configured, context.safe_remaining_seconds)
+    return max(1.0, wait + definition.lease_poll_seconds + definition.shutdown_grace_seconds)
 
 
 def _effective_lease_wait_seconds(
     definition: JobDefinition,
     context: JobRuntimeContext,
+    *, successor_handoff: bool = False,
 ) -> float:
     available_for_wait = context.safe_remaining_seconds
     configured = definition.lease_wait_seconds
     if configured is None:
-        configured = definition.lease_timeout_seconds + definition.lease_poll_seconds
+        configured = (
+            available_for_wait
+            if successor_handoff
+            else definition.lease_timeout_seconds + definition.lease_poll_seconds
+        )
     return min(configured, available_for_wait)
 
 

@@ -569,7 +569,7 @@ def test_iteration_can_override_static_sleep_with_adaptive_delay(tmp_path, monke
     definition = JobDefinition(
         module_name='adaptive_job',
         service_name='adaptive-job',
-        sleep_seconds=5,
+        poll_interval_seconds=5,
         iteration_timeout_seconds=5,
         execution_timeout_seconds=20,
         shutdown_grace_seconds=2,

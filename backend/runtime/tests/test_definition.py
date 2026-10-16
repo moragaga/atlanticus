@@ -90,7 +90,7 @@ def test_job_definition_rejects_identifiers_that_could_collide_in_paths(field, v
     ('field', 'value'),
     [
         ('run_once', 1),
-        ('sleep_seconds', True),
+        ('poll_interval_seconds', True),
         ('lease_wait_seconds', float('nan')),
         ('resource_sample_seconds', float('inf')),
     ],

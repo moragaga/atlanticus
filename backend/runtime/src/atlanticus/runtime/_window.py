@@ -57,6 +57,7 @@ def build_execution_window(
     configuration: RuntimeConfiguration,
     started_at_utc: datetime,
     started_monotonic: float,
+    successor_handoff: bool = False,
 ) -> ExecutionWindow:
     if not isinstance(definition, JobDefinition):
         raise TypeError('definition must be a JobDefinition')
@@ -64,6 +65,8 @@ def build_execution_window(
         raise TypeError('configuration must be a RuntimeConfiguration')
     normalized_started_at = _normalize_utc_datetime(started_at_utc, 'started_at_utc')
     _require_finite_number(started_monotonic, 'started_monotonic')
+    if not isinstance(successor_handoff, bool):
+        raise TypeError('successor_handoff must be a bool')
 
     schedule_slot = _resolve_schedule(configuration, normalized_started_at)
     if schedule_slot is None:
@@ -76,7 +79,8 @@ def build_execution_window(
         runtime_deadline = schedule_slot.scheduled_at_utc + timedelta(
             seconds=definition.execution_timeout_seconds
         )
-        runtime_deadline = min(runtime_deadline, schedule_slot.next_scheduled_at_utc)
+        if not successor_handoff:
+            runtime_deadline = min(runtime_deadline, schedule_slot.next_scheduled_at_utc)
 
     platform_deadline = None
     if configuration.job_platform_timeout_seconds is not None:

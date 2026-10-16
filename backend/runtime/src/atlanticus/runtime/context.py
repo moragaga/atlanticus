@@ -105,17 +105,21 @@ class JobRuntimeContext:
         correlation_id: str,
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], datetime] | None = None,
+        successor_handoff: bool = False,
     ) -> JobRuntimeContext:
         started = clock()
         _require_finite_number(started, 'clock result')
         if wall_clock is not None and not callable(wall_clock):
             raise TypeError('wall_clock must be callable')
+        if not isinstance(successor_handoff, bool):
+            raise TypeError('successor_handoff must be a bool')
         resolved_wall_clock = _utc_now if wall_clock is None else wall_clock
         window = build_execution_window(
             definition=definition,
             configuration=configuration,
             started_at_utc=resolved_wall_clock(),
             started_monotonic=started,
+            successor_handoff=successor_handoff,
         )
         return cls(
             definition=definition,
