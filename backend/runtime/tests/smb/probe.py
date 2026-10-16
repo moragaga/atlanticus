@@ -141,7 +141,8 @@ def _owner_b(probe_root: Path) -> None:
         _write_marker(control_root / 'b-takeover')
 
     _wait_for(control_root / 'a-rejected-after-takeover')
-    lease.release(completed=False)
+    if not lease.release(completed=False):
+        raise RuntimeError('Owner B failed to release lease')
     _write_marker(control_root / 'b-complete')
 
 

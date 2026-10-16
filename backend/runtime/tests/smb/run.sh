@@ -56,4 +56,4 @@ if [ "$owner_a_status" -ne 0 ] || [ "$owner_b_status" -ne 0 ]; then
     exit 10
 fi
 
-run_probe verify --probe-id "$probe_id"
+run_probe verify --probe-id "$probe_id" --keep
