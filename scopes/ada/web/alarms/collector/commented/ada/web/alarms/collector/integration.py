@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from dash import Input, Output, State, dcc
+from dash import Input, Output, State, dcc, no_update
 from dash.development.base_component import Component
 from flask import request
 
@@ -34,6 +34,8 @@ if TYPE_CHECKING:
 ADA_ALARM_COLLECTOR_SERVICE_KEY = 'ada.alarm.collector'
 ADA_ALARM_COLLECTOR_RUNTIME_SERVICE_KEY = 'ada.alarm.collector.runtime'
 _EXCLUDED_START_PATHS = ('/health/', '/assets/', '/.auth/')
+_INITIAL_BROWSER_REFRESH_INTERVAL_MS = 1000
+_INITIAL_BROWSER_RETRY_LIMIT = 20
 LayoutFactory = Callable[..., object]
 
 
@@ -63,7 +65,7 @@ class AdaAlarmCollectorWebIntegration:
             components = (
                 dcc.Interval(
                     id=self.presentation_settings.interval_id,
-                    interval=int(self.presentation_settings.refresh_interval_seconds * 1000),
+                    interval=_INITIAL_BROWSER_REFRESH_INTERVAL_MS,
                     n_intervals=0,
                 ),
                 dcc.Store(
@@ -124,6 +126,24 @@ def create_ada_alarm_collector_web_integration(
     # Ejecuta una operación explícita del componente sin añadir acoplamientos.
     def register_callbacks(dash_app: Dash, services: ServiceRegistry) -> None:
         store_id = alarm_live_store_id(collector.tool_key)
+
+        @dash_app.callback(
+            Output(settings.interval_id, 'interval'),
+            Input(store_id, 'data'),
+            Input(settings.interval_id, 'n_intervals'),
+            State(settings.interval_id, 'interval'),
+        )
+        def adapt_initial_refresh(store_data: object, n_intervals: int, interval: object):
+            initialized = (
+                isinstance(store_data, dict)
+                and store_data.get('availability') not in {None, 'waiting'}
+            )
+            desired = (
+                int(settings.refresh_interval_seconds * 1000)
+                if initialized or (isinstance(n_intervals, int) and n_intervals >= _INITIAL_BROWSER_RETRY_LIMIT)
+                else _INITIAL_BROWSER_REFRESH_INTERVAL_MS
+            )
+            return no_update if desired == interval else desired
 
         @dash_app.callback(
             Output(store_id, 'data'),

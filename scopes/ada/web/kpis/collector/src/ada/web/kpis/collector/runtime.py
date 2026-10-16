@@ -11,6 +11,7 @@ from typing import Protocol
 from ada.web.kpis.collector.models import (
     KpiCollectorContractError,
     KpiCollectorRefreshResult,
+    KpiCollectorRefreshStatus,
     KpiDeliveryReadError,
 )
 from atlanticus.web.observability import WebObservability
@@ -101,6 +102,27 @@ class AdaKpiCollectorPollingRuntime:
         self._next_latest_due: float | None = None
         self._next_timeseries_due: float | None = None
         self._incident_signatures: dict[str, tuple[str, str]] = {}
+        self._initial_latest_state = 'pending'
+
+    @property
+    def initial_latest_state(self) -> str:
+        with self._state_lock:
+            return self._initial_latest_state
+
+    def _record_latest_result(self, result: KpiCollectorRefreshResult | None) -> None:
+        if result is None:
+            state = 'error'
+        elif result.status is KpiCollectorRefreshStatus.MISSING:
+            state = 'empty'
+        elif result.status in {
+            KpiCollectorRefreshStatus.INCOMPATIBLE,
+            KpiCollectorRefreshStatus.STALE,
+        }:
+            state = 'error'
+        else:
+            state = 'ready'
+        with self._state_lock:
+            self._initial_latest_state = state
 
     @property
     def settings(self) -> KpiCollectorPollingSettings:
@@ -187,8 +209,10 @@ class AdaKpiCollectorPollingRuntime:
                     latest_result = self._collector.refresh_latest()
                 except Exception as error:
                     latest_error = error
+                    self._record_latest_result(None)
                     self._report_refresh_failure('latest', error)
                 else:
+                    self._record_latest_result(latest_result)
                     self._clear_refresh_failure('latest')
             if timeseries_due:
                 try:

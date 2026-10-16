@@ -517,6 +517,7 @@ def test_callback_registers_outputs_for_components_systems_and_revision() -> Non
     assert result[2]['destination_key'] == 'global_indicators'
     assert result[3]['destination_key'] == 'time_status'
     assert result[4]['latest']['revision'] == 'latest-r1'
+    assert result[4]['initial_latest_state'] == 'ready'
     assert collector.refresh_latest_calls == 0
     assert collector.refresh_timeseries_calls == 0
 
@@ -547,6 +548,7 @@ def test_first_sync_does_not_publish_empty_data_in_production(monkeypatch):
     ready = dash.callback_function(21, None, None, None, None, None)
     assert ready[0]['latest']['values']['rate']['value'] == '7'
     assert ready[4]['latest']['revision'] == 'latest-r1'
+    assert ready[4]['initial_latest_state'] == 'ready'
     assert len(ready) == 5
 
 
@@ -603,4 +605,6 @@ def test_interval_adaptation_is_separate_from_collector_outputs(monkeypatch):
     ready_revision = {'latest': {'revision': 'latest-r1'}, 'timeseries': None}
     assert adapt(ready_revision, 21, 1000) == 10000
     assert adapt(ready_revision, 21, 10000) is no_update
+    assert adapt({'initial_latest_state': 'empty'}, 1, 1000) == 10000
+    assert adapt({'initial_latest_state': 'error'}, 1, 1000) == 10000
     assert len(refresh(0, None, None, None, None, None)) == 5

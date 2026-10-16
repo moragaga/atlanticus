@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from dash import Input, Output, State
+from dash.exceptions import PreventUpdate
 
 from ada.web.alarms.collector import alarm_live_store_id
 from ada.web.alarms.live_surface import (
@@ -39,6 +40,13 @@ def attach_operational_alarm_surface(
         def render_alarm_live(_modified_timestamp: int | None, data: object):
             if can_view is not None and not can_view():
                 return [], {'--ada-alarm-live-slot-count': '1'}
+            if (
+                not isinstance(data, dict)
+                or data.get('availability') not in {
+                    'ready', 'retired', 'missing', 'invalid', 'unavailable'
+                }
+            ):
+                raise PreventUpdate
             return (
                 list(build_live_alarm_cards(
                     data, tool_key=tool_key, component_keys=component_keys,

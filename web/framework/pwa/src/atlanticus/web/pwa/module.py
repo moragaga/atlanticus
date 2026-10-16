@@ -41,7 +41,7 @@ def create_web_pwa_module(definition: WebPwaDefinition) -> WebModule:
         register_routes=register_routes,
         index=IndexContribution(
             head_fragments=(
-                '<link rel="manifest" href="/manifest.webmanifest">',
+                '<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">',
                 f'<meta name="theme-color" content="{definition.theme_color}">',
                 *favicon_fragment,
             ),

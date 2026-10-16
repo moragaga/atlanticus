@@ -5,7 +5,11 @@ from ada.web.application.integrated_operations.modules.dashboard.initial_readine
     require_initial_delivery,
 )
 
-LATEST_READY = {'latest': {'revision': 'latest-r1'}, 'timeseries': None}
+LATEST_READY = {
+    'latest': {'revision': 'latest-r1'},
+    'timeseries': None,
+    'initial_latest_state': 'ready',
+}
 
 
 def test_no_revision_defers_even_in_local_mode(monkeypatch):
@@ -15,10 +19,17 @@ def test_no_revision_defers_even_in_local_mode(monkeypatch):
             require_initial_delivery({'latest': None, 'timeseries': None}, revision)
 
 
-def test_first_latest_unblocks_all_destinations_even_without_payload():
+def test_completed_latest_unblocks_all_destinations_even_without_payload():
     require_initial_delivery(None, LATEST_READY)
     require_initial_delivery({'latest': None, 'timeseries': None}, LATEST_READY)
     require_initial_delivery({'latest': {'manifest': {}, 'values': {}}}, LATEST_READY)
+
+
+def test_read_complete_with_no_document_or_error_is_terminal():
+    for state in ('empty', 'error'):
+        require_initial_delivery(None, {'latest': None, 'initial_latest_state': state})
+    with pytest.raises(PreventUpdate):
+        require_initial_delivery(None, {'latest': {'revision': 'latest-r1'}})
 
 
 def test_all_dashboard_area_callbacks_wait_for_collector_revision():

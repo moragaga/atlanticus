@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from dash import Input, Output, State
+from dash.exceptions import PreventUpdate
 
 from ada.web.alarms.collector import alarm_live_store_id
 from ada.web.alarms.live_surface import (
@@ -43,6 +44,14 @@ def attach_operational_alarm_surface(
             # Una sesión sin permiso no recibe tarjetas; se mantiene el espacio reservado.
             if can_view is not None and not can_view():
                 return [], {'--ada-alarm-live-slot-count': '1'}
+            # El store inicial es sólo un placeholder; no confirma el primer resultado.
+            if (
+                not isinstance(data, dict)
+                or data.get('availability') not in {
+                    'ready', 'retired', 'missing', 'invalid', 'unavailable'
+                }
+            ):
+                raise PreventUpdate
             # La identidad y orden de los componentes se conservan para su distribución visual.
             return (
                 list(build_live_alarm_cards(

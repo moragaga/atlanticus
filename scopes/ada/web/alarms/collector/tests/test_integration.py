@@ -40,11 +40,11 @@ def test_browser_interval_defaults_to_five_seconds_but_is_independent() -> None:
     )
     layout = integration.wrap_layout(lambda: html.Div(children=[]))()
     interval = layout.children[0]
-    assert interval.interval == 5000
+    assert interval.interval == 1000
 
     custom = create_ada_alarm_collector_web_integration(
         collector,
         presentation_settings=AlarmCollectorPresentationSettings(refresh_interval_seconds=6),
     )
     custom_layout = custom.wrap_layout(lambda: html.Div(children=[]))()
-    assert custom_layout.children[0].interval == 6000
+    assert custom_layout.children[0].interval == 1000

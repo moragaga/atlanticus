@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -228,8 +228,11 @@ def _create_callback_registrar(
             browser_revision: object, n_intervals: int, current_interval: object,
         ):
             latest_ready = (
-                isinstance(browser_revision, dict)
-                and isinstance(browser_revision.get('latest'), dict)
+                isinstance(browser_revision, Mapping)
+                and (
+                    browser_revision.get('initial_latest_state') in {'ready', 'empty', 'error'}
+                    or isinstance(browser_revision.get('latest'), Mapping)
+                )
             )
             if latest_ready:
                 desired_interval = int(settings.refresh_interval_seconds * 1000)
@@ -256,17 +259,36 @@ def _create_callback_registrar(
             *browser_store_data: object,
         ):
             collector = services.require(ADA_KPI_COLLECTOR_SERVICE_KEY)
+            polling_runtime = services.require(
+                ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY, AdaKpiCollectorPollingRuntime,
+            )
             snapshot = collector.snapshot
-            if not snapshot.has_delivery_data:
-                if WebSettings().environment is WebEnvironment.PRODUCTION:
-                    empty = tuple(no_update for _ in (*component_ids, *system_ids))
-                    return (*empty, no_update)
+            initial_state = (
+                'ready' if snapshot.latest_revision is not None
+                else polling_runtime.initial_latest_state
+            )
+            if (
+                initial_state == 'pending'
+                and not snapshot.has_delivery_data
+                and WebSettings().environment is WebEnvironment.PRODUCTION
+            ):
+                empty = tuple(no_update for _ in (*component_ids, *system_ids))
+                return (*empty, no_update)
             component_updates, system_updates, revision = resolve_kpi_collector_browser_update(
                 collector,
                 browser_revision=browser_revision,
                 browser_component_data=browser_store_data[:component_count],
                 browser_system_data=browser_store_data[component_count:],
             )
+            if revision is no_update:
+                current = browser_revision if isinstance(browser_revision, Mapping) else {}
+                if current.get('initial_latest_state') == initial_state:
+                    return (*component_updates, *system_updates, no_update)
+                revision = {
+                    'latest': current.get('latest'),
+                    'timeseries': current.get('timeseries'),
+                }
+            revision = {**revision, 'initial_latest_state': initial_state}
             return (*component_updates, *system_updates, revision)
 
     return register_callbacks

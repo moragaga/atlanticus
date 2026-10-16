@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-# La primera revision latest es la barrera de inicio, no el contenido de cada destino.
-# Un componente sin payload despues de la revision es un estado legitimo NOT_MAPPED.
+# La barrera de inicio confirma que el collector completo su primera lectura.
+# La ausencia de documento y los errores son resultados terminales, no espera infinita.
 # El modo de diseno sigue pudiendo construir placeholders directamente sin este callback.
 
 from collections.abc import Mapping
@@ -10,9 +10,9 @@ from dash.exceptions import PreventUpdate
 
 
 def require_initial_delivery(store_data: object, browser_revision: object) -> None:
-    # El browser aun no ha confirmado una primera entrega latest del collector.
-    if not isinstance(browser_revision, Mapping):
-        raise PreventUpdate
-    latest = browser_revision.get('latest')
-    if not isinstance(latest, Mapping) or not isinstance(latest.get('revision'), str) or not latest['revision']:
+    # La confirmación proviene del runtime que lee Cosmos, no de la presencia de valores.
+    if (
+        not isinstance(browser_revision, Mapping)
+        or browser_revision.get('initial_latest_state') not in {'ready', 'empty', 'error'}
+    ):
         raise PreventUpdate
