@@ -122,6 +122,8 @@ def _document_bytes(document: Mapping[str, Any]) -> bytes:
 
 
 def _fsync_directory(path: Path) -> None:
+    if os.name == 'nt':
+        return
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)

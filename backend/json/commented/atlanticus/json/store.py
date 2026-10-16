@@ -129,6 +129,10 @@ def _document_bytes(document: Mapping[str, Any]) -> bytes:
 
 
 def _fsync_directory(path: Path) -> None:
+    # Windows no permite abrir directorios mediante os.open para fsync.
+    # En POSIX se mantiene la sincronización del directorio; no se presupone equivalencia ante pérdida de energía.
+    if os.name == 'nt':
+        return
     # Confirmar el directorio completa la durabilidad del rename en filesystems que soportan fsync de directorio.
     descriptor = os.open(path, os.O_RDONLY)
     try:
