@@ -110,7 +110,11 @@ def test_surface_preserves_anchor_identity_for_future_runtime_overlay() -> None:
     surface = build_alarm_baseline_surface(_process_projection(with_bottom=True))
     points = _nodes(surface, 'ada-alarm-baseline-surface__point')
 
-    assert _props(surface)['aria-hidden'] == 'true'
+    assert 'aria-hidden' not in _props(surface)
+    traces = _nodes(surface, 'ada-alarm-baseline-surface__trace')
+    assert [_props(trace)['aria-hidden'] for trace in traces] == [
+        'true', 'true',
+    ]
     assert _props(surface)['data-ada-alarm-baseline-tool-key'] == 'process'
     assert _props(surface)['data-ada-alarm-baseline-main-point-count'] == '3'
     assert _props(surface)['data-ada-alarm-baseline-point-count'] == '4'

@@ -24,7 +24,6 @@ def build_alarm_baseline_surface(projection: AlarmBaselineProjection) -> html.Di
         )
 
     attributes = {
-        'aria-hidden': 'true',
         'data-ada-alarm-baseline': projection.kind.value,
         'data-ada-alarm-baseline-tool-key': projection.tool_key,
         'data-ada-alarm-baseline-main-point-count': str(len(projection.main_points)),
@@ -74,7 +73,7 @@ def _build_trace(
             'ada-alarm-baseline-surface__trace '
             f'ada-alarm-baseline-surface__trace--{region}'
         ),
-        **{'data-ada-alarm-baseline-region': region},
+        **{'aria-hidden': 'true', 'data-ada-alarm-baseline-region': region},
     )
 
 
