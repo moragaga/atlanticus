@@ -1,8 +1,8 @@
 # La composición define una ejecución de un solo job; el job gestiona sus reintentos internos.
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
@@ -13,6 +13,7 @@ from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosClient
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -30,14 +31,22 @@ class AlarmMaterializationComposition:
 
     # El Runtime común conserva lease, fencing, telemetría y cierre limpio.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
-        with ExitStack() as stack:
-            stack.callback(self.cosmos.close)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    # El scope se abre tras adquirir lease y mantiene Cosmos bajo autoridad hasta cerrarlo.
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
+        try:
+            yield
+        finally:
+            self.cosmos.close()
 
 
 def build_composition(
