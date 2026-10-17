@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -25,6 +25,7 @@ from atlanticus.connectivity.cosmos import (
 )
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -44,16 +45,22 @@ class KpiDeliveryComposition:
     clients: Mapping[str, CosmosClient]
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with ExitStack() as stack:
             for client in self.clients.values():
                 stack.callback(client.close)
             stack.callback(self.parallel_publisher.close)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
 
 
 def build_composition(

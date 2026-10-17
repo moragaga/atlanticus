@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -30,6 +30,7 @@ from atlanticus.datasets.parquet import ParquetDatasetStore
 from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -54,16 +55,24 @@ class KpiTimeseriesDeliveryComposition:
         *,
         argv: Sequence[str] | None = None,
     ) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    # El SDK Cosmos se conecta bajo demanda; aquí se garantiza su cierre antes del release.
+    # ExitStack cierra primero el pool (espera tareas), después los clientes Cosmos.
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with ExitStack() as stack:
             for client in self.clients.values():
                 stack.callback(client.close)
             stack.callback(self.parallel_publisher.close)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
 
 
 # Esta función mantiene la representación KPI fuera de la capa process.

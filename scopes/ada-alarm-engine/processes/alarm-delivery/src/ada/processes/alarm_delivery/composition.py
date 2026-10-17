@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from ada.processes.alarm_delivery.checkpoint import AlarmDeliveryCheckpointStore
@@ -12,6 +13,7 @@ from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -27,14 +29,20 @@ class AlarmDeliveryComposition:
     definition: JobDefinition
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            recovery=self.job.recover,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         try:
-            return execute_job(
-                definition=self.definition,
-                recovery=self.job.recover,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
         finally:
             self.job.publisher.close()
 
