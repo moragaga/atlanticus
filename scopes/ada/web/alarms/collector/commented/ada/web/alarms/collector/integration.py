@@ -127,34 +127,38 @@ def create_ada_alarm_collector_web_integration(
         store_id = alarm_live_store_id(collector.tool_key)
 
         @dash_app.callback(
-            Output(settings.interval_id, 'interval'),
-            Input(store_id, 'data'),
-            State(settings.interval_id, 'interval'),
-        )
-        # Espera de un segundo hasta resultado real, incluso si no hay documento.
-        def adapt_initial_refresh(store_data: object, interval: object):
-            completed = (
-                isinstance(store_data, dict)
-                and store_data.get('availability') not in {None, 'waiting'}
-            )
-            desired = (
-                int(settings.refresh_interval_seconds * 1000)
-                if completed else _INITIAL_BROWSER_REFRESH_INTERVAL_MS
-            )
-            return no_update if desired == interval else desired
-
-        @dash_app.callback(
             Output(store_id, 'data'),
+            Output(settings.interval_id, 'interval'),
             Input(settings.interval_id, 'n_intervals'),
             State(store_id, 'data'),
+            State(settings.interval_id, 'interval'),
+            running=[(Output(settings.interval_id, 'disabled'), True, False)],
         )
-        # Ejecuta una operación explícita del componente sin añadir acoplamientos.
-        def refresh_from_cache(_interval: int, browser_data: object):
+        # Coordina datos y ritmo de consulta en una sola ejecución, deshabilitando el intervalo mientras corre.
+        def refresh_from_cache(
+            _interval: int, browser_data: object, current_interval: object,
+        ):
+            normal_interval = int(settings.refresh_interval_seconds * 1000)
             if can_view is not None and not can_view():
-                return project_alarm_live_store(_empty_alarm_snapshot(collector.tool_key))
+                denied = project_alarm_live_store(_empty_alarm_snapshot(collector.tool_key))
+                store_update = no_update if denied == browser_data else denied
+                interval_update = (
+                    no_update if current_interval == normal_interval else normal_interval
+                )
+                return store_update, interval_update
             source = services.require(ADA_ALARM_COLLECTOR_SERVICE_KEY, AdaAlarmCollector)
-            return resolve_alarm_live_browser_update(
-                source.snapshot, browser_data=browser_data,
+            snapshot = source.snapshot
+            desired_interval = (
+                _INITIAL_BROWSER_REFRESH_INTERVAL_MS
+                if snapshot.availability is AlarmCollectorAvailability.WAITING
+                else normal_interval
+            )
+            interval_update = (
+                no_update if current_interval == desired_interval else desired_interval
+            )
+            return (
+                resolve_alarm_live_browser_update(snapshot, browser_data=browser_data),
+                interval_update,
             )
 
     return AdaAlarmCollectorWebIntegration(
