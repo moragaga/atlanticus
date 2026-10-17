@@ -55,7 +55,7 @@ def test_old_sleep_contract_is_not_retained() -> None:
         JobDefinition(module_name='test_job', service_name='test-job', sleep_seconds=1)
 
 
-def test_scheduled_handoff_extends_window_past_next_cron(tmp_path) -> None:
+def test_scheduled_handoff_extends_window_to_one_additional_cron_cycle(tmp_path) -> None:
     configuration = RuntimeConfiguration.from_sources(environ=_environment(tmp_path))
     t0 = datetime(2026, 10, 16, 10, 0, 5, tzinfo=UTC)
     definition = _definition()
@@ -66,16 +66,16 @@ def test_scheduled_handoff_extends_window_past_next_cron(tmp_path) -> None:
         started_monotonic=100.0,
         successor_handoff=True,
     )
-    legacy = build_execution_window(
-        definition=definition,
+    bounded = build_execution_window(
+        definition=_definition(run_once=True),
         configuration=configuration,
         started_at_utc=t0,
         started_monotonic=100.0,
     )
     assert handoff.next_scheduled_at_utc == t0.replace(minute=1, second=0)
-    assert legacy.deadline_utc == handoff.next_scheduled_at_utc
-    assert handoff.deadline_utc == t0.replace(second=0) + timedelta(seconds=300)
-    assert handoff.safe_deadline_utc > legacy.deadline_utc
+    assert handoff.deadline_utc == t0.replace(minute=2, second=0)
+    assert handoff.safe_deadline_utc > handoff.next_scheduled_at_utc
+    assert bounded.deadline_utc == t0 + timedelta(seconds=300)
 
 
 def test_relative_execution_waits_full_post_iteration_poll(tmp_path, monkeypatch) -> None:
@@ -87,6 +87,7 @@ def test_relative_execution_waits_full_post_iteration_poll(tmp_path, monkeypatch
         return original(self, seconds)
 
     monkeypatch.setattr(JobRuntimeContext, 'wait', capture)
+
     def iteration(context: JobRuntimeContext) -> None:
         time.sleep(0.03)
         if context.iteration == 2:

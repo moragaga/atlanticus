@@ -1,6 +1,8 @@
-# Construye una única ventana efectiva a partir de límites independientes.
-# El modo relativo conserva el comportamiento histórico; el scheduled usa el slot cron como frontera adicional.
-# Un platform timeout conocido puede truncar cualquiera de los dos modos, pero nunca obliga a consumir todo el tiempo.
+# La ventana efectiva distingue la ejecución relativa de la programada.
+# En modo programado continuo, el cron determina el límite después de un solo ciclo adicional.
+# El tiempo extra es un salvavidas, no una espera obligatoria ni una duración para consumir.
+# Si no hay handoff, la ejecución acotada conserva su identidad programada pero usa el timeout.
+# Un timeout físico conocido siempre puede adelantar el cierre; la gracia queda dentro del límite.
 
 """Resolución de la ventana temporal efectiva de una invocación."""
 
@@ -80,13 +82,20 @@ def build_execution_window(
         )
     else:
         mode = 'scheduled_external'
-        runtime_deadline = schedule_slot.scheduled_at_utc + timedelta(
-            seconds=definition.execution_timeout_seconds
-        )
-        # El siguiente cron deja de ser deadline en modo relevo continuo.
-        # Sin relevo se conserva el límite del siguiente slot programado.
-        if not successor_handoff:
-            runtime_deadline = min(runtime_deadline, schedule_slot.next_scheduled_at_utc)
+        # El propietario puede atravesar el siguiente slot, pero solo un ciclo extra.
+        if successor_handoff:
+            following_slot = resolve_schedule_slot(
+                expression=configuration.job_schedule_cron,
+                timezone_name=configuration.job_schedule_timezone,
+                now_utc=schedule_slot.next_scheduled_at_utc,
+            )
+            # La segunda ocurrencia futura se calcula con el cron real, no sumando minutos.
+            runtime_deadline = following_slot.next_scheduled_at_utc
+        else:
+            # run_once no requiere llegar al próximo cron ni consume el ciclo adicional.
+            runtime_deadline = normalized_started_at + timedelta(
+                seconds=definition.execution_timeout_seconds
+            )
 
     platform_deadline = None
     if configuration.job_platform_timeout_seconds is not None:
@@ -95,6 +104,7 @@ def build_execution_window(
         )
         runtime_deadline = min(runtime_deadline, platform_deadline)
 
+    # La reserva de cierre protege la frontera antes de liberar la lease.
     safe_deadline = runtime_deadline - timedelta(seconds=definition.shutdown_grace_seconds)
     deadline_budget = max(0.0, (runtime_deadline - normalized_started_at).total_seconds())
     safe_budget = max(0.0, (safe_deadline - normalized_started_at).total_seconds())

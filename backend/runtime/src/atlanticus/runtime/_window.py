@@ -76,11 +76,17 @@ def build_execution_window(
         )
     else:
         mode = 'scheduled_external'
-        runtime_deadline = schedule_slot.scheduled_at_utc + timedelta(
-            seconds=definition.execution_timeout_seconds
-        )
-        if not successor_handoff:
-            runtime_deadline = min(runtime_deadline, schedule_slot.next_scheduled_at_utc)
+        if successor_handoff:
+            following_slot = resolve_schedule_slot(
+                expression=configuration.job_schedule_cron,
+                timezone_name=configuration.job_schedule_timezone,
+                now_utc=schedule_slot.next_scheduled_at_utc,
+            )
+            runtime_deadline = following_slot.next_scheduled_at_utc
+        else:
+            runtime_deadline = normalized_started_at + timedelta(
+                seconds=definition.execution_timeout_seconds
+            )
 
     platform_deadline = None
     if configuration.job_platform_timeout_seconds is not None:
