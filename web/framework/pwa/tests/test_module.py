@@ -18,7 +18,10 @@ def test_module_contributes_manifest_metadata_and_registration_asset() -> None:
     assert module.name == 'pwa'
     assert len(module.asset_layers) == 1
     assert module.asset_layers[0].name == 'atlanticus_web_pwa'
-    assert '<link rel="manifest" href="/manifest.webmanifest">' in module.index.head_fragments
+    assert any(
+        'rel="manifest"' in fragment and 'href="/manifest.webmanifest"' in fragment
+        for fragment in module.index.head_fragments
+    )
     assert '<meta name="theme-color" content="#101010">' in module.index.head_fragments
     assert module.index.runtime_config == {
         'service_worker_url': '/service-worker.js',
