@@ -3,7 +3,8 @@
 # La composición resuelve configuración y delega lectura, transformación y estado al producer.
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -16,6 +17,7 @@ from atlanticus.operational_data.processes.remanentes.catalog import build_catal
 from atlanticus.operational_data.processes.remanentes.settings import RemanentesSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -47,13 +49,21 @@ class RemanentesComposition:
     producer: RemanentesDataProducerComponents
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=REMANENTES_JOB_DEFINITION,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    # La lease ya fue adquirida: se abre Storage antes del trabajo y se cierra antes de liberarla.
+    # El contexto limpia Storage incluso ante errores de la iteración.
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with self.producer.storage:
-            return execute_job(
-                definition=REMANENTES_JOB_DEFINITION,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
 
 
 def build_composition(
