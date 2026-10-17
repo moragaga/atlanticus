@@ -1,6 +1,6 @@
 {
   "configuration": {
-    "replicaTimeout": 190,
+    "replicaTimeout": 285,
     "replicaRetryLimit": 0,
     "triggerType": "Schedule",
     "scheduleTriggerConfig": {
