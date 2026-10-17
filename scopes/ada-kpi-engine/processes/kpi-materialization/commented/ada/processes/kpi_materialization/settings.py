@@ -1,4 +1,4 @@
-# Espejo pedagógico de KPI Materialization migrado al contrato compartido: settings.py.
+# El intervalo legado de configuración ahora regula sólo las dos esperas internas de readiness.
 from __future__ import annotations
 
 import math
@@ -11,7 +11,6 @@ POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o contrato propio.
 class KpiMaterializationSettings:
     poll_interval_seconds: float
 
@@ -35,13 +34,13 @@ class KpiMaterializationSettings:
         return cls(poll_interval_seconds=interval)
 
 
-# Expone una operación manteniendo validación explícita.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
-        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='30'),
+        # El runtime del proceso es run_once; no existe un polling entre iteraciones.
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='2'),
         ConfigurationVariableSpec(
             key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
             default='true',

@@ -9,7 +9,7 @@ from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.kernel import Environment
 
 
-def _configuration(interval='30'):
+def _configuration(interval='2'):
     values = {
         'ENVIRONMENT': 'local',
         'POLL_INTERVAL_SECONDS': interval,
@@ -21,7 +21,7 @@ def _configuration(interval='30'):
     )
 
 
-def test_settings_resolve_generic_poll_interval():
+def test_settings_resolve_internal_readiness_retry_interval():
     assert (
         KpiMaterializationSettings.from_configuration(_configuration('2.5')).poll_interval_seconds
         == 2.5
@@ -34,6 +34,6 @@ def test_settings_reject_non_positive_poll_interval():
 
 
 def test_configuration_specs_leave_cosmos_variables_dynamic():
-    keys = {item.key for item in configuration_specs()}
-    assert 'POLL_INTERVAL_SECONDS' in keys
-    assert all('COSMOS' not in key for key in keys)
+    specs = {item.key: item for item in configuration_specs()}
+    assert specs['POLL_INTERVAL_SECONDS'].default == '2'
+    assert all('COSMOS' not in key for key in specs)

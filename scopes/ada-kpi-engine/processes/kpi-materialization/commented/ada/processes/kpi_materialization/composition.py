@@ -1,4 +1,4 @@
-# Espejo pedagógico del proceso KPI Materialization: composition.py.
+# La composición prepara dependencias, pero entrega el ciclo de recursos a Job Runtime.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -14,6 +14,7 @@ from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -21,7 +22,6 @@ from atlanticus.runtime import (
 
 
 @dataclass(slots=True)
-# Agrupa una responsabilidad con estado o ciclo de vida propio.
 class KpiMaterializationComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -30,23 +30,30 @@ class KpiMaterializationComposition:
     definition: JobDefinition
     clients: Mapping[str, CosmosClient]
 
+    # La lease se adquiere dentro de execute_job antes de abrir el scope.
     def execute(
         self,
         *,
         argv: Sequence[str] | None = None,
     ) -> RuntimeExecutionResult:
-        with ExitStack() as stack:
-            for client in self.clients.values():
-                stack.callback(client.close)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    # ExitStack cierra los clientes todavía bajo autoridad, incluso ante fallos.
+    def _resource_scope(self, context: JobRuntimeContext) -> ExitStack:
+        context.assert_lease_current()
+        # La inicialización de Cosmos permanece lazy; se registra cierre preventivo.
+        stack = ExitStack()
+        for client in self.clients.values():
+            stack.callback(client.close)
+        return stack
 
 
-# Expone una operación del contrato manteniendo validación explícita.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
@@ -57,9 +64,7 @@ def build_composition(
     if not isinstance(connections, Mapping) or not connections:
         raise ValueError('connections must contain at least one tool')
     settings = KpiMaterializationSettings.from_configuration(configuration)
-    runtime_configuration = RuntimeConfiguration.from_sources(
-        environ=configuration.values
-    )
+    runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     clients: dict[str, CosmosClient] = {}
     repositories: dict[str, CosmosKpiRegistryRepository] = {}
     for tool_key, cosmos_settings in sorted(connections.items()):
@@ -77,12 +82,16 @@ def build_composition(
                 application=runtime_configuration.application,
             ),
         ),
+        # POLL_INTERVAL_SECONDS es la espera de readiness dentro de la única iteración.
+        readiness_retry_seconds=settings.poll_interval_seconds,
     )
     definition = JobDefinition(
         module_name='ada.processes.kpi_materialization',
         service_name='kpi-materialization',
         job_key='kpi-materialization',
-        poll_interval_seconds=settings.poll_interval_seconds,
+        # Una invocación procesa un lote acotado, no permanece esperando otro ciclo.
+        run_once=True,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

@@ -1,6 +1,7 @@
-# Espejo pedagógico de readiness de KPI Materialization: job.py.
+# KPI Materialization reintenta readiness dentro de una sola iteración sin reabrir Tools listas.
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -19,11 +20,12 @@ from ada.processes.kpi_materialization.errors import (
 from ada.processes.kpi_materialization.repository import KpiRegistryReader
 from atlanticus.runtime import JobRuntimeContext
 
-READINESS_RETRY_SECONDS = 30.0
+READINESS_RETRY_SECONDS = 2.0
+# Tres lecturas como máximo y dos esperas compartidas por todos los Tools pendientes.
+READINESS_MAX_ATTEMPTS = 3
 
 
 @dataclass(frozen=True, slots=True)
-# Define una responsabilidad con estado o contrato propio.
 class KpiMaterializationIterationResult:
     configured_tools: int
     updated_tools: int
@@ -32,21 +34,28 @@ class KpiMaterializationIterationResult:
     pending_tools: int
 
 
-# Define una responsabilidad con estado o contrato propio.
 class KpiMaterializationJob:
     def __init__(
         self,
         *,
         repositories: Mapping[str, KpiRegistryReader],
         store: LocalKpiRegistryStore,
+        readiness_retry_seconds: float = READINESS_RETRY_SECONDS,
     ) -> None:
         if not isinstance(repositories, Mapping) or not repositories:
             raise ValueError('repositories must contain at least one tool')
+        if (
+            isinstance(readiness_retry_seconds, bool)
+            or not isinstance(readiness_retry_seconds, int | float)
+            or not math.isfinite(readiness_retry_seconds)
+            or readiness_retry_seconds <= 0
+        ):
+            raise ValueError('readiness_retry_seconds must be a positive finite number')
         self._repositories = {
-            require_tool_key(tool_key): reader
-            for tool_key, reader in sorted(repositories.items())
+            require_tool_key(tool_key): reader for tool_key, reader in sorted(repositories.items())
         }
         self._store = store
+        self._readiness_retry_seconds = float(readiness_retry_seconds)
 
     def run_iteration(
         self,
@@ -54,41 +63,53 @@ class KpiMaterializationJob:
     ) -> KpiMaterializationIterationResult:
         updated = 0
         unchanged = 0
-        pending = 0
         failures: list[tuple[str, Exception]] = []
+        pending_repositories = self._repositories
 
-        for tool_key, repository in self._repositories.items():
-            context.raise_if_cancelled()
-            try:
-                projection = repository.read()
-                materialized = materialize_registry(
-                    tool_key=tool_key,
-                    projection=projection,
-                )
-                current = self._store.read(tool_key)
-                if current == materialized:
-                    unchanged += 1
-                    continue
+        # Cada pasada conserva sólo los Tools aún sin Registry; evita N esperas por Tool.
+        for attempt in range(READINESS_MAX_ATTEMPTS):
+            pending_next: dict[str, KpiRegistryReader] = {}
+            for tool_key, repository in pending_repositories.items():
                 context.raise_if_cancelled()
-                context.assert_lease_current()
-                with context.fenced_mutation():
-                    self._store.replace(
+                try:
+                    projection = repository.read()
+                    materialized = materialize_registry(
                         tool_key=tool_key,
-                        document=materialized,
+                        projection=projection,
                     )
-                context.mark_iteration_work()
-                updated += 1
-            except KpiMaterializationRegistryPending:
-                pending += 1
-            except (
-                KpiMaterializationAcquisitionError,
-                KpiMaterializationContractError,
-                KpiMaterializationStoreError,
-            ) as error:
-                failures.append((tool_key, error))
+                    current = self._store.read(tool_key)
+                    if current == materialized:
+                        unchanged += 1
+                        continue
+                    context.raise_if_cancelled()
+                    context.assert_lease_current()
+                    with context.fenced_mutation():
+                        self._store.replace(
+                            tool_key=tool_key,
+                            document=materialized,
+                        )
+                    context.mark_iteration_work()
+                    updated += 1
+                # Sólo readiness_pending se reintenta; los errores reales no se silencian.
+                except KpiMaterializationRegistryPending:
+                    pending_next[tool_key] = repository
+                except (
+                    KpiMaterializationAcquisitionError,
+                    KpiMaterializationContractError,
+                    KpiMaterializationStoreError,
+                ) as error:
+                    failures.append((tool_key, error))
+            pending_repositories = pending_next
+            if not pending_repositories or attempt == READINESS_MAX_ATTEMPTS - 1:
+                break
+            # context.wait es cancelable y está limitado por el deadline seguro.
+            if not context.wait(self._readiness_retry_seconds):
+                context.raise_if_cancelled()
+                break
 
         context.raise_if_cancelled()
         context.assert_lease_current()
+        # Una ausencia temporal no significa que el Tool haya sido desconfigurado.
         with context.fenced_mutation():
             removed = self._store.remove_unconfigured(self._repositories)
         if removed:
@@ -99,7 +120,7 @@ class KpiMaterializationJob:
             updated_tools=updated,
             unchanged_tools=unchanged,
             removed_tools=len(removed),
-            pending_tools=pending,
+            pending_tools=len(pending_repositories),
         )
         self._record(context, result, failures)
 
@@ -108,8 +129,6 @@ class KpiMaterializationJob:
             raise KpiMaterializationIterationError(
                 f'KPI materialization failed for tools: {failed_tools}'
             ) from failures[0][1]
-        if pending:
-            context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
         return result
 
     @staticmethod
@@ -123,4 +142,7 @@ class KpiMaterializationJob:
         context.set_iteration_fact('unchanged_tools', result.unchanged_tools)
         context.set_iteration_fact('removed_tools', result.removed_tools)
         context.set_iteration_fact('pending_tools', result.pending_tools)
+        context.set_iteration_fact(
+            'materialization_outcome', 'PENDING' if result.pending_tools else 'READY'
+        )
         context.set_iteration_fact('failed_tools', len(failures))

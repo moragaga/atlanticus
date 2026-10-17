@@ -57,9 +57,13 @@ class Context:
         self.facts = {}
         self.fences = 0
         self.next_delay = None
+        self.waits = []
+        self.wait_result = True
+        self.cancelled = False
 
     def raise_if_cancelled(self):
-        return None
+        if self.cancelled:
+            raise RuntimeError('cancelled')
 
     def assert_lease_current(self):
         return None
@@ -77,6 +81,10 @@ class Context:
 
     def set_next_iteration_delay(self, seconds):
         self.next_delay = seconds
+
+    def wait(self, seconds):
+        self.waits.append(seconds)
+        return self.wait_result
 
 
 def acquisition_error() -> KpiMaterializationAcquisitionError:

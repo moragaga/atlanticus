@@ -13,6 +13,7 @@ from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -33,15 +34,20 @@ class KpiMaterializationComposition:
         *,
         argv: Sequence[str] | None = None,
     ) -> RuntimeExecutionResult:
-        with ExitStack() as stack:
-            for client in self.clients.values():
-                stack.callback(client.close)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    def _resource_scope(self, context: JobRuntimeContext) -> ExitStack:
+        context.assert_lease_current()
+        stack = ExitStack()
+        for client in self.clients.values():
+            stack.callback(client.close)
+        return stack
 
 
 def build_composition(
@@ -72,12 +78,14 @@ def build_composition(
                 application=runtime_configuration.application,
             ),
         ),
+        readiness_retry_seconds=settings.poll_interval_seconds,
     )
     definition = JobDefinition(
         module_name='ada.processes.kpi_materialization',
         service_name='kpi-materialization',
         job_key='kpi-materialization',
-        poll_interval_seconds=settings.poll_interval_seconds,
+        run_once=True,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,
