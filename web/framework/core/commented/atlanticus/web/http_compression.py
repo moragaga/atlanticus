@@ -13,6 +13,7 @@ from flask import Flask, Response, request
 from atlanticus.web.assets import AssetPublication
 
 _STATIC_SUFFIXES = {'.css', '.js', '.svg'}
+_DASH_BOOTSTRAP_PATHS = {'/_dash-layout', '/_dash-dependencies'}
 _DASH_JSON_PATHS = {'/_dash-layout', '/_dash-dependencies', '/_dash-update-component'}
 _DASH_SUITE_PREFIX = '/_dash-component-suites/'
 _MINIMUM_ASSET_BYTES = 256
@@ -118,6 +119,11 @@ def register_http_compression(server: Flask, publication: AssetPublication) -> N
         if response.status_code not in {200, 304}:
             return response
         response.vary.add('Accept-Encoding')
+        # El layout y las dependencias cambian entre despliegues y no deben persistir en caché.
+        if request.path in _DASH_BOOTSTRAP_PATHS:
+            response.headers['Cache-Control'] = 'no-store'
+            response.headers.pop('ETag', None)
+            response.headers.pop('Last-Modified', None)
         if response.status_code != 200 or not _accepts_gzip():
             return response
         if request.method not in {'GET', 'HEAD', 'POST'} or request.headers.get('Range'):
@@ -145,11 +151,11 @@ def register_http_compression(server: Flask, publication: AssetPublication) -> N
         if len(encoded) >= len(identity):
             return response
 
-        # Una variante comprimida nunca debe compartir ETag con el cuerpo original.
+        # get_etag devuelve (None, None) si falta la cabecera, no devuelve None.
         etag = response.get_etag()
         response.set_data(encoded)
         response.headers['Content-Encoding'] = 'gzip'
-        if etag is not None:
+        if etag[0] is not None:
             response.set_etag(f'gzip-{etag[0]}', weak=etag[1])
             if request.method in {'GET', 'HEAD'}:
                 return response.make_conditional(request)

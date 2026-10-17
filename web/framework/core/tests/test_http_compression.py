@@ -134,3 +134,51 @@ def test_dash_suite_range_is_not_recompressed(tmp_path):
     assert response.data == javascript[:10]
     assert 'Content-Encoding' not in response.headers
     assert 'Accept-Encoding' not in response.vary
+
+
+def test_dash_bootstrap_is_not_cached_even_with_previous_invalid_etag(tmp_path):
+    client, _, _ = _client(tmp_path)
+    for path in ('/_dash-layout', '/_dash-dependencies'):
+        for accept_encoding in (None, 'gzip'):
+            headers = {'If-None-Match': '"gzip-None"'}
+            if accept_encoding is not None:
+                headers['Accept-Encoding'] = accept_encoding
+            response = client.get(path, headers=headers)
+            assert response.status_code == 200
+            assert response.headers['Cache-Control'] == 'no-store'
+            assert 'ETag' not in response.headers
+            assert 'Last-Modified' not in response.headers
+            if accept_encoding is not None:
+                assert response.headers['Content-Encoding'] == 'gzip'
+            else:
+                assert 'Content-Encoding' not in response.headers
+
+
+def test_dash_bootstrap_refresh_receives_changed_contract_without_cache_clear(tmp_path):
+    client, _, _ = _client(tmp_path)
+    updates = (
+        ('/_dash-layout', 'layout', {'layout': ['changed'] * 1000}),
+        ('/_dash-dependencies', 'dependencies', {
+            'dependencies': [{'output': f'new-{i}'} for i in range(400)],
+        }),
+    )
+    for path, endpoint, replacement in updates:
+        previous = client.get(path, headers={'Accept-Encoding': 'gzip'})
+        assert previous.status_code == 200
+        previous_body = gzip.decompress(previous.data)
+
+        client.application.view_functions[endpoint] = lambda value=replacement: jsonify(value)
+        refreshed = client.get(path, headers={
+            'Accept-Encoding': 'gzip',
+            'If-None-Match': '"gzip-None"',
+        })
+        assert refreshed.status_code == 200
+        assert refreshed.headers['Cache-Control'] == 'no-store'
+        assert 'ETag' not in refreshed.headers
+        refreshed_body = gzip.decompress(refreshed.data)
+        assert refreshed_body != previous_body
+
+        uncompressed = client.get(path, headers={'If-None-Match': '"gzip-None"'})
+        assert uncompressed.status_code == 200
+        assert uncompressed.data == refreshed_body
+        assert uncompressed.headers['Cache-Control'] == 'no-store'
