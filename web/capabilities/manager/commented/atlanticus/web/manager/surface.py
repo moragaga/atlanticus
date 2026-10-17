@@ -10,6 +10,7 @@ from atlanticus.web.manager.web import (
     manager_asset_layer,
     register_manager_callbacks,
 )
+from atlanticus.web.manager.web.layout import build_manager_state_host
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
@@ -47,13 +48,21 @@ class ManagerSurface:
     def web_modules(self) -> tuple[WebModule, ...]:
         return self._web_modules
 
-    def layout(self, services: ServiceRegistry) -> object:
+    # El host de estado debe montarse una sola vez cuando la vista administrativa sea diferida.
+    def state_layout(self) -> object:
+        principal = self._definition.principal_provider()
+        visible_modules = self._registry.visible_modules(principal, self._authorization)
+        return build_manager_state_host(visible_modules)
+
+    # El comportamiento histórico permanece por defecto para consumidores independientes.
+    def layout(self, services: ServiceRegistry, *, include_state: bool = True) -> object:
         return build_manager_surface(
             definition=self._definition,
             registry=self._registry,
             services=services,
             principal=self._definition.principal_provider(),
             authorization=self._authorization,
+            include_state=include_state,
         )
 
     def _build_web_modules(self) -> tuple[WebModule, ...]:

@@ -78,6 +78,26 @@ _STATE_LABELS = {
 }
 
 
+def build_manager_state_nodes(
+    visible_modules: tuple[ManagerModule, ...],
+) -> tuple[object, ...]:
+    return (
+        dcc.Location(id=LOCATION_ID, refresh=False),
+        dcc.Store(id=STATUS_STORE_ID, storage_type='memory'),
+        dcc.Store(id=REFRESH_SIGNAL_ID, data=0, storage_type='memory'),
+        *(
+            dcc.Store(id=module.source_signal_id, storage_type='memory')
+            for module in visible_modules
+            if module.source_signal_id is not None
+        ),
+        *(_module_stores(module) for module in visible_modules),
+    )
+
+
+def build_manager_state_host(visible_modules: tuple[ManagerModule, ...]) -> object:
+    return html.Div(build_manager_state_nodes(visible_modules), style={'display': 'contents'})
+
+
 def build_manager_surface(
     *,
     definition: ManagerSurfaceDefinition,
@@ -85,20 +105,13 @@ def build_manager_surface(
     services: ServiceRegistry,
     principal: ManagerPrincipal,
     authorization: ManagerAuthorizationPolicy,
+    include_state: bool = True,
 ) -> object:
     visible_modules = registry.visible_modules(principal, authorization)
     visible_items = registry.visible_items(principal, authorization)
     return html.Div(
         [
-            dcc.Location(id=LOCATION_ID, refresh=False),
-            dcc.Store(id=STATUS_STORE_ID, storage_type='memory'),
-            dcc.Store(id=REFRESH_SIGNAL_ID, data=0, storage_type='memory'),
-            *[
-                dcc.Store(id=module.source_signal_id, storage_type='memory')
-                for module in visible_modules
-                if module.source_signal_id is not None
-            ],
-            *[_module_stores(module) for module in visible_modules],
+            *(build_manager_state_nodes(visible_modules) if include_state else ()),
             build_manager_header(
                 registry=registry,
                 principal=principal,
