@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 # Composición explícita del cliente HTTP, almacenamiento Parquet local y job reutilizando Atlanticus.
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -16,6 +17,7 @@ from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.operational_data.processes.meteodata.settings import MeteodataSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -49,13 +51,21 @@ class MeteodataComposition:
     dataset_runtime: DatasetRuntime
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    # Bajo lease se abre el pool HTTP antes de la iteración y se cierra antes de liberar autoridad.
+    # Una excepción de apertura impide iniciar el trabajo; el Runtime libera la lease.
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with self.client:
-            return execute_job(
-                definition=self.definition,
-                iteration=self.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
 
 
 def build_composition(*, configuration: ResolvedConfiguration) -> MeteodataComposition:
