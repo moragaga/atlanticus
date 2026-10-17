@@ -1,5 +1,4 @@
 from ada.processes.kpi_timeseries_delivery.composition import build_composition
-from ada.processes.kpi_timeseries_delivery.job import READINESS_RETRY_SECONDS
 from ada.processes.kpi_timeseries_delivery.models import (
     KpiTimeseriesDeliveryIterationStatus,
 )
@@ -17,7 +16,6 @@ def _configuration(tmp_path):
         'VOLUMEN_PATH': str(tmp_path.resolve()),
         'KPI_HISTORIAN_APPLICATION': 'ada-kpi-historian-local',
         'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
-        'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS': '1',
         'KPI_TIMESERIES_DELIVERY_MAX_WORKERS': '2',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
@@ -54,15 +52,33 @@ def test_composition_starts_with_multiple_tools_before_materialization_is_ready(
 
         assert result.status is KpiTimeseriesDeliveryIterationStatus.MATERIALIZATION_PENDING
         assert result.tool_count == 2
-        assert context.next_delay == READINESS_RETRY_SECONDS
+        assert context.next_delay is None
         assert composition.job._store.root == (
             tmp_path.resolve() / 'ada-kpi-materialization-local/materialization/registries'
         )
         assert tuple(composition.publishers) == ('tool_a', 'tool_b')
         assert tuple(composition.clients) == ('tool_a', 'tool_b')
-        assert composition.definition.poll_interval_seconds == 1
+        assert composition.definition.run_once is True
+        assert composition.definition.poll_interval_seconds == 0
         assert composition.settings.max_workers == 2
     finally:
         composition.parallel_publisher.close()
         for client in composition.clients.values():
             client.close()
+
+
+def test_scheduled_once_exits_when_materialization_is_pending(tmp_path):
+    composition = build_composition(
+        configuration=_configuration(tmp_path),
+        connections={
+            'tool_a': CosmosSettings(
+                endpoint='http://localhost:8081',
+                database_name='ada-a',
+                key='local-key',
+                allow_insecure_http=True,
+            ),
+        },
+    )
+    result = composition.execute(argv=())
+    assert result.stop_reason == 'run_once'
+    assert result.iteration_count == 1

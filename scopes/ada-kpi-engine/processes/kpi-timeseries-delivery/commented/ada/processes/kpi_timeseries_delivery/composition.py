@@ -153,23 +153,19 @@ def build_composition(
         job=job,
         publishers=frozen_publishers,
         parallel_publisher=parallel_publisher,
-        definition=_job_definition(
-            poll_interval_seconds=settings.poll_interval_seconds
-        ),
+        definition=_job_definition(),
         clients=MappingProxyType(clients),
     )
 
 
 # Esta función mantiene la representación KPI fuera de la capa process.
-def _job_definition(
-    *,
-    poll_interval_seconds: float,
-) -> JobDefinition:
+def _job_definition() -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_timeseries_delivery',
         service_name='kpi-timeseries-delivery',
         job_key='kpi-timeseries-delivery',
-        poll_interval_seconds=poll_interval_seconds,
+        run_once=True,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

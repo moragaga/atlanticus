@@ -37,7 +37,6 @@ def test_local_bootstrap_resolves_multiple_named_tool_connections(tmp_path):
             'VOLUMEN_PATH': str(tmp_path.resolve()),
             'KPI_HISTORIAN_APPLICATION': 'ada-kpi-historian-local',
             'KPI_MATERIALIZATION_APPLICATION': 'ada-kpi-materialization-local',
-            'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS': '1',
             'KPI_TIMESERIES_DELIVERY_MAX_WORKERS': '2',
             'TOOL_A_ENDPOINT': 'http://localhost:8081',
             'TOOL_A_DATABASE': 'ada-a',

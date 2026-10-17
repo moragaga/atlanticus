@@ -35,9 +35,6 @@ from ada.processes.kpi_timeseries_delivery.rolling import (
 )
 from atlanticus.runtime import JobRuntimeContext
 
-READINESS_RETRY_SECONDS = 30.0
-
-
 class _AuthorityReader(Protocol):
     def read(self) -> KpiHistorianAuthority | None: ...
 
@@ -113,7 +110,6 @@ class KpiTimeseriesDeliveryRuntimeJob:
                     KpiTimeseriesDeliveryIterationStatus.MATERIALIZATION_PENDING.value,
                 )
                 context.set_iteration_fact('tool_count', len(self._expected_tool_keys))
-                context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
                 return KpiTimeseriesDeliveryIterationResult(
                     status=KpiTimeseriesDeliveryIterationStatus.MATERIALIZATION_PENDING,
                     tool_count=len(self._expected_tool_keys),

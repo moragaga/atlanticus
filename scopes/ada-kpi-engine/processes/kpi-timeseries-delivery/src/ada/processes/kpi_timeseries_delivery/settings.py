@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from ada.processes.kpi_timeseries_delivery.errors import (
@@ -10,7 +9,6 @@ from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfigur
 
 HISTORIAN_APPLICATION_VARIABLE = 'KPI_HISTORIAN_APPLICATION'
 KPI_MATERIALIZATION_APPLICATION_VARIABLE = 'KPI_MATERIALIZATION_APPLICATION'
-POLL_INTERVAL_VARIABLE = 'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS'
 MAX_WORKERS_VARIABLE = 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS'
 
 
@@ -18,7 +16,6 @@ MAX_WORKERS_VARIABLE = 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS'
 class KpiTimeseriesDeliveryProcessSettings:
     historian_application: str
     kpi_materialization_application: str
-    poll_interval_seconds: float
     max_workers: int
 
     @classmethod
@@ -37,10 +34,6 @@ class KpiTimeseriesDeliveryProcessSettings:
                 configuration.require(KPI_MATERIALIZATION_APPLICATION_VARIABLE),
                 KPI_MATERIALIZATION_APPLICATION_VARIABLE,
             ),
-            poll_interval_seconds=_non_negative_float(
-                configuration.require(POLL_INTERVAL_VARIABLE),
-                POLL_INTERVAL_VARIABLE,
-            ),
             max_workers=_positive_int(
                 configuration.require(MAX_WORKERS_VARIABLE),
                 MAX_WORKERS_VARIABLE,
@@ -55,7 +48,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=HISTORIAN_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=KPI_MATERIALIZATION_APPLICATION_VARIABLE),
-        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=MAX_WORKERS_VARIABLE, default='2'),
         ConfigurationVariableSpec(
             key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
@@ -85,20 +77,6 @@ def _required_text(value: str, field_name: str) -> str:
             f'{field_name} must not contain surrounding whitespace'
         )
     return value
-
-
-def _non_negative_float(value: str, field_name: str) -> float:
-    try:
-        resolved = float(value)
-    except ValueError as error:
-        raise KpiTimeseriesDeliveryConfigurationError(
-            f'{field_name} must contain a non-negative number'
-        ) from error
-    if not math.isfinite(resolved) or resolved < 0:
-        raise KpiTimeseriesDeliveryConfigurationError(
-            f'{field_name} must contain a non-negative number'
-        )
-    return resolved
 
 
 def _positive_int(value: str, field_name: str) -> int:
