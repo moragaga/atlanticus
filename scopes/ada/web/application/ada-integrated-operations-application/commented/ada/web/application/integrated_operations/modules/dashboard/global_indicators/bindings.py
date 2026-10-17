@@ -1,11 +1,16 @@
-# Espejo comentado: cada binding individual conserva sólo definición y scopes; el estado pertenece
-# a la colección completa que se monta como un único runtime.
+# scopes selecciona dónde se muestra cada indicador (Mina, Planta o ambos).
+# source_keys selecciona qué fuentes afectan su frescura, independiente del scope.
+# La validación compartida exige OperationalControlSource y rechaza strings sueltos.
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from ada.contracts.tools.enums import ToolScope
 from ada.contracts.tools.validation import require_key
+from ada.web.application.integrated_operations.modules.dashboard.contracts import (
+    OperationalControlSource,
+    require_dashboard_source_keys,
+)
 from ada.web.content_state import ContentState
 from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 
@@ -14,6 +19,7 @@ from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 class DashboardGlobalIndicatorBinding:
     definition: GlobalIndicatorDefinition
     scopes: tuple[ToolScope, ...]
+    source_keys: tuple[OperationalControlSource, ...] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.definition, GlobalIndicatorDefinition):
@@ -26,6 +32,7 @@ class DashboardGlobalIndicatorBinding:
             raise TypeError('Global Indicator scopes must contain ToolScope values')
         if len(self.scopes) != len(set(self.scopes)):
             raise ValueError('Global Indicator presentation scopes must be unique')
+        require_dashboard_source_keys(self.source_keys)
 
     def appears_in(self, scope: ToolScope) -> bool:
         if not isinstance(scope, ToolScope):
@@ -51,7 +58,6 @@ class DashboardGlobalIndicatorsRuntimeBinding:
             )
         if not isinstance(self.content_state, ContentState):
             raise TypeError('Global Indicators runtime content_state must be ContentState')
-        # La colección completa comparte un único estado declarado.
         keys = tuple(item.definition.key for item in self.indicators)
         if len(keys) != len(set(keys)):
             raise ValueError('Global Indicator bindings must have unique indicator keys')

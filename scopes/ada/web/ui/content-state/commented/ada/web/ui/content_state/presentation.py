@@ -1,4 +1,9 @@
-# Espejo comentado: operational_runtime permite depender del Tool completo sin duplicar sus source keys.
+# Este wrapper conserva las prioridades actuales de Content State.
+# En modo operacional toma la identidad del Tool desde el contenedor ADA Generic.
+# source_keys=None no declara filtro y conserva la agregación global para consumidores existentes.
+# source_keys=() sí declara un filtro vacío: contenido operacional independiente.
+# source_keys=('pi',) u otras tuplas habilitan selección explícita sin tool_key redundante.
+# Fuera del modo operacional se sigue exigiendo el tool_key cuando hay fuentes.
 from __future__ import annotations
 
 import re
@@ -22,7 +27,7 @@ def build_content_state_wrapper(
     state: ContentState = ContentState.READY,
     runtime_state: ContentState = ContentState.READY,
     tool_key: str | None = None,
-    source_keys: Sequence[str] = (),
+    source_keys: Sequence[str] | None = None,
     operational_runtime: bool = False,
     presentation_mode: ContentStatePresentationMode = ContentStatePresentationMode.NORMAL,
     class_name: str | None = None,
@@ -34,12 +39,19 @@ def build_content_state_wrapper(
     if not isinstance(presentation_mode, ContentStatePresentationMode):
         raise TypeError('Content state wrapper requires ContentStatePresentationMode value')
 
-    normalized_source_keys = _normalize_source_keys(source_keys)
-    normalized_tool_key = _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
-    if operational_runtime and (normalized_source_keys or normalized_tool_key is not None):
-        raise ValueError('Operational Content State runtime must not declare tool_key or source_keys')
+    normalized_source_keys = () if source_keys is None else _normalize_source_keys(source_keys)
+    normalized_tool_key = (
+        None if operational_runtime else _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
+    )
+    if operational_runtime and tool_key is not None:
+        raise ValueError(
+            'Operational Content State runtime must not declare tool_key or source_keys '
+            'together with tool_key'
+        )
     if component_key is None and not operational_runtime:
-        raise ValueError('Content State component_key is required unless operational runtime is enabled')
+        raise ValueError(
+            'Content State component_key is required unless operational runtime is enabled'
+        )
 
     effective_state = resolve_content_state(state, runtime_state)
     classes = ' '.join(
@@ -48,21 +60,20 @@ def build_content_state_wrapper(
     attributes = {} if component_key is None else component_identity_attributes(component_key)
     attributes['data-ada-content-state'] = effective_state.value
     attributes['data-ada-content-state-declared'] = state.value
+    if runtime_state is not ContentState.READY:
+        attributes['data-ada-content-state-server-runtime'] = runtime_state.value
     attributes['data-ada-content-state-presentation'] = presentation_mode.value
-    if normalized_source_keys:
+    if operational_runtime:
+        attributes['data-ada-content-state-runtime'] = 'true'
+        attributes['data-ada-content-state-operational'] = 'true'
+        if source_keys is not None:
+            attributes['data-ada-content-state-sources'] = ','.join(normalized_source_keys)
+    elif normalized_source_keys:
         attributes.update(
             {
                 'data-ada-content-state-runtime': 'true',
                 'data-ada-content-state-tool-key': normalized_tool_key,
                 'data-ada-content-state-sources': ','.join(normalized_source_keys),
-            }
-        )
-    # Este modo queda sin identidad de dominio propia: envuelve al consumidor sin competir con la identidad de la card.
-    elif operational_runtime:
-        attributes.update(
-            {
-                'data-ada-content-state-runtime': 'true',
-                'data-ada-content-state-operational': 'true',
             }
         )
 

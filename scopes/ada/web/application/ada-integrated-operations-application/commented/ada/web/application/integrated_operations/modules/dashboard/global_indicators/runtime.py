@@ -1,13 +1,21 @@
-# Espejo comentado: IO usa el placement genérico para sizing y conserva sólo metadata/política de scope.
+# Se conserva el wrapper exterior histórico del header para no modificar el layout.
+# source_keys=() neutraliza su degradación global por PI/Dispatch.
+# Se mantiene un único grid y el metadato scopes original de cada indicador.
+# La cobertura de Content State se aplica INDIVIDUALMENTE al indicador.
+# Los valores y errores propios de KPI permanecen dentro del indicador, no del overlay.
+# La vigencia PI/Dispatch la determina el JS según source_keys.
+# Se serializa el Enum solo en esta frontera HTML, sin modificar Content State.
+# El estado declarado CONSTRUCTION tiene prioridad en cada wrapper.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from dash import Input, Output, html
-
-from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import require_initial_delivery
 from dash.development.base_component import Component
 
+from ada.web.application.integrated_operations.modules.dashboard.initial_readiness import (
+    require_initial_delivery,
+)
 from ada.web.kpis.collector import system_kpi_store_id
 from ada.web.shell.header import GLOBAL_INDICATORS_SLOT_ID
 from ada.web.ui.content_state import build_content_state_wrapper
@@ -15,11 +23,7 @@ from ada.web.ui.global_indicator import build_global_indicator
 from atlanticus.web.modules import WebModule
 
 from .bindings import DashboardGlobalIndicatorsRuntimeBinding
-from .resolver import (
-    ResolvedDashboardGlobalIndicator,
-    resolve_dashboard_global_indicators,
-    resolve_dashboard_global_indicators_runtime_state,
-)
+from .resolver import ResolvedDashboardGlobalIndicator, resolve_dashboard_global_indicators
 
 if TYPE_CHECKING:
     from dash import Dash
@@ -37,16 +41,13 @@ def build_dashboard_global_indicators_runtime_component(
     grid = html.Div(
         className='ada-global-indicator-grid ada-io-global-indicators',
         **{'data-ada-io-global-indicators-runtime': 'true'},
-        children=[_build_placement(item) for item in resolved],
+        children=[_build_placement(item, content_state=binding.content_state) for item in resolved],
     )
     return build_content_state_wrapper(
         component_key=None,
         children=grid,
         state=binding.content_state,
-        runtime_state=resolve_dashboard_global_indicators_runtime_state(
-            store_data,
-            binding=binding,
-        ),
+        source_keys=(),
         operational_runtime=True,
         class_name='ada-io-global-indicators-state',
     )
@@ -63,11 +64,9 @@ def create_dashboard_global_indicators_module(
             Output(GLOBAL_INDICATORS_SLOT_ID, 'children'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-slot-empty'),
             Output(GLOBAL_INDICATORS_SLOT_ID, 'data-ready'),
-            # El store de destino de sistema siempre está presente en el layout operativo.
             Input(store_id, 'data'),
         )
         def refresh_global_indicators(store_data: object):
-            # None espera al collector; un store vacio es una respuesta valida.
             require_initial_delivery(store_data)
             return (
                 build_dashboard_global_indicators_runtime_component(
@@ -84,11 +83,22 @@ def create_dashboard_global_indicators_module(
     )
 
 
-def _build_placement(item: ResolvedDashboardGlobalIndicator) -> Component:
+def _build_placement(item: ResolvedDashboardGlobalIndicator, *, content_state) -> Component:
     scopes = item.binding.scopes
-    # La clase genérica recibe responsive/sizing; la clase IO queda sólo para filtrar por scope.
+    indicator = build_content_state_wrapper(
+        component_key=None,
+        children=build_global_indicator(state=item.state),
+        state=content_state,
+        source_keys=(
+            None
+            if item.binding.source_keys is None
+            else tuple(source.value for source in item.binding.source_keys)
+        ),
+        operational_runtime=True,
+        class_name='ada-io-global-indicator-state',
+    )
     return html.Div(
-        build_global_indicator(state=item.state),
+        indicator,
         className='ada-global-indicator-placement ada-io-global-indicator-placement',
         **{
             'data-ada-io-global-indicator-key': item.state.key,

@@ -4,6 +4,10 @@ from dataclasses import dataclass
 
 from ada.contracts.tools.enums import ToolScope
 from ada.contracts.tools.validation import require_key
+from ada.web.application.integrated_operations.modules.dashboard.contracts import (
+    OperationalControlSource,
+    require_dashboard_source_keys,
+)
 from ada.web.content_state import ContentState
 from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 
@@ -12,6 +16,7 @@ from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 class DashboardGlobalIndicatorBinding:
     definition: GlobalIndicatorDefinition
     scopes: tuple[ToolScope, ...]
+    source_keys: tuple[OperationalControlSource, ...] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.definition, GlobalIndicatorDefinition):
@@ -24,6 +29,7 @@ class DashboardGlobalIndicatorBinding:
             raise TypeError('Global Indicator scopes must contain ToolScope values')
         if len(self.scopes) != len(set(self.scopes)):
             raise ValueError('Global Indicator presentation scopes must be unique')
+        require_dashboard_source_keys(self.source_keys)
 
     def appears_in(self, scope: ToolScope) -> bool:
         if not isinstance(scope, ToolScope):

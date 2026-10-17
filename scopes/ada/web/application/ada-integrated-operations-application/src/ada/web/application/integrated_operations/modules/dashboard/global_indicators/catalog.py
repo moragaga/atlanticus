@@ -6,18 +6,18 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorDefinition,
     GlobalIndicatorMeasurementDefinition,
 )
-
+from ..contracts import OperationalControlSource
 from .bindings import DashboardGlobalIndicatorBinding
 
 _DEFINITION = (
-    {'label': 'Movimiento Mina', 'unit': 'ktms', 'key': 'movimiento_mina', 'scopes': (ToolScope.MINE,)},
-    {'label': 'Transportado', 'unit': 'ktms', 'key': 'transportado', 'scopes': (ToolScope.MINE, ToolScope.PLANT,)},
-    {'label': 'Ley Cu', 'unit': '%', 'key': 'ley_cu', 'scopes': (ToolScope.MINE,)},
-    {'label': 'Tratamiento', 'unit': 'ktms', 'key': 'tratamiento', 'scopes': (ToolScope.PLANT,)},
-    {'label': 'Recuperación Cu', 'unit': '%', 'key': 'cu_recuperacion', 'scopes': (ToolScope.PLANT,)},
-    {'label': 'Cu Fino Producido', 'unit': 'tmf', 'key': 'cu_fino_producido', 'scopes': (ToolScope.PLANT,)},
-    {'label': 'Mo Fino Producido', 'unit': 'tmf', 'key': 'mo_fino_producido', 'scopes': (ToolScope.PLANT,)},
-    {'label': 'Mo Fino Envasado', 'unit': 'tmf', 'key': 'mo_fino_envasado', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Movimiento Mina', 'unit': 'ktms', 'key': 'movimiento_mina', 'scopes': (ToolScope.MINE,), 'source_keys': (OperationalControlSource.DISPATCH,)},
+    {'label': 'Transportado', 'unit': 'ktms', 'key': 'transportado', 'scopes': (ToolScope.MINE, ToolScope.PLANT,), 'source_keys': (OperationalControlSource.DISPATCH, OperationalControlSource.PI)},
+    {'label': 'Ley Cu', 'unit': '%', 'key': 'ley_cu', 'scopes': (ToolScope.MINE,), 'source_keys': (OperationalControlSource.DISPATCH,)},
+    {'label': 'Tratamiento', 'unit': 'ktms', 'key': 'tratamiento', 'scopes': (ToolScope.PLANT,), 'source_keys': (OperationalControlSource.PI,)},
+    {'label': 'Recuperación Cu', 'unit': '%', 'key': 'cu_recuperacion', 'scopes': (ToolScope.PLANT,), 'source_keys': (OperationalControlSource.PI,)},
+    {'label': 'Cu Fino Producido', 'unit': 'tmf', 'key': 'cu_fino_producido', 'scopes': (ToolScope.PLANT,), 'source_keys': (OperationalControlSource.PI,)},
+    {'label': 'Mo Fino Producido', 'unit': 'tmf', 'key': 'mo_fino_producido', 'scopes': (ToolScope.PLANT,), 'source_keys': (OperationalControlSource.PI,)},
+    {'label': 'Mo Fino Envasado', 'unit': 'tmf', 'key': 'mo_fino_envasado', 'scopes': (ToolScope.PLANT,), 'source_keys': (OperationalControlSource.PI,)},
 )
 
 
@@ -44,6 +44,7 @@ def _build_global_indicators() -> tuple[DashboardGlobalIndicatorBinding, ...]:
                 ),
             ),
             scopes=indicator.get('scopes'),
+            source_keys=indicator.get('source_keys'),
         )
         for indicator in _DEFINITION
     )

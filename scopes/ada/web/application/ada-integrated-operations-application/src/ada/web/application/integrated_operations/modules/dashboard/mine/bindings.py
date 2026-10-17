@@ -5,6 +5,7 @@ from ada.web.application.integrated_operations.modules.dashboard.contracts impor
     DashboardSharedCardBinding,
 )
 from ada.web.content_state import ContentState
+from ..contracts import OperationalControlSource
 
 GENERAL_MINA = DashboardComponentBinding(
     key='general_mina',
@@ -16,16 +17,19 @@ GENERAL_MINA = DashboardComponentBinding(
             key='movimiento_mina',
             label='Movimiento Mina',
             tool_subcomponent_key='sub_movimiento_mina_1b6d8b556371',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='remanentes',
             label='Remanentes',
             tool_subcomponent_key='sub_remanentes_6e22f5763660',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='perforacion',
             label='Perforación',
             tool_subcomponent_key='sub_perforacion_68a7f17fd16f',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='mp10',
@@ -45,11 +49,13 @@ CARGUIO = DashboardComponentBinding(
             key='carguio_global_turno',
             label='Carguío Global • Turno',
             tool_subcomponent_key='sub_carguio_global_turno_90512312d37c',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='equipos_servicio',
             label='Equipos de Servicio',
             tool_subcomponent_key='sub_equipos_de_servicio_ebefaa434bb8',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
     ),
 )
@@ -64,17 +70,20 @@ TRANSPORTE = DashboardComponentBinding(
             key='transporte_global',
             label='Transporte Global • Turno',
             tool_subcomponent_key='sub_transporte_global_turno_ffda3898fa6f',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='numero_operativo',
             label='N° Operativo • Turno',
             tool_subcomponent_key='sub_n_operativo_turno_12bb6dc5796e',
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
         DashboardCardBinding(
             key='tiempos_y_colas',
             label='Tiempos y Colas • Turno',
             tool_subcomponent_key='sub_tiempos_y_colas_108de76a6b6e',
             content_state=ContentState.CONSTRUCTION,
+            source_keys=(OperationalControlSource.DISPATCH,)
         ),
     ),
 )
@@ -86,6 +95,7 @@ CARGUIO_TRANSPORTE = DashboardSharedCardBinding(
     tool_component_key='cmp_carguio_4cbd52aaa4b0',
     tool_subcomponent_key='sub_gestion_carguio_turno_8a1701f8b1b3',
     linked_tool_component_keys=('cmp_transporte_67b979e9ab49',),
+    source_keys=(OperationalControlSource.DISPATCH,)
 )
 
 CHANCADO_STMG = DashboardComponentBinding(
@@ -98,6 +108,7 @@ CHANCADO_STMG = DashboardComponentBinding(
             key='chancado_stmg',
             label='Chancado-STMG',
             tool_subcomponent_key='sub_chancado_stmg_eaf0341c4200',
+            source_keys=(OperationalControlSource.PI, OperationalControlSource.DISPATCH,)
         ),
     ),
 )

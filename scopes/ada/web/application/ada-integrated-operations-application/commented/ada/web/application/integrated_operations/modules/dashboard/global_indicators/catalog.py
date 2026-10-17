@@ -1,5 +1,7 @@
-# Espejo comentado: el catálogo define qué indicadores y KPI existen. El estado de madurez se
-# declara una sola vez para toda la colección, no indicador por indicador ni valor por valor.
+# Los indicadores globales ya declaraban scopes: dónde deben mostrarse.
+# Ahora pueden declarar source_keys de manera independiente: qué fuente puede degradarlos.
+# Las entradas aún no clasificadas omiten source_keys y conservan el estado global vigente.
+# Una entrada futura solo necesita 'source_keys': ('pi',), ('dispatch',), ambas o ().
 from collections.abc import Iterator
 
 from ada.contracts.tools.enums import ToolScope
@@ -11,43 +13,46 @@ from ada.web.ui.global_indicator import (
 
 from .bindings import DashboardGlobalIndicatorBinding
 
+_DEFINITION = (
+    {'label': 'Movimiento Mina', 'unit': 'ktms', 'key': 'movimiento_mina', 'scopes': (ToolScope.MINE,)},
+    {'label': 'Transportado', 'unit': 'ktms', 'key': 'transportado', 'scopes': (ToolScope.MINE, ToolScope.PLANT,)},
+    {'label': 'Ley Cu', 'unit': '%', 'key': 'ley_cu', 'scopes': (ToolScope.MINE,)},
+    {'label': 'Tratamiento', 'unit': 'ktms', 'key': 'tratamiento', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Recuperación Cu', 'unit': '%', 'key': 'cu_recuperacion', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Cu Fino Producido', 'unit': 'tmf', 'key': 'cu_fino_producido', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Mo Fino Producido', 'unit': 'tmf', 'key': 'mo_fino_producido', 'scopes': (ToolScope.PLANT,)},
+    {'label': 'Mo Fino Envasado', 'unit': 'tmf', 'key': 'mo_fino_envasado', 'scopes': (ToolScope.PLANT,)},
+)
 
-def _build_test() -> Iterator[DashboardGlobalIndicatorBinding]:
-    # Catálogo temporal de authoring: ocho indicadores para ejercitar la distribución del header.
-    for index in range(1, 9):
-        if index == 1:
-            scopes = (ToolScope.MINE,)
-        elif index == 2:
-            scopes = (ToolScope.MINE, ToolScope.PLANT)
-        else:
-            scopes = (ToolScope.PLANT,)
-        yield DashboardGlobalIndicatorBinding(
+
+def _build_global_indicators() -> tuple[DashboardGlobalIndicatorBinding, ...]:
+    return (
+        DashboardGlobalIndicatorBinding(
             definition=GlobalIndicatorDefinition(
-                key=f'test_indicator_{index}',
-                label=f'Indicador Prueba {index}',
-                unit='kt',
+                key=indicator.get('key'),
+                label=indicator.get('label'),
+                unit=indicator.get('unit'),
                 measurements=(
                     GlobalIndicatorMeasurementDefinition(
                         key='day',
                         label='Día',
-                        actual_kpi_key=f'test_indicator_day_actual_{index}',
-                        plan_kpi_key=f'test_indicator_day_plan_{index}',
+                        actual_kpi_key=f'{indicator.get('key')}_real_dia_acc',
+                        plan_kpi_key=f'{indicator.get('key')}_real_dia_plan',
                     ),
                     GlobalIndicatorMeasurementDefinition(
                         key='week',
                         label='Semana',
-                        actual_kpi_key=f'test_indicator_week_actual_{index}',
-                        plan_kpi_key=f'test_indicator_week_plan_{index}',
+                        actual_kpi_key=f'{indicator.get('key')}_real_semana_acc',
+                        plan_kpi_key=f'{indicator.get('key')}_real_semana_plan',
                     ),
                 ),
             ),
-            scopes=scopes,
+            scopes=indicator.get('scopes'),
+            source_keys=indicator.get('source_keys'),
         )
+        for indicator in _DEFINITION
+    )
 
 
-# En NORMAL se presenta el overlay de toda la colección; AUTHORING lo oculta por contrato
-# operacional para poder seguir diseñando el grid subyacente.
-INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.CONSTRUCTION
-INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS: tuple[DashboardGlobalIndicatorBinding, ...] = (
-    tuple(_build_test())
-)
+INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.READY
+INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS: tuple[DashboardGlobalIndicatorBinding, ...] = tuple(_build_global_indicators())

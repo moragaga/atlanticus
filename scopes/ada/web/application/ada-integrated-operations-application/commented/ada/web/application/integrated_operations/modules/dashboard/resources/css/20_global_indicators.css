@@ -1,4 +1,4 @@
-/* IO sólo adapta el host de Content State al slot de su header. */
+/* El host exterior conserva las dimensiones anteriores del header. */
 .ada-io-global-indicators-state,
 .ada-io-global-indicators-state > .ada-content-state__content {
     width: 100%;
@@ -6,7 +6,22 @@
     min-height: 0;
 }
 
-/* La política Mina/Planta permanece fuera del componente genérico. */
+/* El wrapper individual ocupa el lugar del indicador como hijo del placement. */
+.ada-io-global-indicator-placement > .ada-io-global-indicator-state {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+/* El nuevo nivel de Content State no debe encoger el contenido del indicador. */
+.ada-io-global-indicator-state > .ada-content-state__content,
+.ada-io-global-indicator-state > .ada-content-state__content > .ada-global-indicator {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Se conserva intacto el filtro Mina/Planta a nivel de placement. */
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine'])
 .ada-io-global-indicator-placement:not([data-ada-io-scope-mine='true']),
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant'])
@@ -14,10 +29,42 @@
     display: none;
 }
 
-/* En desktop el host de IO permite que el grid genérico aproveche toda la altura del header. */
+/* En desktop ambos hosts aprovechan toda la altura del header. */
 @media only screen and (min-width: 1280px) {
     .ada-io-global-indicators-state,
-    .ada-io-global-indicators-state > .ada-content-state__content {
+    .ada-io-global-indicators-state > .ada-content-state__content,
+    .ada-io-global-indicator-state,
+    .ada-io-global-indicator-state > .ada-content-state__content,
+    .ada-io-global-indicator-state > .ada-content-state__content > .ada-global-indicator {
         height: 100%;
+    }
+}
+
+/* Se conservan las transiciones de presentación existentes. */
+@keyframes ada-io-global-indicators-exit {
+    to { opacity: 0; }
+}
+
+@keyframes ada-io-global-indicators-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media only screen and (min-width: 1280px) and (max-width: 2559px) and (prefers-reduced-motion: no-preference) {
+    html.ada-io-presentation-transition .ada-io-global-indicators {
+        view-transition-name: ada-io-indicators;
+    }
+
+    html.ada-io-presentation-transition::view-transition-group(ada-io-indicators) {
+        animation-duration: 420ms;
+        animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    html.ada-io-presentation-transition::view-transition-old(ada-io-indicators) {
+        animation: 180ms ease-in both ada-io-global-indicators-exit;
+    }
+
+    html.ada-io-presentation-transition::view-transition-new(ada-io-indicators) {
+        animation: 260ms 140ms ease-out both ada-io-global-indicators-enter;
     }
 }

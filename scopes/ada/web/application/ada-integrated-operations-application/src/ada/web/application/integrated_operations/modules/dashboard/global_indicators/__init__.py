@@ -9,7 +9,6 @@ from .catalog import (
 from .resolver import (
     ResolvedDashboardGlobalIndicator,
     resolve_dashboard_global_indicators,
-    resolve_dashboard_global_indicators_runtime_state,
 )
 from .runtime import (
     GLOBAL_INDICATORS_DESTINATION_KEY,
@@ -27,5 +26,4 @@ __all__ = [
     'build_dashboard_global_indicators_runtime_component',
     'create_dashboard_global_indicators_module',
     'resolve_dashboard_global_indicators',
-    'resolve_dashboard_global_indicators_runtime_state',
 ]

@@ -6,10 +6,9 @@ from ada.contracts.tools.enums import ToolScope
 from ada.web.application.integrated_operations.modules.dashboard.global_indicators import (
     DashboardGlobalIndicatorBinding,
     DashboardGlobalIndicatorsRuntimeBinding,
+    build_dashboard_global_indicators_runtime_component,
     resolve_dashboard_global_indicators,
-    resolve_dashboard_global_indicators_runtime_state,
 )
-from ada.web.content_state import ContentState
 from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.global_indicator import (
     GlobalIndicatorDefinition,
@@ -25,15 +24,13 @@ def _binding() -> DashboardGlobalIndicatorsRuntimeBinding:
         unit='kt',
         measurements=(
             GlobalIndicatorMeasurementDefinition(
-                key='day',
-                label='Día',
+                key='day', label='Día',
                 actual_kpi_key='global.day.actual',
                 plan_kpi_key='global.day.plan',
                 color_kpi_key='global.day.color',
             ),
             GlobalIndicatorMeasurementDefinition(
-                key='week',
-                label='Semana',
+                key='week', label='Semana',
                 actual_kpi_key='global.week.actual',
                 plan_kpi_key='global.week.plan',
             ),
@@ -48,11 +45,8 @@ def _binding() -> DashboardGlobalIndicatorsRuntimeBinding:
 
 def _value(value: str, *, parsed: str | None = None) -> dict[str, object]:
     return {
-        'status': 'ok',
-        'value_kind': 'value',
-        'value_type': 'text',
-        'value': value,
-        'parsed_value': value if parsed is None else parsed,
+        'status': 'ok', 'value_kind': 'value', 'value_type': 'text',
+        'value': value, 'parsed_value': value if parsed is None else parsed,
     }
 
 
@@ -79,9 +73,28 @@ def _state(store_data: object):
     return resolve_dashboard_global_indicators(store_data, binding=_binding())[0].state
 
 
+def _props(component):
+    return component.to_plotly_json()['props']
+
+
+def _walk(component):
+    yield component
+    children = _props(component).get('children')
+    if not isinstance(children, (tuple, list)):
+        children = (children,)
+    for child in children:
+        if hasattr(child, 'to_plotly_json'):
+            yield from _walk(child)
+
+
+def _indicator_wrapper(store_data: object):
+    root = build_dashboard_global_indicators_runtime_component(store_data, binding=_binding())
+    return next(node for node in _walk(root)
+                if 'ada-io-global-indicator-state' in _props(node).get('className', ''))
+
+
 def test_system_store_exposes_formatted_values_and_raw_color() -> None:
     state = _state(_store())
-
     assert state.measurements[0].actual_value.status is DisplayStatus.OK
     assert state.measurements[0].actual_value.value == '1.234,5'
     assert state.measurements[0].plan_value.value == '1.250'
@@ -89,52 +102,48 @@ def test_system_store_exposes_formatted_values_and_raw_color() -> None:
     assert state.last_measurement is not None
     assert state.last_measurement.actual_value.value == '1.210,1'
     assert state.measurements[0].actual_kpi_key == 'global.day.actual'
-    assert resolve_dashboard_global_indicators_runtime_state(
-        _store(), binding=_binding()
-    ) is ContentState.READY
 
 
 @pytest.mark.parametrize('field', ('tool_key', 'destination_key'))
 def test_system_store_rejects_other_tool_or_destination(field: str) -> None:
     store = _store()
     store[field] = 'unrelated'
-
     state = _state(store)
     assert all(
         value.status is DisplayStatus.INVALID
         for measurement in state.measurements
         for value in (measurement.actual_value, measurement.plan_value)
     )
-    assert resolve_dashboard_global_indicators_runtime_state(
-        store, binding=_binding()
-    ) is ContentState.SOURCE_ERROR
+    assert _props(_indicator_wrapper(store))['data-ada-content-state'] == 'ready'
 
 
 @pytest.mark.parametrize(
     ('store_data', 'expected'),
     [
         (None, DisplayStatus.INVALID),
-        ({'tool_key': 'integrated_operations', 'destination_key': 'global_indicators', 'latest': None}, DisplayStatus.NOT_MAPPED),
-        ({'tool_key': 'integrated_operations', 'destination_key': 'global_indicators', 'latest': {'values': []}}, DisplayStatus.INVALID),
+        ({'tool_key': 'integrated_operations', 'destination_key': 'global_indicators',
+          'latest': None}, DisplayStatus.NOT_MAPPED),
+        ({'tool_key': 'integrated_operations', 'destination_key': 'global_indicators',
+          'latest': {'values': []}}, DisplayStatus.INVALID),
     ],
 )
 def test_source_status_follows_system_latest_contract(store_data: object, expected: DisplayStatus) -> None:
     state = _state(store_data)
-
     assert state.measurements[0].actual_value.status is expected
     assert state.measurements[1].plan_value.status is expected
-    assert resolve_dashboard_global_indicators_runtime_state(
-        store_data, binding=_binding()
-    ) is ContentState.SOURCE_ERROR
+    assert _props(_indicator_wrapper(store_data))['data-ada-content-state'] == 'ready'
 
 
 @pytest.mark.parametrize(
     ('entry', 'expected'),
     [
         (None, DisplayStatus.NOT_MAPPED),
-        ({'status': 'missing', 'value_kind': None, 'value': None, 'value_type': None, 'parsed_value': None}, DisplayStatus.EMPTY),
-        ({'status': 'error', 'value_kind': 'value', 'value': None, 'value_type': 'text', 'parsed_value': None}, DisplayStatus.ERROR),
-        ({'status': 'ok', 'value_kind': 'json', 'value': {'x': 1}, 'value_type': None, 'parsed_value': None}, DisplayStatus.INVALID),
+        ({'status': 'missing', 'value_kind': None, 'value': None,
+          'value_type': None, 'parsed_value': None}, DisplayStatus.EMPTY),
+        ({'status': 'error', 'value_kind': 'value', 'value': None,
+          'value_type': 'text', 'parsed_value': None}, DisplayStatus.ERROR),
+        ({'status': 'ok', 'value_kind': 'json', 'value': {'x': 1},
+          'value_type': None, 'parsed_value': None}, DisplayStatus.INVALID),
     ],
 )
 def test_individual_kpi_status_is_preserved(entry: object, expected: DisplayStatus) -> None:
@@ -144,23 +153,19 @@ def test_individual_kpi_status_is_preserved(entry: object, expected: DisplayStat
         del values['global.day.actual']
     else:
         values['global.day.actual'] = entry
-
     state = _state(store)
     assert state.measurements[0].actual_value.status is expected
     assert state.measurements[0].plan_value.status is DisplayStatus.OK
     assert state.measurements[1].actual_value.status is DisplayStatus.OK
-    assert resolve_dashboard_global_indicators_runtime_state(
-        store, binding=_binding()
-    ) is ContentState.SOURCE_ERROR
+    wrapper_props = _props(_indicator_wrapper(store))
+    assert wrapper_props['data-ada-content-state'] == 'ready'
+    assert 'data-ada-content-state-server-runtime' not in wrapper_props
 
 
 def test_unavailable_color_does_not_remove_valid_measurements() -> None:
     store = _store()
     store['latest']['values']['global.day.color'] = _value('')
-
     state = _state(store)
     assert state.measurements[0].actual_value.status is DisplayStatus.OK
     assert state.measurements[0].color_class is None
-    assert resolve_dashboard_global_indicators_runtime_state(
-        store, binding=_binding()
-    ) is ContentState.SOURCE_ERROR
+    assert _props(_indicator_wrapper(store))['data-ada-content-state'] == 'ready'

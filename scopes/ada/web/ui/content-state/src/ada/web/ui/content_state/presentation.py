@@ -21,7 +21,7 @@ def build_content_state_wrapper(
     state: ContentState = ContentState.READY,
     runtime_state: ContentState = ContentState.READY,
     tool_key: str | None = None,
-    source_keys: Sequence[str] = (),
+    source_keys: Sequence[str] | None = None,
     operational_runtime: bool = False,
     presentation_mode: ContentStatePresentationMode = ContentStatePresentationMode.NORMAL,
     class_name: str | None = None,
@@ -33,11 +33,14 @@ def build_content_state_wrapper(
     if not isinstance(presentation_mode, ContentStatePresentationMode):
         raise TypeError('Content state wrapper requires ContentStatePresentationMode value')
 
-    normalized_source_keys = _normalize_source_keys(source_keys)
-    normalized_tool_key = _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
-    if operational_runtime and (normalized_source_keys or normalized_tool_key is not None):
+    normalized_source_keys = () if source_keys is None else _normalize_source_keys(source_keys)
+    normalized_tool_key = (
+        None if operational_runtime else _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
+    )
+    if operational_runtime and tool_key is not None:
         raise ValueError(
-            'Operational Content State runtime must not declare tool_key or source_keys'
+            'Operational Content State runtime must not declare tool_key or source_keys '
+            'together with tool_key'
         )
     if component_key is None and not operational_runtime:
         raise ValueError(
@@ -51,20 +54,20 @@ def build_content_state_wrapper(
     attributes = {} if component_key is None else component_identity_attributes(component_key)
     attributes['data-ada-content-state'] = effective_state.value
     attributes['data-ada-content-state-declared'] = state.value
+    if runtime_state is not ContentState.READY:
+        attributes['data-ada-content-state-server-runtime'] = runtime_state.value
     attributes['data-ada-content-state-presentation'] = presentation_mode.value
-    if normalized_source_keys:
+    if operational_runtime:
+        attributes['data-ada-content-state-runtime'] = 'true'
+        attributes['data-ada-content-state-operational'] = 'true'
+        if source_keys is not None:
+            attributes['data-ada-content-state-sources'] = ','.join(normalized_source_keys)
+    elif normalized_source_keys:
         attributes.update(
             {
                 'data-ada-content-state-runtime': 'true',
                 'data-ada-content-state-tool-key': normalized_tool_key,
                 'data-ada-content-state-sources': ','.join(normalized_source_keys),
-            }
-        )
-    elif operational_runtime:
-        attributes.update(
-            {
-                'data-ada-content-state-runtime': 'true',
-                'data-ada-content-state-operational': 'true',
             }
         )
 

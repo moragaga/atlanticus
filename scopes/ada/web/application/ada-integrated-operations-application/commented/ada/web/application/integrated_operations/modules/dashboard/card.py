@@ -1,3 +1,8 @@
+# El panel se mantiene como agrupador visual; no decide vigencia de sus tarjetas.
+# Cada tarjeta transmite al wrapper las source_keys declaradas en su binding.
+# Los miembros Enum se convierten a sus valores justo antes del atributo HTML.
+# El propio wrapper obtiene el Tool desde el DOM operacional de ADA Generic.
+# No se modifican ni los identificadores ni el contenido KPI de la tarjeta.
 from __future__ import annotations
 
 from dash import html
@@ -6,6 +11,7 @@ from ada.web.application.integrated_operations.modules.dashboard.contracts impor
     DashboardCardBinding,
     DashboardComponentBinding,
     DashboardSharedCardBinding,
+    OperationalControlSource,
 )
 from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_content_id,
@@ -49,6 +55,7 @@ def build_dashboard_card(
         tool_component_key=tool_component_key,
         tool_subcomponent_key=binding.tool_subcomponent_key,
         content_state=binding.content_state,
+        source_keys=binding.source_keys,
     )
 
 
@@ -59,6 +66,7 @@ def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
         tool_component_key=binding.tool_component_key,
         tool_subcomponent_key=binding.tool_subcomponent_key,
         linked_component_keys=binding.linked_tool_component_keys,
+        source_keys=binding.source_keys,
     )
 
 
@@ -70,6 +78,7 @@ def _build_card_display(
     tool_subcomponent_key: str,
     linked_component_keys: tuple[str, ...] = (),
     content_state: ContentState = ContentState.READY,
+    source_keys: tuple[OperationalControlSource, ...] | None = None,
 ):
     card = build_card_display(
         component_key=tool_component_key,
@@ -83,6 +92,9 @@ def _build_card_display(
         component_key=None,
         children=card,
         state=content_state,
+        source_keys=(
+            None if source_keys is None else tuple(source.value for source in source_keys)
+        ),
         operational_runtime=True,
         class_name='ada-io-card-state',
     )
@@ -93,6 +105,5 @@ def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,
         'data-ada-component-key': binding.tool_component_key,
-        # Cada área empieza pendiente. El callback de render la marca ready junto con su contenido.
         'data-ready': 'false',
     }

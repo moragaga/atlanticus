@@ -5,6 +5,19 @@
     min-height: 0;
 }
 
+.ada-io-global-indicator-placement > .ada-io-global-indicator-state {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-global-indicator-state > .ada-content-state__content,
+.ada-io-global-indicator-state > .ada-content-state__content > .ada-global-indicator {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine'])
 .ada-io-global-indicator-placement:not([data-ada-io-scope-mine='true']),
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant'])
@@ -14,7 +27,10 @@
 
 @media only screen and (min-width: 1280px) {
     .ada-io-global-indicators-state,
-    .ada-io-global-indicators-state > .ada-content-state__content {
+    .ada-io-global-indicators-state > .ada-content-state__content,
+    .ada-io-global-indicator-state,
+    .ada-io-global-indicator-state > .ada-content-state__content,
+    .ada-io-global-indicator-state > .ada-content-state__content > .ada-global-indicator {
         height: 100%;
     }
 }
