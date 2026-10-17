@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -14,6 +14,7 @@ from atlanticus.operational_data.processes.fabrica_planes.catalog import build_c
 from atlanticus.operational_data.processes.fabrica_planes.settings import FabricaProcessSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -45,15 +46,21 @@ class FabricaProcessComposition:
     producer: FabricaDataProducerComponents
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=JOB_DEFINITION,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self._resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
+
+    @contextmanager
+    def _resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with ExitStack() as stack:
             for storage in self.producer.storages.values():
                 stack.enter_context(storage)
-            return execute_job(
-                definition=JOB_DEFINITION,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
 
 
 def build_composition(
