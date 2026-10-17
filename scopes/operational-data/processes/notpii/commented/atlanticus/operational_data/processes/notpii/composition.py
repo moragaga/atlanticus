@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -18,6 +18,7 @@ from atlanticus.operational_data.processes.notpii.errors import NotPiiCatalogErr
 from atlanticus.operational_data.processes.notpii.settings import NotPiiSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -39,7 +40,7 @@ NOTPII_JOB_DEFINITION = JobDefinition(
 )
 
 
-# La composición conserva únicamente contexto Operational Data y el producer NOTPII reutilizable.
+# La composición conserva responsabilidad sobre sus clientes Service Bus.
 @dataclass(slots=True)
 class NotPiiComposition:
     configuration: ResolvedConfiguration
@@ -49,19 +50,28 @@ class NotPiiComposition:
     definition: JobDefinition
     producer: NotPiiDataProducerComponents
 
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    # Runtime invoca esta fábrica sólo con lease adquirida, generación vinculada y heartbeat activo.
+    # ExitStack revierte aperturas parciales y cierra receptores antes del release.
+    @contextmanager
+    def resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with ExitStack() as stack:
             for receiver in self.producer.receivers.values():
                 stack.enter_context(receiver)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
+
+    # No se abre ningún receiver antes de entrar a execute_job.
+    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self.resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
 
 
-# Construye el producer con catálogo y conexiones concretas del proceso Operational Data.
+# Configuración y producer se resuelven sin iniciar receivers externos.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,

@@ -1,6 +1,13 @@
+from __future__ import annotations
+
+from contextlib import nullcontext
+from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from atlanticus.integrations.pi.web_api import PiPointWebIdResult
+from atlanticus.kernel import OperationStatus
 from atlanticus.operational_data.processes.pi.composition import (
     PI_WEB_API_JOB_DEFINITION,
     build_composition,
@@ -120,7 +127,7 @@ def test_execute_keeps_pi_client_open_while_runtime_invokes_job(
     sentinel = SimpleNamespace(name='runtime-result')
     monkeypatch.setattr(composition_module, 'PiWebApiClient', FakeClient)
 
-    def fake_execute_job(*, definition, iteration, argv, environ):
+    def fake_execute_job(*, definition, iteration, resource_scope, argv, environ):
         assert definition.poll_interval_seconds == 2.5
         assert definition.execution_timeout_seconds == 600
         assert definition.iteration_timeout_seconds == 580
@@ -137,8 +144,14 @@ def test_execute_keeps_pi_client_open_while_runtime_invokes_job(
             run_id='run-id',
             correlation_id='correlation-id',
         )
-        context._begin_iteration(1)
-        iteration(context)
+        context._bind_lease_authority(
+            generation=1,
+            checker=lambda: None,
+            fence=lambda: nullcontext(),
+        )
+        with resource_scope(context):
+            context._begin_iteration(1)
+            iteration(context)
         return sentinel
 
     monkeypatch.setattr(composition_module, 'execute_job', fake_execute_job)
@@ -154,3 +167,91 @@ def test_execute_keeps_pi_client_open_while_runtime_invokes_job(
     assert [item.tag_name for item in composition.producer.job.preparation.plan.interpolated] == [
         'TAG_A'
     ]
+
+
+def test_real_runtime_opens_and_closes_pi_client_under_lease(
+    monkeypatch, configuration, catalog
+) -> None:
+    import atlanticus.operational_data.processes.pi.composition as module
+
+    lease_path = (
+        Path(configuration.require('VOLUMEN_PATH'))
+        / 'operational-data-pi/.runtime/leases/pi-web-api-materialization.json'
+    )
+    events: list[str] = []
+
+    class GuardedClient(FakeClient):
+        def open(self):
+            assert lease_path.exists()
+            events.append('open')
+            super().open()
+
+        def close(self):
+            assert lease_path.exists()
+            events.append('close')
+            super().close()
+
+    def fake_builder(**kwargs):
+        client = kwargs['client']
+
+        def iteration(context):
+            context.assert_lease_current()
+            assert context.lease_generation == 1
+            assert client.is_open
+            events.append('iteration')
+
+        return SimpleNamespace(job=SimpleNamespace(run_iteration=iteration))
+
+    monkeypatch.setattr(module, 'PiWebApiClient', GuardedClient)
+    monkeypatch.setattr(module, 'build_pi_data_producer', fake_builder)
+    composition = build_composition(configuration=configuration, catalog=catalog)
+
+    assert events == []
+    result = composition.execute(argv=('--run-once',))
+
+    assert result.status is OperationStatus.SUCCESS
+    assert result.stop_reason == 'run_once'
+    assert events == ['open', 'iteration', 'close']
+    assert composition.client.open_count == composition.client.close_count == 1
+    assert not lease_path.exists()
+
+
+def test_pi_client_closes_under_lease_when_iteration_fails(
+    monkeypatch, configuration, catalog
+) -> None:
+    import atlanticus.operational_data.processes.pi.composition as module
+
+    lease_path = (
+        Path(configuration.require('VOLUMEN_PATH'))
+        / 'operational-data-pi/.runtime/leases/pi-web-api-materialization.json'
+    )
+    events: list[str] = []
+
+    class GuardedClient(FakeClient):
+        def open(self):
+            assert lease_path.exists()
+            events.append('open')
+            super().open()
+
+        def close(self):
+            assert lease_path.exists()
+            events.append('close')
+            super().close()
+
+    def fake_builder(**kwargs):
+        def fail_iteration(context):
+            context.assert_lease_current()
+            events.append('iteration')
+            raise RuntimeError('PI iteration failed')
+
+        return SimpleNamespace(job=SimpleNamespace(run_iteration=fail_iteration))
+
+    monkeypatch.setattr(module, 'PiWebApiClient', GuardedClient)
+    monkeypatch.setattr(module, 'build_pi_data_producer', fake_builder)
+    composition = build_composition(configuration=configuration, catalog=catalog)
+
+    with pytest.raises(RuntimeError, match='PI iteration failed'):
+        composition.execute(argv=('--run-once',))
+
+    assert events == ['open', 'iteration', 'close']
+    assert not lease_path.exists()

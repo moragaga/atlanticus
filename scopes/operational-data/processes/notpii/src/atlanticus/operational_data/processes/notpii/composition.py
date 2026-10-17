@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import ExitStack
+from collections.abc import Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -18,6 +18,7 @@ from atlanticus.operational_data.processes.notpii.errors import NotPiiCatalogErr
 from atlanticus.operational_data.processes.notpii.settings import NotPiiSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -48,16 +49,22 @@ class NotPiiComposition:
     definition: JobDefinition
     producer: NotPiiDataProducerComponents
 
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    @contextmanager
+    def resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with ExitStack() as stack:
             for receiver in self.producer.receivers.values():
                 stack.enter_context(receiver)
-            return execute_job(
-                definition=self.definition,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
+
+    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self.resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
 
 
 def build_composition(

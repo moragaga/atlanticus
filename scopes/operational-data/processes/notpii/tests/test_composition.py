@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from types import SimpleNamespace
+
+import pytest
 
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.integrations.pi.contracts import (
@@ -9,7 +13,7 @@ from atlanticus.integrations.pi.contracts import (
     PiTagDefinition,
     PiValueKind,
 )
-from atlanticus.kernel import Environment
+from atlanticus.kernel import Environment, OperationStatus
 from atlanticus.operational_data.processes.notpii.composition import build_composition
 
 
@@ -72,3 +76,78 @@ def test_composition_passes_notpii_identity_to_data_producer(monkeypatch, tmp_pa
     assert captured['dataset_namespace'] == ('pi', 'not_pii')
     assert captured['max_message_count'] == 10
     assert tuple(captured['service_buses']) == (PiExtractionMode.INTERPOLATED,)
+
+
+class _Receiver:
+    def __init__(self, *, name, events, lease_path, fail_open=False) -> None:
+        self.name = name
+        self.events = events
+        self.lease_path = lease_path
+        self.fail_open = fail_open
+
+    def __enter__(self):
+        assert self.lease_path.exists()
+        self.events.append(f'open:{self.name}')
+        if self.fail_open:
+            raise RuntimeError('Service Bus receiver could not open')
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.lease_path.exists()
+        self.events.append(f'close:{self.name}')
+
+
+def test_receiver_lifecycle_is_inside_real_runtime_lease(monkeypatch, tmp_path) -> None:
+    import atlanticus.operational_data.processes.notpii.composition as module
+
+    events: list[str] = []
+    lease_path = tmp_path / 'operational-data-notpii/.runtime/leases/notpii-materialization.json'
+    first = _Receiver(name='interpolated', events=events, lease_path=lease_path)
+    second = _Receiver(name='recorded', events=events, lease_path=lease_path)
+
+    def iteration(context):
+        context.assert_lease_current()
+        assert context.lease_generation == 1
+        assert lease_path.exists()
+        events.append('iteration')
+
+    producer = SimpleNamespace(
+        receivers={'interpolated': first, 'recorded': second},
+        job=SimpleNamespace(run_iteration=iteration),
+    )
+    monkeypatch.setattr(module, 'build_notpii_data_producer', lambda **kwargs: producer)
+    composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
+
+    assert events == []
+    result = composition.execute(argv=('--run-once',))
+
+    assert result.status is OperationStatus.SUCCESS
+    assert result.stop_reason == 'run_once'
+    assert events == [
+        'open:interpolated', 'open:recorded', 'iteration', 'close:recorded', 'close:interpolated'
+    ]
+    assert not lease_path.exists()
+
+
+def test_partial_receiver_open_failure_closes_under_lease(monkeypatch, tmp_path) -> None:
+    import atlanticus.operational_data.processes.notpii.composition as module
+
+    events: list[str] = []
+    lease_path = tmp_path / 'operational-data-notpii/.runtime/leases/notpii-materialization.json'
+    producer = SimpleNamespace(
+        receivers={
+            'interpolated': _Receiver(name='first', events=events, lease_path=lease_path),
+            'recorded': _Receiver(
+                name='second', events=events, lease_path=lease_path, fail_open=True
+            ),
+        },
+        job=SimpleNamespace(run_iteration=lambda context: events.append('iteration')),
+    )
+    monkeypatch.setattr(module, 'build_notpii_data_producer', lambda **kwargs: producer)
+    composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
+
+    with pytest.raises(RuntimeError, match='Service Bus receiver could not open'):
+        composition.execute(argv=('--run-once',))
+
+    assert events == ['open:first', 'open:second', 'close:first']
+    assert not lease_path.exists()

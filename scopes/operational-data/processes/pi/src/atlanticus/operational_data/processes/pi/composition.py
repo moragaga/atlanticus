@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -12,6 +13,7 @@ from atlanticus.operational_data.processes.pi.errors import PiWebApiCatalogError
 from atlanticus.operational_data.processes.pi.settings import PiWebApiProcessSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -43,14 +45,20 @@ class PiWebApiComposition:
     definition: JobDefinition
     producer: PiDataProducerComponents
 
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    @contextmanager
+    def resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with self.client:
-            return execute_job(
-                definition=self.definition,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
+
+    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self.resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
 
 
 def build_composition(

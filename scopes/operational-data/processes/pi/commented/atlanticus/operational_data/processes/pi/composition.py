@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
@@ -12,6 +13,7 @@ from atlanticus.operational_data.processes.pi.errors import PiWebApiCatalogError
 from atlanticus.operational_data.processes.pi.settings import PiWebApiProcessSettings
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -33,7 +35,7 @@ PI_WEB_API_JOB_DEFINITION = JobDefinition(
 )
 
 
-# La composición mantiene cliente y producer; sus piezas internas no se reexportan desde Operational Data.
+# Se conserva el mismo cliente y producer durante toda la ejecución.
 @dataclass(slots=True)
 class PiWebApiComposition:
     configuration: ResolvedConfiguration
@@ -44,17 +46,26 @@ class PiWebApiComposition:
     definition: JobDefinition
     producer: PiDataProducerComponents
 
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    # El cliente HTTP comparte identidad con el producer pero sólo se abre bajo lease.
+    # La salida del contexto lo cierra antes de entregar autoridad al sucesor.
+    @contextmanager
+    def resource_scope(self, context: JobRuntimeContext) -> Iterator[None]:
+        context.assert_lease_current()
         with self.client:
-            return execute_job(
-                definition=self.definition,
-                iteration=self.producer.job.run_iteration,
-                argv=argv,
-                environ=self.configuration.values,
-            )
+            yield
+
+    # Runtime orquesta las aperturas y los cierres sin conocer el dominio PI.
+    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+        return execute_job(
+            definition=self.definition,
+            iteration=self.producer.job.run_iteration,
+            resource_scope=self.resource_scope,
+            argv=argv,
+            environ=self.configuration.values,
+        )
 
 
-# Construye el producer PI con la configuración concreta de este proceso.
+# Construir la composición no ejecuta ninguna conexión HTTP.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
