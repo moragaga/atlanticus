@@ -76,7 +76,11 @@ def test_manager_mount_is_independent_of_tool_ready_state(tmp_path, monkeypatch)
             state=ToolProjectionResolutionState.READY,
             projection=SimpleNamespace(
                 payload=SimpleNamespace(
-                    structure=SimpleNamespace(tool_key='test_tool'),
+                    structure=SimpleNamespace(
+                        tool_key='test_tool',
+                        kind=SimpleNamespace(value='integrated_operations'),
+                        components=(),
+                    ),
                 ),
             ),
         ),

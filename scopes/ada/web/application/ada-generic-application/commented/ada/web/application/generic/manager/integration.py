@@ -23,7 +23,9 @@ class ManagerSurfacePort(Protocol):
     @property
     def web_modules(self) -> tuple[WebModule, ...]: ...
 
-    def layout(self, services: ServiceRegistry) -> Component: ...
+    def state_layout(self) -> Component: ...
+
+    def layout(self, services: ServiceRegistry, *, include_state: bool = True) -> Component: ...
 
 
 # Una única definición Flask/Dash aloja ambas superficies conservando rutas propias.
@@ -74,20 +76,28 @@ def integrate_manager_surface(
         operational = operational_layout(services)
         if not isinstance(operational, Component):
             raise TypeError('Integrated operational surface must return a Dash component')
-        # Sólo los errores acordados permiten degradar; los defectos de contrato se propagan.
+        # El estado estable no debe quedar dentro de la superficie visual ocultable.
+        manager_state = None
+        # Sólo errores de infraestructura acordados degradan la presentación.
         try:
-            administrative = manager.layout(services)
+            manager_state = manager.state_layout()
+            if not isinstance(manager_state, Component):
+                raise TypeError('Integrated Manager state host must return a Dash component')
+            # El Manager se construye sin duplicar los almacenes ya montados.
+            administrative = manager.layout(services, include_state=False)
         except unavailable_errors as error:
             _LOGGER.warning(
                 'Manager presentation unavailable (%s)',
                 type(error).__name__,
             )
-            # El fallback conserva la ubicación para que el router siga funcionando.
+            # En modo fallback, la ubicación vive exclusivamente dentro del aviso.
+            manager_state = None
             administrative = _manager_unavailable_layout(location_id)
         if not isinstance(administrative, Component):
             raise TypeError('Integrated Manager surface must return a Dash component')
         return html.Div(
             [
+                *((manager_state,) if manager_state is not None else ()),
                 html.Div(operational, id=OPERATIONAL_SURFACE_ID, hidden=True),
                 html.Div(administrative, id=MANAGER_SURFACE_ID, hidden=True),
             ],

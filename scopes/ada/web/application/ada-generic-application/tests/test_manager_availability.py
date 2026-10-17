@@ -31,12 +31,15 @@ class UnavailableManagerStub:
     def web_modules(self):
         return (WebModule(name='availability-manager'),)
 
-    def layout(self, _services):
+    def state_layout(self):
+        return html.Div(dcc.Location(id=_LOCATION_ID))
+
+    def layout(self, _services, *, include_state=True):
         raise CosmosOperationError('secret-value-must-not-be-exposed')
 
 
 class InvalidManagerStub(UnavailableManagerStub):
-    def layout(self, _services):
+    def layout(self, _services, *, include_state=True):
         raise ValueError('Manager composition is invalid')
 
 

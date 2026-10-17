@@ -17,9 +17,15 @@ class ManagerSurfaceStub:
     def web_modules(self):
         return (WebModule(name='test-manager-module'),)
 
-    def layout(self, _services: ServiceRegistry):
+    def state_layout(self):
+        return html.Div(dcc.Location(id=_MANAGER_LOCATION_ID), id='test-manager-state-host')
+
+    def layout(self, _services: ServiceRegistry, *, include_state: bool = True):
         return html.Div(
-            [dcc.Location(id=_MANAGER_LOCATION_ID), html.Div(id='test-manager-content')]
+            [
+                *((dcc.Location(id=_MANAGER_LOCATION_ID),) if include_state else ()),
+                html.Div(id='test-manager-content'),
+            ]
         )
 
 
@@ -58,8 +64,12 @@ def test_integration_reuses_one_definition_and_registers_both_surfaces(tmp_path)
     )
     layout = definition.layout(ServiceRegistry())
     assert layout.id == 'ada-integrated-application'
-    assert [child.id for child in layout.children] == ([OPERATIONAL_SURFACE_ID, MANAGER_SURFACE_ID])
-    assert all(child.hidden is True for child in layout.children)
+    assert [child.id for child in layout.children] == [
+        'test-manager-state-host', OPERATIONAL_SURFACE_ID, MANAGER_SURFACE_ID,
+    ]
+    assert all(child.hidden is True for child in layout.children[1:])
+    assert layout.children[0].children.id == _MANAGER_LOCATION_ID
+    assert [child.id for child in layout.children[2].children.children] == ['test-manager-content']
 
 
 def test_manager_route_selection_preserves_operational_route_boundary(tmp_path):
@@ -106,3 +116,62 @@ def test_duplicate_modules_fail_before_mounting(tmp_path):
             route_prefix='/manager',
             location_id=_MANAGER_LOCATION_ID,
         )
+
+
+def _location_count(component):
+    children = getattr(component, 'children', None)
+    nested = children if isinstance(children, (list, tuple)) else (children,)
+    return (int(isinstance(component, dcc.Location))
+            + sum(_location_count(item) for item in nested if item is not None))
+
+
+def test_integrated_state_host_remains_outside_visual_surfaces(tmp_path):
+    definition = _integrated(tmp_path)
+    layout = definition.layout(ServiceRegistry())
+
+    assert _location_count(layout) == 1
+    assert layout.children[0].id == 'test-manager-state-host'
+    assert layout.children[1].hidden is True
+    assert layout.children[2].hidden is True
+    assert layout.children[2].children.children[0].id == 'test-manager-content'
+    assert definition.modules[-1].name == 'ada-manager-surface-router'
+
+
+def test_manager_unavailable_keeps_single_navigation_location(tmp_path):
+    class UnavailableManager(ManagerSurfaceStub):
+        def layout(self, _services, *, include_state=True):
+            raise ConnectionError('Unavailable')
+
+    definition = integrate_manager_surface(
+        _base_definition(tmp_path),
+        manager=UnavailableManager(),
+        page_packages=('ada.web.application.configuration_manager.pages',),
+        route_prefix='/manager',
+        location_id=_MANAGER_LOCATION_ID,
+        unavailable_errors=(ConnectionError,),
+    )
+    layout = definition.layout(ServiceRegistry())
+
+    assert [child.id for child in layout.children] == [
+        OPERATIONAL_SURFACE_ID, MANAGER_SURFACE_ID,
+    ]
+    assert layout.children[1].children.id == 'ada-manager-unavailable'
+    assert _location_count(layout) == 1
+
+
+def test_invalid_manager_state_host_is_rejected(tmp_path):
+    import pytest
+
+    class InvalidStateManager(ManagerSurfaceStub):
+        def state_layout(self):
+            return None
+
+    definition = integrate_manager_surface(
+        _base_definition(tmp_path),
+        manager=InvalidStateManager(),
+        page_packages=('ada.web.application.configuration_manager.pages',),
+        route_prefix='/manager',
+        location_id=_MANAGER_LOCATION_ID,
+    )
+    with pytest.raises(TypeError, match='state host'):
+        definition.layout(ServiceRegistry())

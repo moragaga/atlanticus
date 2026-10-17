@@ -21,7 +21,9 @@ class ManagerSurfacePort(Protocol):
     @property
     def web_modules(self) -> tuple[WebModule, ...]: ...
 
-    def layout(self, services: ServiceRegistry) -> Component: ...
+    def state_layout(self) -> Component: ...
+
+    def layout(self, services: ServiceRegistry, *, include_state: bool = True) -> Component: ...
 
 
 def integrate_manager_surface(
@@ -68,18 +70,24 @@ def integrate_manager_surface(
         operational = operational_layout(services)
         if not isinstance(operational, Component):
             raise TypeError('Integrated operational surface must return a Dash component')
+        manager_state = None
         try:
-            administrative = manager.layout(services)
+            manager_state = manager.state_layout()
+            if not isinstance(manager_state, Component):
+                raise TypeError('Integrated Manager state host must return a Dash component')
+            administrative = manager.layout(services, include_state=False)
         except unavailable_errors as error:
             _LOGGER.warning(
                 'Manager presentation unavailable (%s)',
                 type(error).__name__,
             )
+            manager_state = None
             administrative = _manager_unavailable_layout(location_id)
         if not isinstance(administrative, Component):
             raise TypeError('Integrated Manager surface must return a Dash component')
         return html.Div(
             [
+                *((manager_state,) if manager_state is not None else ()),
                 html.Div(operational, id=OPERATIONAL_SURFACE_ID, hidden=True),
                 html.Div(administrative, id=MANAGER_SURFACE_ID, hidden=True),
             ],
