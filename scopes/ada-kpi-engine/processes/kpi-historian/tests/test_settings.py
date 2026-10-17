@@ -14,7 +14,6 @@ def _configuration(tmp_path, **overrides) -> ResolvedConfiguration:
         'APPLICATION': 'ada-kpi-historian-local',
         'VOLUMEN_PATH': str(tmp_path),
         'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
-        'KPI_HISTORIAN_POLL_INTERVAL_SECONDS': '1',
         'REPROCESS_CURRENT': 'false',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
@@ -27,13 +26,10 @@ def _configuration(tmp_path, **overrides) -> ResolvedConfiguration:
     )
 
 
-def test_settings_resolve_upstream_application_poll_interval_and_reprocess_default(
-    tmp_path,
-) -> None:
+def test_settings_resolve_upstream_application_and_reprocess_default(tmp_path) -> None:
     settings = KpiHistorianSettings.from_configuration(_configuration(tmp_path))
 
     assert settings.kpi_runtime_application == 'ada-kpi-runtime-local'
-    assert settings.poll_interval_seconds == 1
     assert settings.reprocess_current is False
 
 
@@ -56,8 +52,6 @@ def test_configuration_spec_defaults_reprocess_current_to_false() -> None:
     assert spec.default == 'false'
 
 
-def test_settings_reject_non_positive_poll_interval(tmp_path) -> None:
-    with pytest.raises(KpiHistorianConfigurationError, match='positive number'):
-        KpiHistorianSettings.from_configuration(
-            _configuration(tmp_path, KPI_HISTORIAN_POLL_INTERVAL_SECONDS='0')
-        )
+def test_configuration_does_not_declare_resident_polling() -> None:
+    keys = {spec.key for spec in configuration_specs()}
+    assert 'KPI_HISTORIAN_POLL_INTERVAL_SECONDS' not in keys

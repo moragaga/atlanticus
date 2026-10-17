@@ -1,5 +1,4 @@
-# Composición Historian con runtimes Dataset explícitos.
-# Espejo pedagógico; los comentarios no alteran el AST productivo.
+# Historian ejecuta una sola iteración por disparo del cron; nunca hace polling residente.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -27,9 +26,7 @@ from atlanticus.runtime import (
 from atlanticus.state import AtomicStateStore
 
 
-# El dataclass siguiente representa un contrato de datos.
 @dataclass(slots=True)
-# Esta clase conserva una responsabilidad explícita.
 class KpiHistorianComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -42,7 +39,6 @@ class KpiHistorianComposition:
     job: KpiHistorianJob
     definition: JobDefinition
 
-# Esta función aplica el contrato antes de delegar.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
@@ -52,7 +48,6 @@ class KpiHistorianComposition:
         )
 
 
-# Esta función aplica el contrato antes de delegar.
 def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -91,7 +86,8 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
         rolling=rolling,
         reprocess_current=settings.reprocess_current,
     )
-    definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
+    # El JobDefinition establece run_once y no depende de intervalos de polling.
+    definition = _job_definition()
     return KpiHistorianComposition(
         configuration=configuration,
         runtime_configuration=runtime_configuration,
@@ -106,13 +102,14 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     )
 
 
-# Esta función aplica el contrato antes de delegar.
-def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
+def _job_definition() -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_historian',
         service_name='kpi-historian',
         job_key='kpi-historian',
-        poll_interval_seconds=poll_interval_seconds,
+        # Se conserva el catch-up existente hasta el watermark confirmado.
+        run_once=True,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

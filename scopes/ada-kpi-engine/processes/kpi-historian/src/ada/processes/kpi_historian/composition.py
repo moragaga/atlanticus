@@ -85,7 +85,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
         rolling=rolling,
         reprocess_current=settings.reprocess_current,
     )
-    definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
+    definition = _job_definition()
     return KpiHistorianComposition(
         configuration=configuration,
         runtime_configuration=runtime_configuration,
@@ -100,12 +100,13 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     )
 
 
-def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
+def _job_definition() -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_historian',
         service_name='kpi-historian',
         job_key='kpi-historian',
-        poll_interval_seconds=poll_interval_seconds,
+        run_once=True,
+        poll_interval_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

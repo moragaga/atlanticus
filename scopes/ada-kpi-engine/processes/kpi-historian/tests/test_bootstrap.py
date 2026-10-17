@@ -11,7 +11,6 @@ def test_local_bootstrap_uses_process_root_dotenv_and_default_reprocess_current(
                 'APPLICATION=ada-kpi-historian-local',
                 f'VOLUMEN_PATH={tmp_path}',
                 'KPI_RUNTIME_APPLICATION=ada-kpi-runtime-local',
-                'KPI_HISTORIAN_POLL_INTERVAL_SECONDS=1',
                 'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED=true',
                 'ATLANTICUS_AZURE_OBSERVABILITY_MODE=off',
             )

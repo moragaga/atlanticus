@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from ada.processes.kpi_historian.errors import KpiHistorianConfigurationError
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 KPI_RUNTIME_APPLICATION_VARIABLE = 'KPI_RUNTIME_APPLICATION'
-POLL_INTERVAL_VARIABLE = 'KPI_HISTORIAN_POLL_INTERVAL_SECONDS'
 REPROCESS_CURRENT_VARIABLE = 'REPROCESS_CURRENT'
 
 
 @dataclass(frozen=True, slots=True)
 class KpiHistorianSettings:
     kpi_runtime_application: str
-    poll_interval_seconds: float
     reprocess_current: bool
 
     @classmethod
@@ -25,10 +22,6 @@ class KpiHistorianSettings:
             kpi_runtime_application=_required_text(
                 configuration.require(KPI_RUNTIME_APPLICATION_VARIABLE),
                 KPI_RUNTIME_APPLICATION_VARIABLE,
-            ),
-            poll_interval_seconds=_positive_float(
-                configuration.require(POLL_INTERVAL_VARIABLE),
-                POLL_INTERVAL_VARIABLE,
             ),
             reprocess_current=_boolean(
                 configuration.require(REPROCESS_CURRENT_VARIABLE),
@@ -43,7 +36,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=KPI_RUNTIME_APPLICATION_VARIABLE),
-        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=REPROCESS_CURRENT_VARIABLE, default='false'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
@@ -64,18 +56,6 @@ def _required_text(value: str, field_name: str) -> str:
             f'{field_name} must not contain surrounding whitespace'
         )
     return value
-
-
-def _positive_float(value: str, field_name: str) -> float:
-    try:
-        resolved = float(value)
-    except ValueError as error:
-        raise KpiHistorianConfigurationError(
-            f'{field_name} must contain a positive number'
-        ) from error
-    if not math.isfinite(resolved) or resolved <= 0:
-        raise KpiHistorianConfigurationError(f'{field_name} must contain a positive number')
-    return resolved
 
 
 def _boolean(value: str, field_name: str) -> bool:
