@@ -12,7 +12,7 @@ dependencies = [
     "atlanticus-cosmos==1.0.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-observability==0.3.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [tool.uv.sources]

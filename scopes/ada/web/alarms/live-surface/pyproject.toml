@@ -12,7 +12,7 @@ dependencies = [
     "ada-web-alarm-baseline-surface==0.1.1",
     "ada-web-alarm-baseline-projection==0.1.0",
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [dependency-groups]

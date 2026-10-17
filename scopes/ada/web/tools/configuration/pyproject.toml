@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 web = [
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [tool.uv.sources]
@@ -31,7 +31,7 @@ atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", 
 [dependency-groups]
 dev = [
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]

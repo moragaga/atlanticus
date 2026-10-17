@@ -19,7 +19,7 @@ dependencies = [
 web = [
     "ada-web-configuration==0.1.2",
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
     "dash-bootstrap-components==2.0.4",
 ]
 
@@ -27,7 +27,7 @@ web = [
 dev = [
     "ada-web-configuration==0.1.2",
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
     "dash-bootstrap-components==2.0.4",
     "pytest==9.1.1",
     "ruff==0.15.22",

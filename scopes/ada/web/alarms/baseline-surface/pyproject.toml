@@ -14,7 +14,7 @@ dependencies = [
     "ada-web-ui-core==0.2.0",
     "ada-web-alarm-baseline-projection==0.1.0",
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
     "ada-contracts-tools==1.0.0",
 ]
 

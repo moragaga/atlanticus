@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "atlanticus-web==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [dependency-groups]

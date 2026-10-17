@@ -14,7 +14,7 @@ dependencies = [
     "atlanticus-web==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [tool.uv.sources]

@@ -19,7 +19,7 @@ web = [
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
     "dash-bootstrap-components==2.0.4",
-    "dash==4.4.1",
+    "dash==4.0.0",
 ]
 
 [tool.uv.sources]
