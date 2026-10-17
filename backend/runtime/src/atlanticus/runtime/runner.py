@@ -9,7 +9,7 @@ import signal
 import threading
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from types import FrameType
@@ -96,6 +96,7 @@ def execute_job(
     iteration: Callable[[JobRuntimeContext], Any],
     recovery: Callable[[JobRuntimeContext], Any] | None = None,
     drain: Callable[[JobRuntimeContext], Any] | None = None,
+    resource_scope: Callable[[JobRuntimeContext], AbstractContextManager[Any]] | None = None,
     argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> RuntimeExecutionResult:
@@ -109,6 +110,8 @@ def execute_job(
         raise TypeError('recovery must be callable')
     if drain is not None and not callable(drain):
         raise TypeError('drain must be callable')
+    if resource_scope is not None and not callable(resource_scope):
+        raise TypeError('resource_scope must be callable')
     if environ is not None and not isinstance(environ, Mapping):
         raise TypeError('environ must be a mapping')
 
@@ -228,15 +231,17 @@ def execute_job(
         lease.start_renewal(on_lost=context.request_stop)
         try:
             with _cooperative_sigterm(context):
-                execution_result = _run_iterations(
-                    definition=definition,
-                    options=options,
-                    context=context,
-                    iteration=iteration,
-                    recovery=recovery,
-                    drain=drain,
-                    lease=lease,
-                )
+                with nullcontext() if resource_scope is None else resource_scope(context):
+                    result = _run_iterations(
+                        definition=definition,
+                        options=options,
+                        context=context,
+                        iteration=iteration,
+                        recovery=recovery,
+                        drain=drain,
+                        lease=lease,
+                    )
+                execution_result = result
                 return execution_result
         finally:
             context.clear_memory()

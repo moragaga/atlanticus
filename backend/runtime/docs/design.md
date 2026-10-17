@@ -134,6 +134,15 @@ Los hooks son opt-in. La firma histórica sigue siendo válida:
 execute_job(definition=..., iteration=...)
 ```
 
+El hook opcional `resource_scope(context)` es una fábrica de context manager por ejecución.
+Sólo se invoca después de adquirir la lease, vincular autoridad e iniciar heartbeat.
+Su apertura precede a recovery e iteración, y su cierre ocurre después de drain,
+antes de detener el heartbeat y liberar la lease. El consumidor es responsable de
+abrir y cerrar sus propios clientes, incluidos pools y ejecutores; Runtime no conoce
+conectores externos. Un job omitido no invoca la fábrica. Un fallo de apertura o
+cierre impide confirmar el slot scheduled y libera la lease en el bloque finally.
+El context manager no debe suprimir excepciones del trabajo del consumidor.
+
 El contrato ampliado permite:
 
 ```text

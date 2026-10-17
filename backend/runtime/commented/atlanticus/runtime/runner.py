@@ -1,5 +1,6 @@
 # Recovery y drain son hooks opcionales del lifecycle genérico; los jobs existentes siguen usando sólo iteration.
-# El heartbeat permanece activo durante recovery, ejecución y drain, y se detiene recién al entrar en release.
+# El contexto opcional de recursos se crea después de adquirir autoridad y se cierra antes del release.
+# El heartbeat permanece activo durante recovery, ejecución, drain y cierre de recursos.
 
 """Composición oficial de lease, observabilidad y ciclo de iteraciones."""
 
@@ -12,7 +13,7 @@ import signal
 import threading
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from types import FrameType
@@ -99,6 +100,7 @@ def execute_job(
     iteration: Callable[[JobRuntimeContext], Any],
     recovery: Callable[[JobRuntimeContext], Any] | None = None,
     drain: Callable[[JobRuntimeContext], Any] | None = None,
+    resource_scope: Callable[[JobRuntimeContext], AbstractContextManager[Any]] | None = None,
     argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> RuntimeExecutionResult:
@@ -112,6 +114,9 @@ def execute_job(
         raise TypeError('recovery must be callable')
     if drain is not None and not callable(drain):
         raise TypeError('drain must be callable')
+    # No se construye el contexto todavía; un job omitido jamás debe activar recursos externos.
+    if resource_scope is not None and not callable(resource_scope):
+        raise TypeError('resource_scope must be callable')
     if environ is not None and not isinstance(environ, Mapping):
         raise TypeError('environ must be a mapping')
 
@@ -235,15 +240,20 @@ def execute_job(
         lease.start_renewal(on_lost=context.request_stop)
         try:
             with _cooperative_sigterm(context):
-                execution_result = _run_iterations(
-                    definition=definition,
-                    options=options,
-                    context=context,
-                    iteration=iteration,
-                    recovery=recovery,
-                    drain=drain,
-                    lease=lease,
-                )
+                # La fábrica se invoca sólo con lease adquirida, autoridad vinculada y heartbeat activo.
+                # La salida del contexto cierra los recursos después de drain y antes de liberar la lease.
+                with nullcontext() if resource_scope is None else resource_scope(context):
+                    result = _run_iterations(
+                        definition=definition,
+                        options=options,
+                        context=context,
+                        iteration=iteration,
+                        recovery=recovery,
+                        drain=drain,
+                        lease=lease,
+                    )
+                # Un fallo de cierre no debe marcar el slot programado como completado.
+                execution_result = result
                 return execution_result
         finally:
             context.clear_memory()
